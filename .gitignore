@@ -1,0 +1,17 @@
+# 忽略所有target目录
+**/target/
+
+# 但保留特定目录下的target（如docs/target）
+!docs/target/
+# 其他常见忽略项
+build/
+out/
+bin/
+*.class
+*.jar
+*.war
+# 配置文件
+*.iml
+.idea/
+*.swp
+/test
