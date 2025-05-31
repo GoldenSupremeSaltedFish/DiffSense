@@ -1,9 +1,11 @@
 package com.yourorg.gitimpact.report;
 
-import java.io.File;
-import java.io.FileWriter;
+import java.io.BufferedWriter;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -20,11 +22,18 @@ public class Reporter {
     public void writeJsonReport(String outputPath) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         mapper.enable(SerializationFeature.INDENT_OUTPUT);
-        mapper.writeValue(new File(outputPath), report);
+        
+        // 使用 UTF-8 编码写入 JSON 文件
+        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
+                new FileOutputStream(outputPath), StandardCharsets.UTF_8))) {
+            mapper.writeValue(writer, report);
+        }
     }
 
     public void writeMarkdownReport(String outputPath) throws IOException {
-        try (PrintWriter writer = new PrintWriter(new FileWriter(outputPath))) {
+        // 使用 UTF-8 编码写入 Markdown 文件
+        try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(
+                new FileOutputStream(outputPath), StandardCharsets.UTF_8))) {
             writer.println("# 代码变更影响分析报告\n");
 
             // 直接影响的方法

@@ -12,6 +12,8 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
+import com.github.javaparser.ParseProblemException;
+import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
@@ -26,6 +28,10 @@ public class ImpactAnalyzer {
 
     public ImpactAnalyzer(String baseDir) {
         this.baseDir = baseDir;
+        // 配置 JavaParser 支持 Java 17 特性
+        ParserConfiguration config = new ParserConfiguration();
+        config.setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_17);
+        StaticJavaParser.setConfiguration(config);
     }
 
     public void buildCallGraph() throws IOException {
@@ -73,8 +79,12 @@ public class ImpactAnalyzer {
                     super.visit(n, arg);
                 }
             }, null);
+        } catch (ParseProblemException e) {
+            System.err.println("警告: 解析文件 " + path + " 时出现语法问题，可能是使用了不支持的语言特性");
+            System.err.println("详细信息: " + e.getMessage());
+            // 继续处理其他文件，不中断整个分析过程
         } catch (IOException e) {
-            System.err.println("警告: 无法分析文件 " + path + ": " + e.getMessage());
+            System.err.println("警告: 无法读取文件 " + path + ": " + e.getMessage());
         }
     }
 

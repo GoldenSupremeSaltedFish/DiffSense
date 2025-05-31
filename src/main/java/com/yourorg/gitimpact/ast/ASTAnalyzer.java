@@ -6,12 +6,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 
 public class ASTAnalyzer {
+    public ASTAnalyzer() {
+        // 配置 JavaParser 支持 Java 17 特性
+        ParserConfiguration config = new ParserConfiguration();
+        config.setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_17);
+        StaticJavaParser.setConfiguration(config);
+    }
+
     public static class MethodInfo {
         public final String className;
         public final String methodName;
