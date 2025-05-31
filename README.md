@@ -1,5 +1,12 @@
 # GitImpact
 
+GitImpact 是专业的代码变更影响分析工具，通过静态代码分析和版本差异比对，帮助开发者：
+
+- 🚀 精准定位受代码修改影响的模块和方法
+- 🔍 追踪方法调用链，识别潜在级联影响
+- ✅ 智能推荐关联测试用例，提升测试覆盖率
+- 📊 生成多格式分析报告，支持持续集成流程
+
 GitImpact 是一个用于分析 Git 代码变更影响范围的工具。它可以帮助你：
 
 - 分析两个 commit/tag 之间的代码变更
@@ -15,9 +22,15 @@ GitImpact 是一个用于分析 Git 代码变更影响范围的工具。它可�
 - 自动推荐相关的单元测试
 - 支持 JSON 和 Markdown 格式的报告输出
 
-## 使用方法
+## 快速入门
 
-编译项目：
+### 构建项目
+```bash
+# 下载依赖并打包
+mvn clean package -DskipTests
+
+# 生成可执行文件（位于target目录）
+ls -l target/gitimpact-*.jar
 
 ```bash
 mvn clean package
@@ -66,6 +79,12 @@ Markdown 格式的报告包含以下部分：
 ### AuthServiceTest
 - `testAuthenticate`
 ```
+
+## 系统要求
+
+- JDK 11+
+- Maven 3.6+
+- Git 2.20+
 
 ## 依赖项
 
