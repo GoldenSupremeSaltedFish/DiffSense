@@ -15,10 +15,12 @@ import java.util.Set;
 
 public class TestMethodIdentifier {
     private final List<Path> sourceFiles;
+    private final Path baseDir;
     private final AnalysisConfig config;
 
-    public TestMethodIdentifier(List<Path> sourceFiles, AnalysisConfig config) {
+    public TestMethodIdentifier(List<Path> sourceFiles, Path baseDir, AnalysisConfig config) {
         this.sourceFiles = sourceFiles;
+        this.baseDir = baseDir;
         this.config = config;
     }
 
@@ -40,7 +42,8 @@ public class TestMethodIdentifier {
             
             // 检查是否在指定范围内
             if (isInScope(file)) {
-                launcher.addInputResource(file.toString());
+                String relativePath = baseDir.relativize(file).toString();
+                launcher.addInputResource(relativePath);
                 fileCount++;
             }
         }

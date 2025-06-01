@@ -10,6 +10,7 @@ import java.util.*;
 
 public class ImpactAnalyzer {
     private final List<Path> sourceFiles;
+    private final Path baseDir;
     private final AnalysisConfig config;
     private final CallGraphAnalyzer callGraphAnalyzer;
     private final TestMethodIdentifier testMethodIdentifier;
@@ -18,15 +19,16 @@ public class ImpactAnalyzer {
     private Set<MethodRef> testMethods;
     private TestImpactAnalyzer testImpactAnalyzer;
 
-    public ImpactAnalyzer(List<Path> sourceFiles) {
-        this(sourceFiles, AnalysisConfig.getDefault());
+    public ImpactAnalyzer(List<Path> sourceFiles, Path baseDir) {
+        this(sourceFiles, baseDir, AnalysisConfig.getDefault());
     }
 
-    public ImpactAnalyzer(List<Path> sourceFiles, AnalysisConfig config) {
+    public ImpactAnalyzer(List<Path> sourceFiles, Path baseDir, AnalysisConfig config) {
         this.sourceFiles = sourceFiles;
+        this.baseDir = baseDir;
         this.config = config;
-        this.callGraphAnalyzer = new CallGraphAnalyzer(sourceFiles, config);
-        this.testMethodIdentifier = new TestMethodIdentifier(sourceFiles, config);
+        this.callGraphAnalyzer = new CallGraphAnalyzer(sourceFiles, baseDir, config);
+        this.testMethodIdentifier = new TestMethodIdentifier(sourceFiles, baseDir, config);
     }
 
     public void buildCallGraph() throws IOException {
