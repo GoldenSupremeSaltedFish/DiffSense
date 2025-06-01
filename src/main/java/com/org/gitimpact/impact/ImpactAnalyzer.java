@@ -1,4 +1,4 @@
-package com.yourorg.gitimpact.impact;
+package com.org.gitimpact.impact;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -20,7 +20,7 @@ import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.MethodCallExpr;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
-import com.yourorg.gitimpact.ast.DiffToASTMapper.ImpactedMethod;
+import com.org.gitimpact.ast.DiffToASTMapper.ImpactedMethod;
 
 public class ImpactAnalyzer {
     private final String baseDir;

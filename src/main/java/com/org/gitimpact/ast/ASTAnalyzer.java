@@ -1,4 +1,4 @@
-package com.yourorg.gitimpact.ast;
+package com.org.gitimpact.ast;
 
 import java.io.File;
 import java.io.FileNotFoundException;

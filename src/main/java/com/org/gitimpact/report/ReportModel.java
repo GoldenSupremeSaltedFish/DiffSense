@@ -1,20 +1,20 @@
-package com.yourorg.gitimpact.report;
+package com.org.gitimpact.report;
 
 import java.util.List;
 import java.util.Set;
 
-import com.yourorg.gitimpact.ast.DiffToASTMapper.ImpactedMethod;
-import com.yourorg.gitimpact.suggest.TestSuggester.TestSuggestion;
+import com.org.gitimpact.suggest.TestSuggester;
+import com.org.gitimpact.ast.DiffToASTMapper.ImpactedMethod;
 
 public class ReportModel {
     private final List<ImpactedMethod> directlyImpactedMethods;
     private final Set<String> indirectlyImpactedMethods;
-    private final List<TestSuggestion> suggestedTests;
+    private final List<TestSuggester.TestSuggestion> suggestedTests;
 
     public ReportModel(
         List<ImpactedMethod> directlyImpactedMethods,
         Set<String> indirectlyImpactedMethods,
-        List<TestSuggestion> suggestedTests
+        List<TestSuggester.TestSuggestion> suggestedTests
     ) {
         this.directlyImpactedMethods = directlyImpactedMethods;
         this.indirectlyImpactedMethods = indirectlyImpactedMethods;
@@ -29,7 +29,7 @@ public class ReportModel {
         return indirectlyImpactedMethods;
     }
 
-    public List<TestSuggestion> getSuggestedTests() {
+    public List<TestSuggester.TestSuggestion> getSuggestedTests() {
         return suggestedTests;
     }
 } 

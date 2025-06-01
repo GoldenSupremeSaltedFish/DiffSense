@@ -1,4 +1,4 @@
-package com.yourorg.gitimpact.report;
+package com.org.gitimpact.report;
 
 import java.io.BufferedWriter;
 import java.io.FileOutputStream;
@@ -9,8 +9,8 @@ import java.nio.charset.StandardCharsets;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.yourorg.gitimpact.ast.DiffToASTMapper.ImpactedMethod;
-import com.yourorg.gitimpact.suggest.TestSuggester.TestSuggestion;
+import com.org.gitimpact.suggest.TestSuggester;
+import com.org.gitimpact.ast.DiffToASTMapper.ImpactedMethod;
 
 public class Reporter {
     private final ReportModel report;
@@ -53,7 +53,7 @@ public class Reporter {
 
             // 建议的测试
             writer.println("## 建议运行的测试\n");
-            for (TestSuggestion suggestion : report.getSuggestedTests()) {
+            for (TestSuggester.TestSuggestion suggestion : report.getSuggestedTests()) {
                 writer.printf("### %s\n", suggestion.testClassName);
                 for (String testMethod : suggestion.testMethods) {
                     writer.printf("- `%s`\n", testMethod);

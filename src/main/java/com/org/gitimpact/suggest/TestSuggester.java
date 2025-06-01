@@ -1,4 +1,4 @@
-package com.yourorg.gitimpact.suggest;
+package com.org.gitimpact.suggest;
 
 import java.io.IOException;
 import java.nio.file.Files;

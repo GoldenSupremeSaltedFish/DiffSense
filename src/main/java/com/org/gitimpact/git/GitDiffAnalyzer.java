@@ -1,4 +1,4 @@
-package com.yourorg.gitimpact.git;
+package com.org.gitimpact.git;
 
 import java.io.IOException;
 import java.util.ArrayList;

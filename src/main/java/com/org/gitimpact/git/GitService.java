@@ -1,4 +1,4 @@
-package com.yourorg.gitimpact.git;
+package com.org.gitimpact.git;
 
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;

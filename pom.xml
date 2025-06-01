@@ -81,7 +81,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>com.yourorg.gitimpact.cli.Main</mainClass>
+                            <mainClass>com.org.gitimpact.cli.Main</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

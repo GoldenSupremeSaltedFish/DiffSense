@@ -1,14 +1,14 @@
-package com.yourorg.gitimpact.cli;
+package com.org.gitimpact.cli;
 
 import java.util.List;
 
-import com.yourorg.gitimpact.ast.DiffToASTMapper;
-import com.yourorg.gitimpact.git.GitDiffAnalyzer;
-import com.yourorg.gitimpact.git.GitService;
-import com.yourorg.gitimpact.impact.ImpactAnalyzer;
-import com.yourorg.gitimpact.report.ReportModel;
-import com.yourorg.gitimpact.report.Reporter;
-import com.yourorg.gitimpact.suggest.TestSuggester;
+import com.org.gitimpact.git.GitDiffAnalyzer;
+import com.org.gitimpact.git.GitService;
+import com.org.gitimpact.impact.ImpactAnalyzer;
+import com.org.gitimpact.report.ReportModel;
+import com.org.gitimpact.report.Reporter;
+import com.org.gitimpact.suggest.TestSuggester;
+import com.org.gitimpact.ast.DiffToASTMapper;
 
 import picocli.CommandLine;
 import picocli.CommandLine.Command;

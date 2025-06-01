@@ -1,12 +1,11 @@
-package com.yourorg.gitimpact.ast;
+package com.org.gitimpact.ast;
 
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.yourorg.gitimpact.git.GitDiffAnalyzer.DiffHunk;
-import com.yourorg.gitimpact.git.GitDiffAnalyzer.DiffResult;
+import com.org.gitimpact.git.GitDiffAnalyzer;
 
 public class DiffToASTMapper {
     private final ASTAnalyzer astAnalyzer;
@@ -44,15 +43,15 @@ public class DiffToASTMapper {
         }
     }
 
-    public List<ImpactedMethod> mapDiffToMethods(List<DiffResult> diffResults) {
+    public List<ImpactedMethod> mapDiffToMethods(List<GitDiffAnalyzer.DiffResult> diffResults) {
         List<ImpactedMethod> impactedMethods = new ArrayList<>();
 
-        for (DiffResult diff : diffResults) {
+        for (GitDiffAnalyzer.DiffResult diff : diffResults) {
             try {
                 String fullPath = baseDir + "/" + diff.filePath;
                 List<ASTAnalyzer.MethodInfo> methods = astAnalyzer.analyzeFile(fullPath);
 
-                for (DiffHunk hunk : diff.hunks) {
+                for (GitDiffAnalyzer.DiffHunk hunk : diff.hunks) {
                     List<ASTAnalyzer.MethodInfo> affectedMethods = methods.stream()
                         .filter(method -> isMethodAffected(method, hunk))
                         .collect(Collectors.toList());
@@ -73,7 +72,7 @@ public class DiffToASTMapper {
         return impactedMethods;
     }
 
-    private boolean isMethodAffected(ASTAnalyzer.MethodInfo method, DiffHunk hunk) {
+    private boolean isMethodAffected(ASTAnalyzer.MethodInfo method, GitDiffAnalyzer.DiffHunk hunk) {
         // 检查修改的行是否在方法的范围内
         int hunkStart = hunk.newStart;
         int hunkEnd = hunk.newStart + hunk.newLength;
