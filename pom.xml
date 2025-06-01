@@ -62,6 +62,13 @@
             <version>5.10.0</version>
             <scope>test</scope>
         </dependency>
+
+        <!-- Spoon Java 代码分析 -->
+        <dependency>
+            <groupId>fr.inria.gforge.spoon</groupId>
+            <artifactId>spoon-core</artifactId>
+            <version>10.4.2</version>
+        </dependency>
     </dependencies>
 
     <build>
