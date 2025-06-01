@@ -3,11 +3,14 @@ package com.yourorg.gitimpact.impact;
 import com.yourorg.gitimpact.ast.DiffToASTMapper.ImpactedMethod;
 import com.yourorg.gitimpact.test.TestMethodIdentifier;
 import com.yourorg.gitimpact.test.TestImpactAnalyzer;
+import com.yourorg.gitimpact.config.AnalysisConfig;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.*;
 
 public class ImpactAnalyzer {
-    private final String baseDir;
+    private final List<Path> sourceFiles;
+    private final AnalysisConfig config;
     private final CallGraphAnalyzer callGraphAnalyzer;
     private final TestMethodIdentifier testMethodIdentifier;
     private Map<MethodRef, Set<MethodRef>> callGraph;
@@ -15,10 +18,15 @@ public class ImpactAnalyzer {
     private Set<MethodRef> testMethods;
     private TestImpactAnalyzer testImpactAnalyzer;
 
-    public ImpactAnalyzer(String baseDir) {
-        this.baseDir = baseDir;
-        this.callGraphAnalyzer = new CallGraphAnalyzer(baseDir);
-        this.testMethodIdentifier = new TestMethodIdentifier(baseDir);
+    public ImpactAnalyzer(List<Path> sourceFiles) {
+        this(sourceFiles, AnalysisConfig.getDefault());
+    }
+
+    public ImpactAnalyzer(List<Path> sourceFiles, AnalysisConfig config) {
+        this.sourceFiles = sourceFiles;
+        this.config = config;
+        this.callGraphAnalyzer = new CallGraphAnalyzer(sourceFiles, config);
+        this.testMethodIdentifier = new TestMethodIdentifier(sourceFiles, config);
     }
 
     public void buildCallGraph() throws IOException {
@@ -40,7 +48,11 @@ public class ImpactAnalyzer {
         }
 
         // 使用反向调用图分析影响
-        Set<MethodRef> impactedMethodRefs = CallGraphReverser.getTransitiveCallers(changedMethodRefs, reverseCallGraph);
+        Set<MethodRef> impactedMethodRefs = CallGraphReverser.getTransitiveCallers(
+            changedMethodRefs,
+            reverseCallGraph,
+            config
+        );
         
         // 转换结果为字符串形式
         Set<String> impactedMethods = new HashSet<>();
@@ -83,7 +95,8 @@ public class ImpactAnalyzer {
         MethodRef methodRef = MethodRef.fromSignature(methodSignature);
         Set<MethodRef> allCallers = CallGraphReverser.getTransitiveCallers(
             Collections.singleton(methodRef),
-            reverseCallGraph
+            reverseCallGraph,
+            config
         );
         return convertMethodRefsToSignatures(allCallers);
     }

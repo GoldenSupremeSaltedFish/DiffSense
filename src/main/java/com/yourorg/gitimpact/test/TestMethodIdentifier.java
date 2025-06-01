@@ -1,21 +1,25 @@
 package com.yourorg.gitimpact.test;
 
 import com.yourorg.gitimpact.impact.MethodRef;
+import com.yourorg.gitimpact.config.AnalysisConfig;
 import spoon.Launcher;
 import spoon.reflect.CtModel;
 import spoon.reflect.declaration.CtMethod;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.visitor.filter.TypeFilter;
 
+import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 public class TestMethodIdentifier {
-    private final String sourceDir;
+    private final List<Path> sourceFiles;
+    private final AnalysisConfig config;
 
-    public TestMethodIdentifier(String sourceDir) {
-        this.sourceDir = sourceDir;
+    public TestMethodIdentifier(List<Path> sourceFiles, AnalysisConfig config) {
+        this.sourceFiles = sourceFiles;
+        this.config = config;
     }
 
     /**
@@ -26,7 +30,21 @@ public class TestMethodIdentifier {
         Set<MethodRef> testMethods = new HashSet<>();
         
         Launcher launcher = new Launcher();
-        launcher.addInputResource(sourceDir);
+        
+        // 只添加需要分析的文件
+        int fileCount = 0;
+        for (Path file : sourceFiles) {
+            if (fileCount >= config.getMaxFiles()) {
+                break;
+            }
+            
+            // 检查是否在指定范围内
+            if (isInScope(file)) {
+                launcher.addInputResource(file.toString());
+                fileCount++;
+            }
+        }
+        
         launcher.getEnvironment().setComplianceLevel(17);
         launcher.buildModel();
         
@@ -44,6 +62,18 @@ public class TestMethodIdentifier {
         }
         
         return testMethods;
+    }
+
+    private boolean isInScope(Path file) {
+        if (config.getScope().isEmpty()) {
+            return true;
+        }
+
+        // 将文件路径转换为包路径格式
+        String filePath = file.toString().replace('\\', '/');
+        String packagePath = config.getScope().replace('.', '/');
+
+        return filePath.contains(packagePath);
     }
 
     /**

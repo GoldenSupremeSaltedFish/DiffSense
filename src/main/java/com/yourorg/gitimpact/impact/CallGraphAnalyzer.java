@@ -1,5 +1,8 @@
 package com.yourorg.gitimpact.impact;
 
+import com.yourorg.gitimpact.config.AnalysisConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import spoon.Launcher;
 import spoon.reflect.CtModel;
 import spoon.reflect.code.CtInvocation;
@@ -8,16 +11,21 @@ import spoon.reflect.declaration.*;
 import spoon.reflect.visitor.filter.TypeFilter;
 import spoon.support.reflect.declaration.CtMethodImpl;
 
+import java.nio.file.Path;
 import java.util.*;
 
 public class CallGraphAnalyzer {
-    private final String sourceDir;
+    private static final Logger logger = LoggerFactory.getLogger(CallGraphAnalyzer.class);
+    
+    private final List<Path> sourceFiles;
+    private final AnalysisConfig config;
     private final Map<MethodRef, Set<MethodRef>> callGraph = new HashMap<>();
     private int lambdaCounter = 0;
     private int anonymousCounter = 0;
 
-    public CallGraphAnalyzer(String sourceDir) {
-        this.sourceDir = sourceDir;
+    public CallGraphAnalyzer(List<Path> sourceFiles, AnalysisConfig config) {
+        this.sourceFiles = sourceFiles;
+        this.config = config;
     }
 
     /**
@@ -25,9 +33,31 @@ public class CallGraphAnalyzer {
      * @return 方法调用关系图，key 是调用方，value 是被调用方集合
      */
     public Map<MethodRef, Set<MethodRef>> buildCallGraph() {
+        // 检查文件数量限制
+        if (sourceFiles.size() > config.getMaxFiles()) {
+            logger.warn("检测到 {} 个修改的文件，超过了最大限制 {}。考虑增加 --max-files 或限制 --scope",
+                sourceFiles.size(), config.getMaxFiles());
+        }
+
+        // 初始化 Spoon
         Launcher launcher = new Launcher();
-        launcher.addInputResource(sourceDir);
-        launcher.getEnvironment().setComplianceLevel(17); // 设置 Java 版本
+        
+        // 只添加需要分析的文件
+        int fileCount = 0;
+        for (Path file : sourceFiles) {
+            if (fileCount >= config.getMaxFiles()) {
+                logger.warn("已达到最大文件数限制 {}，停止添加更多文件", config.getMaxFiles());
+                break;
+            }
+            
+            // 检查是否在指定范围内
+            if (isInScope(file)) {
+                launcher.addInputResource(file.toString());
+                fileCount++;
+            }
+        }
+
+        launcher.getEnvironment().setComplianceLevel(17);
         launcher.buildModel();
         
         CtModel model = launcher.getModel();
@@ -42,6 +72,18 @@ public class CallGraphAnalyzer {
         processAnonymousClasses(model);
         
         return callGraph;
+    }
+
+    private boolean isInScope(Path file) {
+        if (config.getScope().isEmpty()) {
+            return true;
+        }
+
+        // 将文件路径转换为包路径格式
+        String filePath = file.toString().replace('\\', '/');
+        String packagePath = config.getScope().replace('.', '/');
+
+        return filePath.contains(packagePath);
     }
 
     private void processRegularMethods(CtModel model) {

@@ -1,5 +1,6 @@
 package com.yourorg.gitimpact.impact;
 
+import com.yourorg.gitimpact.config.AnalysisConfig;
 import java.util.*;
 
 public class CallGraphReverser {
@@ -22,29 +23,61 @@ public class CallGraphReverser {
     }
 
     /**
-     * 获取一组方法的所有间接调用者
+     * 获取一组方法的所有间接调用者，受最大深度限制
      * @param changedMethods 变更的方法集合
      * @param reverseCallGraph 反向调用图
+     * @param config 分析配置
      * @return 所有直接和间接调用者的集合
      */
     public static Set<MethodRef> getTransitiveCallers(
         Set<MethodRef> changedMethods,
-        Map<MethodRef, Set<MethodRef>> reverseCallGraph
+        Map<MethodRef, Set<MethodRef>> reverseCallGraph,
+        AnalysisConfig config
     ) {
         Set<MethodRef> result = new HashSet<>();
-        Deque<MethodRef> stack = new ArrayDeque<>(changedMethods);
+        Queue<MethodRefWithDepth> queue = new LinkedList<>();
+        
+        // 初始化队列，深度为0
+        for (MethodRef method : changedMethods) {
+            queue.offer(new MethodRefWithDepth(method, 0));
+        }
 
-        while (!stack.isEmpty()) {
-            MethodRef current = stack.pop();
-            Set<MethodRef> callers = reverseCallGraph.getOrDefault(current, Collections.emptySet());
+        while (!queue.isEmpty()) {
+            MethodRefWithDepth current = queue.poll();
+            
+            // 如果已达到最大深度，不再继续搜索
+            if (current.depth >= config.getMaxDepth()) {
+                continue;
+            }
 
+            Set<MethodRef> callers = reverseCallGraph.getOrDefault(current.methodRef, Collections.emptySet());
             for (MethodRef caller : callers) {
                 if (result.add(caller)) {
-                    stack.push(caller);
+                    queue.offer(new MethodRefWithDepth(caller, current.depth + 1));
                 }
             }
         }
 
         return result;
+    }
+
+    /**
+     * 获取一组方法的所有间接调用者（使用默认配置）
+     */
+    public static Set<MethodRef> getTransitiveCallers(
+        Set<MethodRef> changedMethods,
+        Map<MethodRef, Set<MethodRef>> reverseCallGraph
+    ) {
+        return getTransitiveCallers(changedMethods, reverseCallGraph, AnalysisConfig.getDefault());
+    }
+
+    private static class MethodRefWithDepth {
+        final MethodRef methodRef;
+        final int depth;
+
+        MethodRefWithDepth(MethodRef methodRef, int depth) {
+            this.methodRef = methodRef;
+            this.depth = depth;
+        }
     }
 } 
