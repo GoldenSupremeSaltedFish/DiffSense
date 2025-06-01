@@ -1,18 +1,24 @@
 package com.yourorg.gitimpact.impact;
 
 import com.yourorg.gitimpact.ast.DiffToASTMapper.ImpactedMethod;
+import com.yourorg.gitimpact.test.TestMethodIdentifier;
+import com.yourorg.gitimpact.test.TestImpactAnalyzer;
 import java.io.IOException;
 import java.util.*;
 
 public class ImpactAnalyzer {
     private final String baseDir;
     private final CallGraphAnalyzer callGraphAnalyzer;
+    private final TestMethodIdentifier testMethodIdentifier;
     private Map<MethodRef, Set<MethodRef>> callGraph;
     private Map<MethodRef, Set<MethodRef>> reverseCallGraph;
+    private Set<MethodRef> testMethods;
+    private TestImpactAnalyzer testImpactAnalyzer;
 
     public ImpactAnalyzer(String baseDir) {
         this.baseDir = baseDir;
         this.callGraphAnalyzer = new CallGraphAnalyzer(baseDir);
+        this.testMethodIdentifier = new TestMethodIdentifier(baseDir);
     }
 
     public void buildCallGraph() throws IOException {
@@ -20,6 +26,10 @@ public class ImpactAnalyzer {
         this.callGraph = callGraphAnalyzer.buildCallGraph();
         // 构建反向调用图
         this.reverseCallGraph = CallGraphReverser.buildReverseCallGraph(callGraph);
+        // 识别所有测试方法
+        this.testMethods = testMethodIdentifier.identifyTestMethods();
+        // 初始化测试影响分析器
+        this.testImpactAnalyzer = new TestImpactAnalyzer(testMethods, reverseCallGraph);
     }
 
     public Set<String> findImpactedMethods(List<ImpactedMethod> changedMethods) {
@@ -39,6 +49,13 @@ public class ImpactAnalyzer {
         }
         
         return impactedMethods;
+    }
+
+    /**
+     * 获取受影响的测试方法
+     */
+    public Map<String, Set<String>> findImpactedTests(List<ImpactedMethod> changedMethods) {
+        return testImpactAnalyzer.getImpactedTestsByClass(changedMethods);
     }
 
     /**
@@ -69,6 +86,15 @@ public class ImpactAnalyzer {
             reverseCallGraph
         );
         return convertMethodRefsToSignatures(allCallers);
+    }
+
+    /**
+     * 获取方法的相关测试
+     */
+    public Set<String> getRelatedTests(String methodSignature) {
+        MethodRef methodRef = MethodRef.fromSignature(methodSignature);
+        Set<MethodRef> relatedTests = testImpactAnalyzer.getRelatedTests(methodRef);
+        return convertMethodRefsToSignatures(relatedTests);
     }
 
     private Set<String> convertMethodRefsToSignatures(Set<MethodRef> methodRefs) {
