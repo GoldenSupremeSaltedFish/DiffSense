@@ -4,6 +4,7 @@ public class AnalysisConfig {
     private final int maxDepth;
     private final int maxFiles;
     private final String scope;
+
     private static final int DEFAULT_MAX_DEPTH = 5;
     private static final int DEFAULT_MAX_FILES = 200;
     private static final String DEFAULT_SCOPE = "";
@@ -30,6 +31,10 @@ public class AnalysisConfig {
         return new Builder();
     }
 
+    public static AnalysisConfig getDefault() {
+        return new Builder().build();
+    }
+
     public static class Builder {
         private int maxDepth = DEFAULT_MAX_DEPTH;
         private int maxFiles = DEFAULT_MAX_FILES;
@@ -53,9 +58,5 @@ public class AnalysisConfig {
         public AnalysisConfig build() {
             return new AnalysisConfig(this);
         }
-    }
-
-    public static AnalysisConfig getDefault() {
-        return builder().build();
     }
 } 

@@ -7,6 +7,7 @@ import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.revwalk.RevCommit;
 
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.*;
 
 public class CommitAnalyzer {
@@ -94,82 +95,4 @@ public class CommitAnalyzer {
         
         return score;
     }
-}
-
-public class CommitImpact {
-    @JsonProperty("commitId")
-    private final String commitId;
-    
-    @JsonProperty("message")
-    private final String message;
-    
-    @JsonProperty("author")
-    private final AuthorInfo author;
-    
-    @JsonProperty("timestamp")
-    private final Instant timestamp;
-    
-    @JsonProperty("changedFilesCount")
-    private final int changedFilesCount;
-    
-    @JsonProperty("changedMethodsCount")
-    private final int changedMethodsCount;
-    
-    @JsonProperty("impactedMethods")
-    private final Set<String> impactedMethods;
-    
-    @JsonProperty("impactedTests")
-    private final Map<String, Set<String>> impactedTests;
-    
-    @JsonProperty("riskScore")
-    private final int riskScore;
-
-    public CommitImpact(
-        String commitId,
-        String message,
-        AuthorInfo author,
-        Instant timestamp,
-        int changedFilesCount,
-        int changedMethodsCount,
-        Set<String> impactedMethods,
-        Map<String, Set<String>> impactedTests,
-        int riskScore
-    ) {
-        this.commitId = commitId;
-        this.message = message;
-        this.author = author;
-        this.timestamp = timestamp;
-        this.changedFilesCount = changedFilesCount;
-        this.changedMethodsCount = changedMethodsCount;
-        this.impactedMethods = impactedMethods;
-        this.impactedTests = impactedTests;
-        this.riskScore = riskScore;
-    }
-
-    // Getters
-    public String getCommitId() { return commitId; }
-    public String getMessage() { return message; }
-    public AuthorInfo getAuthor() { return author; }
-    public Instant getTimestamp() { return timestamp; }
-    public int getChangedFilesCount() { return changedFilesCount; }
-    public int getChangedMethodsCount() { return changedMethodsCount; }
-    public Set<String> getImpactedMethods() { return impactedMethods; }
-    public Map<String, Set<String>> getImpactedTests() { return impactedTests; }
-    public int getRiskScore() { return riskScore; }
-}
-
-public class AuthorInfo {
-    @JsonProperty("name")
-    private final String name;
-    
-    @JsonProperty("email")
-    private final String email;
-
-    public AuthorInfo(String name, String email) {
-        this.name = name;
-        this.email = email;
-    }
-
-    public String getName() { return name; }
-    public String getEmail() { return email; }
 } 

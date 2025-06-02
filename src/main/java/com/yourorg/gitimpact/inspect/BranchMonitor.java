@@ -70,7 +70,7 @@ public class BranchMonitor {
             }
             
             // 按时间排序
-            results.sort((a, b) -> b.timestamp.compareTo(a.timestamp));
+            results.sort((a, b) -> b.getTimestamp().compareTo(a.getTimestamp()));
             
             return results;
         } finally {
@@ -117,11 +117,14 @@ public class BranchMonitor {
             }
             
             // 分析提交
-            DiffToASTMapper diffMapper = new DiffToASTMapper(git.getRepository());
-            List<DiffToASTMapper.ImpactedMethod> changedMethods = diffMapper.mapDiffToMethods(
-                commit.getParent(0),
-                commit
-            );
+            List<DiffToASTMapper.ImpactedMethod> changedMethods = new ArrayList<>();
+            if (commit.getParentCount() > 0) {
+                DiffToASTMapper diffMapper = new DiffToASTMapper(git.getRepository());
+                changedMethods = diffMapper.mapDiffToMethods(
+                    commit.getParent(0),
+                    commit
+                );
+            }
             
             List<Path> changedFiles = changedMethods.stream()
                 .map(m -> Path.of(m.filePath))
