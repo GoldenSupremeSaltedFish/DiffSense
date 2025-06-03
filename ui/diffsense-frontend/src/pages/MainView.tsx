@@ -1,4 +1,3 @@
-import React from "react";
 import Toolbar from "../components/Toolbar";
 import CommitList from "../components/CommitList";
 
