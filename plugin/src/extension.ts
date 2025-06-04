@@ -75,7 +75,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
           await this.openReportInBrowser(data.reportPath);
           break;
         case 'exportResults':
-          await this.handleExportResults(data.format || 'json');
+          await this.handleExportResults(data.format || 'json', data.language || 'zh-CN');
           break;
         case 'restoreAnalysisResults':
           await this.handleRestoreAnalysisResults();
@@ -1233,10 +1233,13 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  private async handleExportResults(format: string) {
+  private async handleExportResults(format: string, language: string = 'zh-CN') {
     try {
       if (!this._lastAnalysisResult || this._lastAnalysisResult.length === 0) {
-        vscode.window.showWarningMessage('没有可导出的分析结果，请先进行分析');
+        const message = language === 'en-US' ? 
+          'No analysis results to export, please run analysis first' :
+          '没有可导出的分析结果，请先进行分析';
+        vscode.window.showWarningMessage(message);
         return;
       }
 
@@ -1270,7 +1273,8 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
           timestamp: new Date().toISOString(),
           repository: workspaceFolder.uri.fsPath,
           totalCommits: this._lastAnalysisResult.length,
-          exportedBy: 'DiffSense VSCode Extension'
+          exportedBy: 'DiffSense VSCode Extension',
+          language: language
         },
         analysisResults: this._lastAnalysisResult
       };
@@ -1279,7 +1283,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       let content: string;
       
       if (format === 'html') {
-        content = this.generateHTMLReport(exportData);
+        content = this.generateHTMLReport(exportData, language);
       } else {
         // 默认JSON格式
         content = JSON.stringify(exportData, null, 2);
@@ -1289,27 +1293,75 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       await fs.promises.writeFile(saveUri.fsPath, content, 'utf-8');
 
       // 显示成功消息
+      const successMessage = language === 'en-US' ? 
+        `Analysis results exported to: ${path.basename(saveUri.fsPath)}` :
+        `分析结果已导出到: ${path.basename(saveUri.fsPath)}`;
+      
+      const openFileText = language === 'en-US' ? 'Open File' : '打开文件';
+      const showInExplorerText = language === 'en-US' ? 'Show in Explorer' : '在资源管理器中显示';
+      
       const action = await vscode.window.showInformationMessage(
-        `分析结果已导出到: ${path.basename(saveUri.fsPath)}`, 
-        '打开文件', 
-        '在资源管理器中显示'
+        successMessage, 
+        openFileText, 
+        showInExplorerText
       );
 
-      if (action === '打开文件') {
+      if (action === openFileText) {
         const document = await vscode.workspace.openTextDocument(saveUri);
         await vscode.window.showTextDocument(document);
-      } else if (action === '在资源管理器中显示') {
+      } else if (action === showInExplorerText) {
         await vscode.commands.executeCommand('revealFileInOS', saveUri);
       }
 
     } catch (error) {
       console.error('导出结果失败:', error);
-      vscode.window.showErrorMessage(`导出失败: ${error instanceof Error ? error.message : String(error)}`);
+      const errorMessage = language === 'en-US' ? 
+        `Export failed: ${error instanceof Error ? error.message : String(error)}` :
+        `导出失败: ${error instanceof Error ? error.message : String(error)}`;
+      vscode.window.showErrorMessage(errorMessage);
     }
   }
 
-  private generateHTMLReport(exportData: any): string {
+  private generateHTMLReport(exportData: any, language: string): string {
     const { exportInfo, analysisResults } = exportData;
+    
+    // 语言配置
+    const isEnglish = language === 'en-US';
+    const text = {
+      title: isEnglish ? '🔍 DiffSense Analysis Report' : '🔍 DiffSense 分析报告',
+      subtitle: isEnglish ? 'Git Code Impact Analysis' : 'Git 代码影响分析',
+      generatedTime: isEnglish ? 'Generated Time' : '生成时间',
+      repositoryPath: isEnglish ? 'Repository Path' : '仓库路径',
+      analysisEngine: isEnglish ? 'Analysis Engine' : '分析引擎',
+      analysisOverview: isEnglish ? '📊 Analysis Overview' : '📊 分析概览',
+      totalCommits: isEnglish ? 'Analyzed Commits' : '分析提交数',
+      totalFiles: isEnglish ? 'Affected Files' : '影响文件数',
+      totalMethods: isEnglish ? 'Affected Methods' : '影响方法数',
+      totalRiskScore: isEnglish ? 'Total Risk Score' : '总风险评分',
+      analysisDetails: isEnglish ? '📝 Commit Analysis Details' : '📝 提交分析详情',
+      highRisk: isEnglish ? 'High Risk' : '高风险',
+      mediumRisk: isEnglish ? 'Medium Risk' : '中风险',
+      lowRisk: isEnglish ? 'Low Risk' : '低风险',
+      author: isEnglish ? 'Author' : '作者',
+      date: isEnglish ? 'Date' : '日期',
+      impactedFiles: isEnglish ? '📁 Affected Files' : '📁 影响文件',
+      impactedMethods: isEnglish ? '⚙️ Affected Methods' : '⚙️ 影响方法',
+      callRelationships: isEnglish ? '🔗 Call Relationship Graph' : '🔗 调用关系图',
+      noDetailedData: isEnglish ? 'No detailed data available' : '暂无详细数据',
+      reportGenerated: isEnglish ? '📋 Report generated by DiffSense VSCode Extension' : '📋 报告由 DiffSense VSCode 扩展生成',
+      filesUnit: isEnglish ? 'files' : '个文件',
+      methodsUnit: isEnglish ? 'methods' : '个方法',
+      noData: isEnglish ? 'No analysis data available' : '暂无分析数据',
+      runAnalysisFirst: isEnglish ? 'Please run code analysis to generate report' : '请先进行代码分析以生成报告',
+      nodes: isEnglish ? 'nodes' : '节点',
+      relationships: isEnglish ? 'relationships' : '关系',
+      modifiedMethods: isEnglish ? 'Modified methods' : '修改的方法',
+      newMethods: isEnglish ? 'New methods' : '新增的方法',
+      affectedMethods: isEnglish ? 'Affected methods' : '受影响的方法',
+      unknownMethods: isEnglish ? 'External/Unknown methods' : '外部/未知方法',
+      noCallGraphData: isEnglish ? 'No call graph data available' : '暂无调用关系数据',
+      methodChanges: isEnglish ? 'No method changes' : '无方法变更'
+    };
     
     // 计算统计信息
     const totalCommits = analysisResults.length;
@@ -1323,11 +1375,11 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       sum + (commit.riskScore || 0), 0);
 
     return `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="${language}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DiffSense 分析报告</title>
+    <title>${text.title}</title>
     <script src="https://unpkg.com/cytoscape@3.23.0/dist/cytoscape.min.js"></script>
     <style>
         * {
@@ -1657,20 +1709,20 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     <div class="container">
         <!-- 报告头部 -->
         <div class="header">
-            <h1>🔍 DiffSense 分析报告</h1>
-            <div class="subtitle">Git 代码影响分析</div>
+            <h1>${text.title}</h1>
+            <div class="subtitle">${text.subtitle}</div>
             
             <div class="info-grid">
                 <div class="info-card">
-                    <div class="label">生成时间</div>
-                    <div class="value">${new Date(exportInfo.timestamp).toLocaleString('zh-CN')}</div>
+                    <div class="label">${text.generatedTime}</div>
+                    <div class="value">${new Date(exportInfo.timestamp).toLocaleString(language === 'en-US' ? 'en-US' : 'zh-CN')}</div>
                 </div>
                 <div class="info-card">
-                    <div class="label">仓库路径</div>
+                    <div class="label">${text.repositoryPath}</div>
                     <div class="value">${exportInfo.repository.split('/').pop() || exportInfo.repository}</div>
                 </div>
                 <div class="info-card">
-                    <div class="label">分析引擎</div>
+                    <div class="label">${text.analysisEngine}</div>
                     <div class="value">${exportInfo.exportedBy}</div>
                 </div>
             </div>
@@ -1678,35 +1730,35 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
         <!-- 统计概览 -->
         <div class="stats-section">
-            <div class="stats-title">📊 分析概览</div>
+            <div class="stats-title">${text.analysisOverview}</div>
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-number">${totalCommits}</div>
-                    <div class="stat-label">分析提交数</div>
+                    <div class="stat-label">${text.totalCommits}</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number">${totalFiles}</div>
-                    <div class="stat-label">影响文件数</div>
+                    <div class="stat-label">${text.totalFiles}</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number">${totalMethods}</div>
-                    <div class="stat-label">影响方法数</div>
+                    <div class="stat-label">${text.totalMethods}</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number">${totalRiskScore}</div>
-                    <div class="stat-label">总风险评分</div>
+                    <div class="stat-label">${text.totalRiskScore}</div>
                 </div>
             </div>
         </div>
 
         <!-- 提交详情 -->
         <div class="commits-section">
-            <div class="stats-title">📝 提交分析详情</div>
+            <div class="stats-title">${text.analysisDetails}</div>
             
             ${analysisResults.length > 0 ? analysisResults.map((commit: any, index: number) => {
                 const riskScore = commit.riskScore || 0;
                 const riskLevel = riskScore > 100 ? 'high' : riskScore > 50 ? 'medium' : 'low';
-                const riskText = riskScore > 100 ? '高风险' : riskScore > 50 ? '中风险' : '低风险';
+                const riskText = riskScore > 100 ? text.highRisk : riskScore > 50 ? text.mediumRisk : text.lowRisk;
                 
                 const files = commit.impactedFiles || commit.files || [];
                 const methods = commit.impactedMethods || [];
@@ -1720,34 +1772,34 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
                         <span class="commit-id">${(commit.commitId || commit.id || `commit-${index + 1}`).substring(0, 7)}</span>
                         <span class="risk-badge risk-${riskLevel}">${riskText} (${riskScore})</span>
                         
-                        <div class="commit-message">${commit.message || commit.commitMessage || '无提交信息'}</div>
+                        <div class="commit-message">${commit.message || commit.commitMessage || (isEnglish ? 'No commit message' : '无提交信息')}</div>
                         <div class="commit-meta">
-                            作者: ${commit.author?.name || commit.authorName || '未知'} | 
-                            日期: ${commit.date || commit.commitDate ? new Date(commit.date || commit.commitDate).toLocaleString('zh-CN') : '未知'}
+                            ${text.author}: ${commit.author?.name || commit.authorName || (isEnglish ? 'Unknown' : '未知')} | 
+                            ${text.date}: ${commit.date || commit.commitDate ? new Date(commit.date || commit.commitDate).toLocaleString(language === 'en-US' ? 'en-US' : 'zh-CN') : (isEnglish ? 'Unknown' : '未知')}
                         </div>
                     </div>
                     
                     <div class="commit-body">
                         ${files.length > 0 ? `
-                            <h4>📁 影响文件 (${files.length}个)</h4>
+                            <h4>${text.impactedFiles} (${files.length}${text.filesUnit})</h4>
                             <div class="files-grid">
                                 ${files.map((file: any) => `
                                     <div class="file-card">
-                                        <div class="file-path">${file.path || file.filePath || '未知文件'}</div>
+                                        <div class="file-path">${file.path || file.filePath || (isEnglish ? 'Unknown file' : '未知文件')}</div>
                                         ${(file.methods || file.impactedMethods || []).length > 0 ? `
                                             <div class="methods-list">
                                                 ${(file.methods || file.impactedMethods || []).map((method: any) => 
-                                                    `<span class="method-tag">${typeof method === 'string' ? method : method.methodName || method.name || '未知方法'}</span>`
+                                                    `<span class="method-tag">${typeof method === 'string' ? method : method.methodName || method.name || (isEnglish ? 'Unknown method' : '未知方法')}</span>`
                                                 ).join('')}
                                             </div>
-                                        ` : '<div style="color: #718096; font-size: 0.9em;">无方法变更</div>'}
+                                        ` : `<div style="color: #718096; font-size: 0.9em;">${text.methodChanges}</div>`}
                                     </div>
                                 `).join('')}
                             </div>
                         ` : ''}
                         
                         ${methods.length > 0 ? `
-                            <h4 style="margin-top: 20px;">⚙️ 影响方法 (${methods.length}个)</h4>
+                            <h4 style="margin-top: 20px;">${text.impactedMethods} (${methods.length}${text.methodsUnit})</h4>
                             <div class="methods-list">
                                 ${methods.map((method: any) => 
                                     `<span class="method-tag">${method.methodName || method.name || method}</span>`
@@ -1759,26 +1811,26 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
                         ${callGraphData.nodes.length > 0 ? `
                             <div class="callgraph-section">
                                 <div class="callgraph-header" onclick="toggleCallGraph('callgraph-${index}')">
-                                    <span class="callgraph-toggle">🔗 调用关系图 (${callGraphData.nodes.length} 节点, ${callGraphData.edges.length} 关系)</span>
+                                    <span class="callgraph-toggle">${text.callRelationships} (${callGraphData.nodes.length} ${text.nodes}, ${callGraphData.edges.length} ${text.relationships})</span>
                                     <span class="callgraph-arrow" id="arrow-${index}">▶</span>
                                 </div>
                                 <div class="callgraph-content" id="callgraph-${index}">
                                     <div class="callgraph-legend">
                                         <div class="legend-item">
                                             <div class="legend-color" style="background: #e53e3e;"></div>
-                                            <span>修改的方法</span>
+                                            <span>${text.modifiedMethods}</span>
                                         </div>
                                         <div class="legend-item">
                                             <div class="legend-color" style="background: #38a169;"></div>
-                                            <span>新增的方法</span>
+                                            <span>${text.newMethods}</span>
                                         </div>
                                         <div class="legend-item">
                                             <div class="legend-color" style="background: #ed8936;"></div>
-                                            <span>受影响的方法</span>
+                                            <span>${text.affectedMethods}</span>
                                         </div>
                                         <div class="legend-item">
                                             <div class="legend-color" style="background: #a0aec0;"></div>
-                                            <span>外部/未知方法</span>
+                                            <span>${text.unknownMethods}</span>
                                         </div>
                                     </div>
                                     <div class="callgraph-container" id="cy-${index}"></div>
@@ -1787,22 +1839,22 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
                         ` : ''}
                         
                         ${files.length === 0 && methods.length === 0 ? `
-                            <div class="no-data">暂无详细数据</div>
+                            <div class="no-data">${text.noDetailedData}</div>
                         ` : ''}
                     </div>
                 </div>
                 `;
             }).join('') : `
                 <div class="no-data">
-                    <h3>暂无分析数据</h3>
-                    <p>请先进行代码分析以生成报告</p>
+                    <h3>${text.noData}</h3>
+                    <p>${text.runAnalysisFirst}</p>
                 </div>
             `}
         </div>
 
         <!-- 页脚 -->
         <div class="footer">
-            <p>📋 报告由 DiffSense VSCode 扩展生成 | ${new Date().getFullYear()}</p>
+            <p>${text.reportGenerated} | ${new Date().getFullYear()}</p>
         </div>
     </div>
 
@@ -1845,7 +1897,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
             const graphData = getCallGraphData(parseInt(index));
             
             if (!graphData || graphData.nodes.length === 0) {
-                container.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #718096;">暂无调用关系数据</div>';
+                container.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #718096;">${text.noCallGraphData}</div>';
                 return;
             }
             

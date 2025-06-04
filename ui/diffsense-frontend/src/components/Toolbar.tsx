@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { postMessage, saveState, getState } from "../utils/vscode";
+import { useLanguage } from "../hooks/useLanguage";
 
 // Mock类型，避免重复定义
 type MockApi = {
@@ -13,6 +14,8 @@ declare global {
 }
 
 const Toolbar = () => {
+  const { currentLanguage, changeLanguage, t, supportedLanguages } = useLanguage();
+  
   const [branches, setBranches] = useState<string[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string>('');
   const [selectedRange, setSelectedRange] = useState<string>('Last 3 commits');
@@ -41,22 +44,22 @@ const Toolbar = () => {
     'Commit ID Range'
   ];
 
-  // 分析类型选项
+  // 分析类型选项（使用国际化）
   const analysisOptions = {
     backend: [
-      { id: 'classes', label: '📦 变更影响了哪些类？', description: '分析类级别的影响范围' },
-      { id: 'methods', label: '⚙️ 变更影响了哪些方法？', description: '分析方法级别的影响范围' },
-      { id: 'callChain', label: '🔗 方法调用链是怎样的？', description: '分析方法间的调用关系' }
+      { id: 'classes', label: t('toolbar.classes'), description: t('toolbar.classesDesc') },
+      { id: 'methods', label: t('toolbar.methods'), description: t('toolbar.methodsDesc') },
+      { id: 'callChain', label: t('toolbar.callChain'), description: t('toolbar.callChainDesc') }
     ],
     frontend: [
-      { id: 'dependencies', label: '📁 哪些文件被哪些组件依赖？', description: '分析文件依赖关系' },
-      { id: 'entryPoints', label: '🚪 哪些方法是入口触发？', description: '分析函数调用入口' },
-      { id: 'uiImpact', label: '🎨 哪些UI会受影响？', description: '分析组件树级联影响' }
+      { id: 'dependencies', label: t('toolbar.dependencies'), description: t('toolbar.dependenciesDesc') },
+      { id: 'entryPoints', label: t('toolbar.entryPoints'), description: t('toolbar.entryPointsDesc') },
+      { id: 'uiImpact', label: t('toolbar.uiImpact'), description: t('toolbar.uiImpactDesc') }
     ],
     mixed: [
-      { id: 'fullStack', label: '🧩 全栈影响分析', description: '分析前后端交互影响' },
-      { id: 'apiChanges', label: '🔌 API变更影响分析', description: '分析接口变更对前端的影响' },
-      { id: 'dataFlow', label: '📊 数据流影响分析', description: '分析数据传递链路影响' }
+      { id: 'fullStack', label: t('toolbar.fullStack'), description: t('toolbar.fullStackDesc') },
+      { id: 'apiChanges', label: t('toolbar.apiChanges'), description: t('toolbar.apiChangesDesc') },
+      { id: 'dataFlow', label: t('toolbar.dataFlow'), description: t('toolbar.dataFlowDesc') }
     ]
   };
 
@@ -167,9 +170,9 @@ const Toolbar = () => {
         case 'commitValidationResult':
           // 处理Commit ID验证结果
           if (message.valid) {
-            console.log('✅ Commit ID验证成功');
+            console.log(t('messages.commitValidationSuccess'));
           } else {
-            alert(`❌ Commit ID验证失败: ${message.error}`);
+            alert(`${t('messages.commitValidationFailed')}${message.error}`);
           }
           break;
       }
@@ -177,7 +180,7 @@ const Toolbar = () => {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [selectedBranch]);
+  }, [selectedBranch, t]);
 
   const validateCommitIds = () => {
     if (selectedRange === 'Commit ID Range' && startCommitId && endCommitId) {
@@ -194,12 +197,12 @@ const Toolbar = () => {
 
   const handleAnalyze = () => {
     if (!selectedBranch) {
-      alert('❌ 请选择分支');
+      alert(t('messages.selectBranchError'));
       return;
     }
 
     if (analysisTypes.length === 0) {
-      alert('❌ 请至少选择一种分析类型');
+      alert(t('messages.selectAnalysisTypeError'));
       return;
     }
 
@@ -209,6 +212,7 @@ const Toolbar = () => {
       range: selectedRange,
       analysisType: analysisScope, // 新增：分析范围
       analysisOptions: analysisTypes, // 新增：具体分析类型
+      language: currentLanguage, // 传递当前语言
     };
 
     // 前端分析需要指定路径
@@ -221,14 +225,14 @@ const Toolbar = () => {
     // 根据选择的范围类型添加额外参数
     if (selectedRange === 'Commit ID Range') {
       if (!startCommitId || !endCommitId) {
-        alert('❌ 请输入起始和结束Commit ID');
+        alert(t('messages.enterCommitIdsError'));
         return;
       }
       analysisData.startCommit = startCommitId;
       analysisData.endCommit = endCommitId;
     } else if (selectedRange === 'Custom Date Range') {
       if (!customDateFrom) {
-        alert('❌ 请选择开始日期');
+        alert(t('messages.selectStartDateError'));
         return;
       }
       analysisData.dateFrom = customDateFrom;
@@ -255,23 +259,23 @@ const Toolbar = () => {
     });
   };
 
-  // 获取项目类型显示文本和颜色
+  // 获取项目类型显示文本和颜色（使用国际化）
   const getProjectTypeInfo = () => {
     switch (projectType) {
       case 'backend':
-        const backendText = backendLanguage === 'java' ? '☕ Java后端项目' : 
-                           backendLanguage === 'golang' ? '🐹 Golang后端项目' : 
-                           '🔧 后端项目';
+        const backendText = backendLanguage === 'java' ? t('projectTypes.javaBackend') : 
+                           backendLanguage === 'golang' ? t('projectTypes.golangBackend') : 
+                           t('projectTypes.backend');
         return { text: backendText, color: '#4CAF50' };
       case 'frontend':
-        return { text: '🌐 前端项目', color: '#2196F3' };
+        return { text: t('projectTypes.frontend'), color: '#2196F3' };
       case 'mixed':
-        const mixedText = backendLanguage === 'java' ? '🧩 混合项目 (Java + 前端)' :
-                         backendLanguage === 'golang' ? '🧩 混合项目 (Golang + 前端)' :
-                         '🧩 混合项目';
+        const mixedText = backendLanguage === 'java' ? t('projectTypes.mixedJava') :
+                         backendLanguage === 'golang' ? t('projectTypes.mixedGolang') :
+                         t('projectTypes.mixed');
         return { text: mixedText, color: '#FF9800' };
       default:
-        return { text: '❓ 未知项目类型', color: '#757575' };
+        return { text: t('projectTypes.unknown'), color: '#757575' };
     }
   };
 
@@ -289,14 +293,16 @@ const Toolbar = () => {
   const handleExportJSON = () => {
     postMessage({
       command: 'exportResults',
-      format: 'json'
+      format: 'json',
+      language: currentLanguage
     });
   };
 
   const handleExportHTML = () => {
     postMessage({
       command: 'exportResults', 
-      format: 'html'
+      format: 'html',
+      language: currentLanguage
     });
   };
 
@@ -308,6 +314,41 @@ const Toolbar = () => {
       padding: "var(--sidebar-padding)",
       borderBottom: "1px solid var(--vscode-panel-border, #ccc)"
     }}>
+      {/* 语言切换器 */}
+      <div style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "4px 8px",
+        backgroundColor: "var(--vscode-textBlockQuote-background)",
+        borderRadius: "4px",
+        fontSize: "10px"
+      }}>
+        <span style={{ fontWeight: "600", color: "var(--vscode-foreground)" }}>
+          🌐
+        </span>
+        <select
+          value={currentLanguage}
+          onChange={(e) => changeLanguage(e.target.value as any)}
+          style={{
+            flex: 1,
+            marginLeft: "6px",
+            padding: "2px 4px",
+            fontSize: "9px",
+            border: "1px solid var(--vscode-button-border)",
+            borderRadius: "2px",
+            backgroundColor: "var(--vscode-button-secondaryBackground)",
+            color: "var(--vscode-button-secondaryForeground)"
+          }}
+        >
+          {supportedLanguages.map(lang => (
+            <option key={lang} value={lang}>
+              {lang === 'zh-CN' ? '中文' : 'English'}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* 项目类型检测信息 */}
       {projectType !== 'unknown' && (
         <div style={{
@@ -323,7 +364,7 @@ const Toolbar = () => {
           </span>
           {projectType === 'mixed' && (
             <div style={{ marginTop: "2px", fontSize: "9px", color: "var(--vscode-descriptionForeground)" }}>
-              建议先选择分析范围
+              {currentLanguage === 'zh-CN' ? '建议先选择分析范围' : 'Please select analysis scope first'}
             </div>
           )}
         </div>
@@ -331,12 +372,12 @@ const Toolbar = () => {
 
       {/* 第1层：分析范围选择 */}
       <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-        <label style={{ fontSize: "10px", fontWeight: "600" }}>🎯 分析范围:</label>
+        <label style={{ fontSize: "10px", fontWeight: "600" }}>{t('toolbar.analysisScope')}</label>
         <div style={{ display: "flex", gap: "2px" }}>
           {[
-            { value: 'backend', label: '🔧 后端', title: 'Java代码分析' },
-            { value: 'frontend', label: '🌐 前端', title: 'TypeScript/React分析' },
-            { value: 'mixed', label: '🧩 全部', title: '混合项目分析' }
+            { value: 'backend', label: t('toolbar.backendLabel'), title: t('toolbar.backendTitle') },
+            { value: 'frontend', label: t('toolbar.frontendLabel'), title: t('toolbar.frontendTitle') },
+            { value: 'mixed', label: t('toolbar.allLabel'), title: t('toolbar.allTitle') }
           ].map(option => (
             <button
               key={option.value}
@@ -366,7 +407,7 @@ const Toolbar = () => {
 
       {/* 第2层：分析类型选择 */}
       <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-        <label style={{ fontSize: "10px", fontWeight: "600" }}>📋 分析类型:</label>
+        <label style={{ fontSize: "10px", fontWeight: "600" }}>{t('toolbar.analysisTypes')}</label>
         <div style={{ 
           display: "flex", 
           flexDirection: "column", 
@@ -416,10 +457,10 @@ const Toolbar = () => {
       {/* 前端路径输入（仅在前端或混合模式下显示） */}
       {(analysisScope === 'frontend' || analysisScope === 'mixed') && (
         <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-          <label style={{ fontSize: "10px", fontWeight: "600" }}>📁 前端代码路径:</label>
+          <label style={{ fontSize: "10px", fontWeight: "600" }}>{t('toolbar.frontendPath')}</label>
           <input
             type="text"
-            placeholder="例: ui/frontend 或 src/main/webapp"
+            placeholder={t('toolbar.frontendPathPlaceholder')}
             value={frontendPath}
             onChange={(e) => setFrontendPath(e.target.value)}
             disabled={isAnalyzing}
@@ -436,14 +477,14 @@ const Toolbar = () => {
             fontSize: "8px", 
             color: "var(--vscode-descriptionForeground)" 
           }}>
-            相对于项目根目录的路径，留空表示自动检测
+            {t('toolbar.frontendPathDesc')}
           </div>
         </div>
       )}
 
       {/* 分支选择 */}
       <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-        <label style={{ fontSize: "10px", fontWeight: "600" }}>Git分支:</label>
+        <label style={{ fontSize: "10px", fontWeight: "600" }}>{t('toolbar.gitBranch')}</label>
         <div style={{ display: "flex", gap: "4px" }}>
           <select 
             value={selectedBranch} 
@@ -451,7 +492,7 @@ const Toolbar = () => {
             disabled={isAnalyzing}
             style={{ flex: 1 }}
           >
-            <option value="">选择分支...</option>
+            <option value="">{t('toolbar.selectBranch')}</option>
             {branches.map(branch => (
               <option key={branch} value={branch}>{branch}</option>
             ))}
@@ -464,16 +505,16 @@ const Toolbar = () => {
               fontSize: "10px",
               minWidth: "40px"
             }}
-            title="刷新分支列表"
+            title={currentLanguage === 'zh-CN' ? '刷新分支列表' : 'Refresh branch list'}
           >
-            🔄
+            {t('toolbar.refresh')}
           </button>
         </div>
       </div>
 
       {/* 分析范围 */}
       <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-        <label style={{ fontSize: "10px", fontWeight: "600" }}>分析范围:</label>
+        <label style={{ fontSize: "10px", fontWeight: "600" }}>{t('toolbar.analysisRange')}</label>
         <select 
           value={selectedRange} 
           onChange={(e) => setSelectedRange(e.target.value)}
@@ -488,10 +529,10 @@ const Toolbar = () => {
       {/* Commit ID 范围输入 */}
       {isCommitRange && (
         <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-          <label style={{ fontSize: "10px", fontWeight: "600" }}>Commit ID范围:</label>
+          <label style={{ fontSize: "10px", fontWeight: "600" }}>{t('toolbar.commitRange')}</label>
           <input
             type="text"
-            placeholder="起始Commit ID (例: abc1234)"
+            placeholder={t('toolbar.commitStartPlaceholder')}
             value={startCommitId}
             onChange={(e) => setStartCommitId(e.target.value)}
             disabled={isAnalyzing}
@@ -506,7 +547,7 @@ const Toolbar = () => {
           />
           <input
             type="text"
-            placeholder="结束Commit ID (例: def5678)"
+            placeholder={t('toolbar.commitEndPlaceholder')}
             value={endCommitId}
             onChange={(e) => setEndCommitId(e.target.value)}
             disabled={isAnalyzing}
@@ -529,7 +570,7 @@ const Toolbar = () => {
               color: "var(--vscode-button-secondaryForeground)"
             }}
           >
-            🔍 验证Commit ID
+            {t('toolbar.validateCommits')}
           </button>
         </div>
       )}
@@ -537,7 +578,7 @@ const Toolbar = () => {
       {/* 自定义日期范围输入 */}
       {isCustomRange && (
         <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-          <label style={{ fontSize: "10px", fontWeight: "600" }}>日期范围:</label>
+          <label style={{ fontSize: "10px", fontWeight: "600" }}>{t('toolbar.dateRange')}</label>
           <input
             type="date"
             value={customDateFrom}
@@ -554,7 +595,7 @@ const Toolbar = () => {
           />
           <input
             type="date"
-            placeholder="结束日期（可选）"
+            placeholder={currentLanguage === 'zh-CN' ? '结束日期（可选）' : 'End date (optional)'}
             value={customDateTo}
             onChange={(e) => setCustomDateTo(e.target.value)}
             disabled={isAnalyzing}
@@ -594,7 +635,7 @@ const Toolbar = () => {
             cursor: isAnalyzing ? 'not-allowed' : 'pointer'
           }}
         >
-          {isAnalyzing ? '🔄 分析中...' : '🚀 开始分析'}
+          {isAnalyzing ? t('toolbar.analyzing') : t('toolbar.startAnalysis')}
         </button>
         
         {/* 导出按钮组 */}
@@ -616,7 +657,7 @@ const Toolbar = () => {
               borderBottom: '1px solid var(--vscode-panel-border)'
             }}
           >
-            📄 导出JSON
+            {t('toolbar.exportJSON')}
           </button>
           <button 
             onClick={handleExportHTML}
@@ -630,7 +671,7 @@ const Toolbar = () => {
               cursor: 'pointer'
             }}
           >
-            🌐 导出HTML
+            {t('toolbar.exportHTML')}
           </button>
         </div>
       </div>
@@ -643,7 +684,7 @@ const Toolbar = () => {
           textAlign: "center",
           padding: "4px"
         }}>
-          正在加载分支列表...
+          {t('toolbar.loadingBranches')}
         </div>
       )}
     </div>
