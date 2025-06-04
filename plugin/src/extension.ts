@@ -74,7 +74,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
           await this.openReportInBrowser(data.reportPath);
           break;
         case 'exportResults':
-          await this.handleExportResults();
+          await this.handleExportResults(data.format || 'json');
           break;
       }
     });
@@ -668,7 +668,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     });
   }
 
-  private async handleExportResults() {
+  private async handleExportResults(format: string) {
     try {
       if (!this._lastAnalysisResult || this._lastAnalysisResult.length === 0) {
         vscode.window.showWarningMessage('没有可导出的分析结果，请先进行分析');
@@ -683,13 +683,15 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
       // 生成导出文件名
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const fileName = `diffsense-analysis-${timestamp}.json`;
+      const fileName = `diffsense-analysis-${timestamp}.${format}`;
       
       // 让用户选择保存位置
       const saveUri = await vscode.window.showSaveDialog({
         defaultUri: vscode.Uri.file(path.join(workspaceFolder.uri.fsPath, fileName)),
         filters: {
-          'JSON文件': ['json']
+          'JSON文件': ['json'],
+          'CSV文件': ['csv'],
+          'HTML文件': ['html']
         }
       });
 
@@ -708,9 +710,18 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         analysisResults: this._lastAnalysisResult
       };
 
+      // 根据格式生成内容
+      let content: string;
+      
+      if (format === 'html') {
+        content = this.generateHTMLReport(exportData);
+      } else {
+        // 默认JSON格式
+        content = JSON.stringify(exportData, null, 2);
+      }
+
       // 写入文件
-      const jsonContent = JSON.stringify(exportData, null, 2);
-      await fs.promises.writeFile(saveUri.fsPath, jsonContent, 'utf-8');
+      await fs.promises.writeFile(saveUri.fsPath, content, 'utf-8');
 
       // 显示成功消息
       const action = await vscode.window.showInformationMessage(
@@ -730,6 +741,386 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       console.error('导出结果失败:', error);
       vscode.window.showErrorMessage(`导出失败: ${error instanceof Error ? error.message : String(error)}`);
     }
+  }
+
+  private generateHTMLReport(exportData: any): string {
+    const { exportInfo, analysisResults } = exportData;
+    
+    // 计算统计信息
+    const totalCommits = analysisResults.length;
+    const totalFiles = analysisResults.reduce((sum: number, commit: any) => 
+      sum + (commit.impactedFiles?.length || commit.files?.length || 0), 0);
+    const totalMethods = analysisResults.reduce((sum: number, commit: any) => 
+      sum + (commit.impactedMethods?.length || 
+           (commit.files?.reduce((fileSum: number, file: any) => 
+             fileSum + (file.methods?.length || 0), 0)) || 0), 0);
+    const totalRiskScore = analysisResults.reduce((sum: number, commit: any) => 
+      sum + (commit.riskScore || 0), 0);
+
+    return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DiffSense 分析报告</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .header h1 {
+            color: #4a5568;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header .subtitle {
+            color: #718096;
+            font-size: 1.1em;
+            margin-bottom: 20px;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .info-card {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .info-card .label {
+            font-size: 0.9em;
+            color: #718096;
+            margin-bottom: 5px;
+        }
+        
+        .info-card .value {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        .stats-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        .stats-title {
+            font-size: 1.5em;
+            color: #4a5568;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+        }
+        
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .commits-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        .commit-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            transition: transform 0.2s ease;
+        }
+        
+        .commit-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .commit-header {
+            background: #f7fafc;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .commit-id {
+            font-family: 'Courier New', monospace;
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        
+        .commit-message {
+            font-weight: 600;
+            color: #2d3748;
+            margin: 5px 0;
+        }
+        
+        .commit-meta {
+            font-size: 0.9em;
+            color: #718096;
+        }
+        
+        .commit-body {
+            padding: 20px;
+        }
+        
+        .risk-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .risk-low { background: #c6f6d5; color: #276749; }
+        .risk-medium { background: #fefcbf; color: #975a16; }
+        .risk-high { background: #fed7d7; color: #c53030; }
+        
+        .files-grid {
+            display: grid;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .file-card {
+            background: #f7fafc;
+            border-radius: 6px;
+            padding: 15px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .file-path {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+        
+        .methods-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .method-tag {
+            background: #e2e8f0;
+            color: #4a5568;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .no-data {
+            text-align: center;
+            color: #718096;
+            font-style: italic;
+            padding: 40px;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: rgba(255,255,255,0.8);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 报告头部 -->
+        <div class="header">
+            <h1>🔍 DiffSense 分析报告</h1>
+            <div class="subtitle">Git 代码影响分析</div>
+            
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="label">生成时间</div>
+                    <div class="value">${new Date(exportInfo.timestamp).toLocaleString('zh-CN')}</div>
+                </div>
+                <div class="info-card">
+                    <div class="label">仓库路径</div>
+                    <div class="value">${exportInfo.repository.split('/').pop() || exportInfo.repository}</div>
+                </div>
+                <div class="info-card">
+                    <div class="label">分析引擎</div>
+                    <div class="value">${exportInfo.exportedBy}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 统计概览 -->
+        <div class="stats-section">
+            <div class="stats-title">📊 分析概览</div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">${totalCommits}</div>
+                    <div class="stat-label">分析提交数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${totalFiles}</div>
+                    <div class="stat-label">影响文件数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${totalMethods}</div>
+                    <div class="stat-label">影响方法数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${totalRiskScore}</div>
+                    <div class="stat-label">总风险评分</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 提交详情 -->
+        <div class="commits-section">
+            <div class="stats-title">📝 提交分析详情</div>
+            
+            ${analysisResults.length > 0 ? analysisResults.map((commit: any, index: number) => {
+                const riskScore = commit.riskScore || 0;
+                const riskLevel = riskScore > 100 ? 'high' : riskScore > 50 ? 'medium' : 'low';
+                const riskText = riskScore > 100 ? '高风险' : riskScore > 50 ? '中风险' : '低风险';
+                
+                const files = commit.impactedFiles || commit.files || [];
+                const methods = commit.impactedMethods || [];
+                
+                return `
+                <div class="commit-card">
+                    <div class="commit-header">
+                        <span class="commit-id">${(commit.commitId || commit.id || `commit-${index + 1}`).substring(0, 7)}</span>
+                        <span class="risk-badge risk-${riskLevel}">${riskText} (${riskScore})</span>
+                        
+                        <div class="commit-message">${commit.message || commit.commitMessage || '无提交信息'}</div>
+                        <div class="commit-meta">
+                            作者: ${commit.author?.name || commit.authorName || '未知'} | 
+                            日期: ${commit.date || commit.commitDate ? new Date(commit.date || commit.commitDate).toLocaleString('zh-CN') : '未知'}
+                        </div>
+                    </div>
+                    
+                    <div class="commit-body">
+                        ${files.length > 0 ? `
+                            <h4>📁 影响文件 (${files.length}个)</h4>
+                            <div class="files-grid">
+                                ${files.map((file: any) => `
+                                    <div class="file-card">
+                                        <div class="file-path">${file.path || file.filePath || '未知文件'}</div>
+                                        ${(file.methods || file.impactedMethods || []).length > 0 ? `
+                                            <div class="methods-list">
+                                                ${(file.methods || file.impactedMethods || []).map((method: any) => 
+                                                    `<span class="method-tag">${typeof method === 'string' ? method : method.methodName || method.name || '未知方法'}</span>`
+                                                ).join('')}
+                                            </div>
+                                        ` : '<div style="color: #718096; font-size: 0.9em;">无方法变更</div>'}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                        
+                        ${methods.length > 0 ? `
+                            <h4 style="margin-top: 20px;">⚙️ 影响方法 (${methods.length}个)</h4>
+                            <div class="methods-list">
+                                ${methods.map((method: any) => 
+                                    `<span class="method-tag">${method.methodName || method.name || method}</span>`
+                                ).join('')}
+                            </div>
+                        ` : ''}
+                        
+                        ${files.length === 0 && methods.length === 0 ? `
+                            <div class="no-data">暂无详细数据</div>
+                        ` : ''}
+                    </div>
+                </div>
+                `;
+            }).join('') : `
+                <div class="no-data">
+                    <h3>暂无分析数据</h3>
+                    <p>请先进行代码分析以生成报告</p>
+                </div>
+            `}
+        </div>
+
+        <!-- 页脚 -->
+        <div class="footer">
+            <p>📋 报告由 DiffSense VSCode 扩展生成 | ${new Date().getFullYear()}</p>
+        </div>
+    </div>
+</body>
+</html>`;
   }
 }
 

@@ -35,7 +35,6 @@ const App = () => {
       <div className="app-container" style={{
         width: "100%",
         height: "100%",
-        border: "2px solid purple",
         padding: "2px"
       }}>
         <MainView />

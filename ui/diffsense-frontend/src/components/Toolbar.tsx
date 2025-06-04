@@ -128,10 +128,18 @@ const Toolbar = () => {
   const isCustomRange = selectedRange === 'Custom Date Range';
   const isCommitRange = selectedRange === 'Commit ID Range';
 
-  // 导出分析结果为JSON文件
-  const handleExportResults = () => {
+  // 导出分析结果（支持格式选择）
+  const handleExportJSON = () => {
     postMessage({
-      command: 'exportResults'
+      command: 'exportResults',
+      format: 'json'
+    });
+  };
+
+  const handleExportHTML = () => {
+    postMessage({
+      command: 'exportResults', 
+      format: 'html'
     });
   };
 
@@ -299,21 +307,42 @@ const Toolbar = () => {
           {isAnalyzing ? '🔄 分析中...' : '🚀 开始分析'}
         </button>
         
-        <button 
-          onClick={handleExportResults}
-          style={{ 
-            fontSize: '11px',
-            padding: '6px 8px',
-            backgroundColor: 'var(--vscode-button-secondaryBackground)',
-            color: 'var(--vscode-button-secondaryForeground)',
-            border: 'none',
-            borderRadius: '3px',
-            cursor: 'pointer',
-            minWidth: '80px'
-          }}
-        >
-          📁 导出结果
-        </button>
+        {/* 导出按钮组 */}
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column',
+          minWidth: '100px'
+        }}>
+          <button 
+            onClick={handleExportJSON}
+            style={{ 
+              fontSize: '10px',
+              padding: '4px 8px',
+              backgroundColor: 'var(--vscode-button-secondaryBackground)',
+              color: 'var(--vscode-button-secondaryForeground)',
+              border: 'none',
+              borderRadius: '3px 3px 0 0',
+              cursor: 'pointer',
+              borderBottom: '1px solid var(--vscode-panel-border)'
+            }}
+          >
+            📄 导出JSON
+          </button>
+          <button 
+            onClick={handleExportHTML}
+            style={{ 
+              fontSize: '10px',
+              padding: '4px 8px',
+              backgroundColor: 'var(--vscode-button-secondaryBackground)',
+              color: 'var(--vscode-button-secondaryForeground)',
+              border: 'none',
+              borderRadius: '0 0 3px 3px',
+              cursor: 'pointer'
+            }}
+          >
+            🌐 导出HTML
+          </button>
+        </div>
       </div>
 
       {/* 状态信息 */}
