@@ -123,34 +123,49 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
       const repoPath = workspaceFolder.uri.fsPath;
       
-      // 构建JAR文件路径
-      const jarPath = path.resolve(__dirname, '../../target/gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar');
+      // 检查分析类型
+      const analysisType = data.analysisType || 'backend';
       
-      // 检查JAR文件是否存在
-      if (!fs.existsSync(jarPath)) {
-        throw new Error(`JAR文件不存在: ${jarPath}`);
+      let analysisResult: any[];
+
+      if (analysisType === 'frontend') {
+        // 前端代码分析
+        console.log('🔍 执行前端代码分析...');
+        analysisResult = await this.executeFrontendAnalysis(repoPath, data);
+      } else {
+        // 后端代码分析 (原有逻辑)
+        console.log('🔍 执行后端代码分析...');
+        
+        // 构建JAR文件路径
+        const jarPath = path.resolve(__dirname, '../../target/gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar');
+        
+        // 检查JAR文件是否存在
+        if (!fs.existsSync(jarPath)) {
+          throw new Error(`JAR文件不存在: ${jarPath}`);
+        }
+
+        console.log(`正在分析仓库: ${repoPath}`);
+        console.log(`使用JAR: ${jarPath}`);
+
+        // 调用JAR进行分析
+        const result = await this.executeJarAnalysis(jarPath, repoPath, data);
+        
+        // 解析结果并发送给前端
+        console.log('=== 开始解析JAR结果 ===');
+        analysisResult = this.parseAnalysisResult(result.stdout);
       }
-
-      console.log(`正在分析仓库: ${repoPath}`);
-      console.log(`使用JAR: ${jarPath}`);
-
-      // 调用JAR进行分析
-      const result = await this.executeJarAnalysis(jarPath, repoPath, data);
       
-      // 解析结果并发送给前端
-      console.log('=== 开始解析JAR结果 ===');
-      const parsedResult = this.parseAnalysisResult(result.stdout);
-      console.log('解析后的结果:', parsedResult);
-      console.log('解析后结果数量:', Array.isArray(parsedResult) ? parsedResult.length : '非数组');
+      console.log('解析后的结果:', analysisResult);
+      console.log('解析后结果数量:', Array.isArray(analysisResult) ? analysisResult.length : '非数组');
       
       // 保存分析结果用于导出
-      this._lastAnalysisResult = parsedResult;
+      this._lastAnalysisResult = analysisResult;
       
-      // 发送分析完成消息到侧栏，包含报告路径信息
+      // 发送分析完成消息到侧栏
       this._view?.webview.postMessage({
         command: 'analysisResult',
-        data: parsedResult,
-        reportPath: result.reportPath // 添加报告路径
+        data: analysisResult,
+        analysisType: analysisType
       });
 
     } catch (error) {
@@ -162,6 +177,136 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         error: error instanceof Error ? error.message : String(error)
       });
     }
+  }
+
+  private async executeFrontendAnalysis(repoPath: string, analysisData: any): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      // 前端分析器脚本路径
+      const analyzerPath = path.join(__dirname, '../../ui/node-analyzer/analyze.js');
+      
+      // 确定要分析的目录
+      let targetDir = repoPath;
+      if (analysisData.frontendPath) {
+        targetDir = path.join(repoPath, analysisData.frontendPath);
+      }
+      
+      console.log('执行前端分析命令:', 'node', analyzerPath, targetDir);
+      console.log('分析目录:', targetDir);
+
+      // 执行前端分析器
+      const child = execFile('node', [analyzerPath, targetDir, 'json'], {
+        cwd: repoPath,
+        timeout: 60000, // 60秒超时
+        maxBuffer: 1024 * 1024 * 10 // 10MB buffer
+      }, (error, stdout, stderr) => {
+        if (error) {
+          console.error('前端分析器执行错误:', error);
+          console.error('stderr:', stderr);
+          reject(new Error(`前端分析失败: ${error.message}\n${stderr}`));
+        } else {
+          console.log('前端分析器执行成功');
+          console.log('stderr信息:', stderr); // 显示调试信息
+          
+          try {
+            const result = JSON.parse(stdout);
+            console.log('前端分析结果:', result);
+            
+            // 转换为与后端分析结果兼容的格式
+            const convertedResult = this.convertFrontendResult(result, targetDir);
+            resolve(convertedResult);
+            
+          } catch (parseError) {
+            console.error('前端分析结果JSON解析失败:', parseError);
+            console.log('输出前500字符:', stdout.substring(0, 500));
+            reject(new Error(`前端分析结果解析失败: ${parseError}`));
+          }
+        }
+      });
+
+      // 监听进程退出
+      child.on('exit', (code) => {
+        console.log(`前端分析器进程退出，代码: ${code}`);
+      });
+    });
+  }
+
+  private convertFrontendResult(frontendResult: any, targetDir: string): any[] {
+    // 将前端分析结果转换为与后端分析结果兼容的格式
+    const commits = [];
+    
+    if (frontendResult && frontendResult.files) {
+      // 按文件组织数据，模拟提交结构
+      const fileGroups = new Map();
+      
+      frontendResult.files.forEach((file: any, index: number) => {
+        const groupKey = Math.floor(index / 5); // 每5个文件一组，模拟提交
+        
+        if (!fileGroups.has(groupKey)) {
+          fileGroups.set(groupKey, {
+            commitId: `frontend_analysis_${groupKey + 1}`,
+            message: `前端代码分析 - 组 ${groupKey + 1}`,
+            author: { name: '前端分析器', email: 'frontend@diffsense.com' },
+            timestamp: frontendResult.timestamp,
+            changedFilesCount: 0,
+            changedMethodsCount: 0,
+            impactedMethods: [],
+            impactedTests: {},
+            riskScore: 0,
+            impactedFiles: []
+          });
+        }
+        
+        const group = fileGroups.get(groupKey);
+        group.changedFilesCount++;
+        group.changedMethodsCount += file.methods ? file.methods.length : 0;
+        
+        // 添加文件信息
+        group.impactedFiles.push({
+          path: file.relativePath,
+          filePath: file.relativePath,
+          methods: file.methods || [],
+          impactedMethods: file.methods ? file.methods.map((m: any) => ({
+            methodName: m.name,
+            signature: m.signature,
+            type: m.type,
+            calls: m.calls || [],
+            calledBy: []
+          })) : []
+        });
+        
+        // 累加方法名
+        if (file.methods) {
+          file.methods.forEach((method: any) => {
+            group.impactedMethods.push(method.name);
+          });
+        }
+        
+        // 简单的风险评分计算
+        group.riskScore += Math.min(file.methods ? file.methods.length * 2 : 0, 20);
+      });
+      
+      commits.push(...Array.from(fileGroups.values()));
+    }
+    
+    // 如果没有文件数据，创建一个摘要提交
+    if (commits.length === 0) {
+      commits.push({
+        commitId: 'frontend_summary',
+        message: '前端代码分析摘要',
+        author: { name: '前端分析器', email: 'frontend@diffsense.com' },
+        timestamp: frontendResult.timestamp,
+        changedFilesCount: frontendResult.summary?.totalFiles || 0,
+        changedMethodsCount: frontendResult.summary?.totalMethods || 0,
+        impactedMethods: [],
+        impactedTests: {},
+        riskScore: frontendResult.summary?.totalFiles || 0,
+        impactedFiles: [],
+        frontendSummary: frontendResult.summary,
+        frontendDependencies: frontendResult.dependencies
+      });
+    }
+    
+    return commits;
   }
 
   private async handleGetBranches() {
