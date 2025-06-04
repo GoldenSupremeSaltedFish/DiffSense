@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- 控制台输出器，输出到stderr -->
+    <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+        <target>System.err</target>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} -- %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 设置所有日志级别为WARN，避免DEBUG污染stdout -->
+    <root level="WARN">
+        <appender-ref ref="STDERR" />
+    </root>
+    
+    <!-- 特别设置JGit为WARN级别 -->
+    <logger name="org.eclipse.jgit" level="WARN" />
+    
+    <!-- 我们自己的日志可以是INFO级别 -->
+    <logger name="com.yourorg.gitimpact" level="INFO" />
+</configuration> 
