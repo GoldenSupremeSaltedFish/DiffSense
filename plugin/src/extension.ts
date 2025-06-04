@@ -79,6 +79,9 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         case 'restoreAnalysisResults':
           await this.handleRestoreAnalysisResults();
           break;
+        case 'detectProjectType':
+          await this.handleDetectProjectType();
+          break;
       }
     });
 
@@ -123,18 +126,25 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
       const repoPath = workspaceFolder.uri.fsPath;
       
-      // 检查分析类型
+      // 检查分析类型（更新为支持新的参数结构）
       const analysisType = data.analysisType || 'backend';
+      const analysisOptions = data.analysisOptions || [];
       
       let analysisResult: any[];
 
       if (analysisType === 'frontend') {
         // 前端代码分析
         console.log('🔍 执行前端代码分析...');
+        console.log('分析选项:', analysisOptions);
         analysisResult = await this.executeFrontendAnalysis(repoPath, data);
+      } else if (analysisType === 'mixed') {
+        // 混合项目分析
+        console.log('🔍 执行混合项目分析...');
+        analysisResult = await this.executeMixedAnalysis(repoPath, data);
       } else {
         // 后端代码分析 (原有逻辑)
         console.log('🔍 执行后端代码分析...');
+        console.log('分析选项:', analysisOptions);
         
         // 构建JAR文件路径
         const jarPath = path.resolve(__dirname, '../../target/gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar');
@@ -165,7 +175,8 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       this._view?.webview.postMessage({
         command: 'analysisResult',
         data: analysisResult,
-        analysisType: analysisType
+        analysisType: analysisType,
+        analysisOptions: analysisOptions
       });
 
     } catch (error) {
@@ -176,6 +187,173 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         command: 'analysisError',
         error: error instanceof Error ? error.message : String(error)
       });
+    }
+  }
+
+  private async handleDetectProjectType() {
+    try {
+      // 获取工作区路径
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      if (!workspaceFolder) {
+        throw new Error('未找到工作区文件夹');
+      }
+
+      const repoPath = workspaceFolder.uri.fsPath;
+      const projectType = await this.detectProjectType(repoPath);
+      const frontendPaths = await this.findFrontendPaths(repoPath);
+
+      console.log('🔍 项目类型检测结果:', projectType);
+      console.log('📁 前端路径检测结果:', frontendPaths);
+
+      // 发送检测结果给前端
+      this._view?.webview.postMessage({
+        command: 'projectTypeDetected',
+        projectType: projectType,
+        frontendPaths: frontendPaths
+      });
+
+    } catch (error) {
+      console.error('项目类型检测失败:', error);
+      
+      // 发送错误消息给前端
+      this._view?.webview.postMessage({
+        command: 'projectTypeDetected',
+        projectType: 'unknown',
+        frontendPaths: []
+      });
+    }
+  }
+
+  private async detectProjectType(repoPath: string): Promise<'backend' | 'frontend' | 'mixed' | 'unknown'> {
+    try {
+      // 检查常见的项目标识文件
+      const hasPom = fs.existsSync(path.join(repoPath, 'pom.xml'));
+      const hasGradle = fs.existsSync(path.join(repoPath, 'build.gradle')) || fs.existsSync(path.join(repoPath, 'build.gradle.kts'));
+      const hasPackageJson = fs.existsSync(path.join(repoPath, 'package.json'));
+      const hasTsConfig = fs.existsSync(path.join(repoPath, 'tsconfig.json'));
+      
+      // 检查是否有前端框架标识
+      let hasReact = false;
+      let hasVue = false;
+      let hasAngular = false;
+      
+      if (hasPackageJson) {
+        try {
+          const packageJson = JSON.parse(fs.readFileSync(path.join(repoPath, 'package.json'), 'utf-8'));
+          const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
+          
+          hasReact = 'react' in dependencies;
+          hasVue = 'vue' in dependencies;
+          hasAngular = '@angular/core' in dependencies;
+        } catch (error) {
+          console.warn('解析package.json失败:', error);
+        }
+      }
+
+      const isBackend = hasPom || hasGradle;
+      const isFrontend = hasPackageJson && (hasTsConfig || hasReact || hasVue || hasAngular);
+
+      if (isBackend && isFrontend) {
+        return 'mixed';
+      } else if (isBackend) {
+        return 'backend';
+      } else if (isFrontend) {
+        return 'frontend';
+      } else {
+        return 'unknown';
+      }
+
+    } catch (error) {
+      console.error('项目类型检测错误:', error);
+      return 'unknown';
+    }
+  }
+
+  private async findFrontendPaths(repoPath: string): Promise<string[]> {
+    const frontendPaths: string[] = [];
+    
+    try {
+      // 常见的前端目录名
+      const commonFrontendDirs = [
+        'ui', 'frontend', 'web', 'client', 'src/main/webapp', 
+        'src/main/resources/static', 'public', 'dist', 'www'
+      ];
+
+      for (const dir of commonFrontendDirs) {
+        const fullPath = path.join(repoPath, dir);
+        if (fs.existsSync(fullPath)) {
+          const stat = fs.statSync(fullPath);
+          if (stat.isDirectory()) {
+            // 检查是否包含前端文件
+            const hasJs = fs.existsSync(path.join(fullPath, 'package.json')) || 
+                         fs.existsSync(path.join(fullPath, 'tsconfig.json'));
+            if (hasJs) {
+              frontendPaths.push(dir);
+            }
+          }
+        }
+      }
+
+      // 如果没有找到明显的前端目录，检查根目录
+      if (frontendPaths.length === 0) {
+        const hasRootFrontend = fs.existsSync(path.join(repoPath, 'package.json')) && 
+                               fs.existsSync(path.join(repoPath, 'tsconfig.json'));
+        if (hasRootFrontend) {
+          frontendPaths.push('');
+        }
+      }
+
+    } catch (error) {
+      console.error('前端路径检测错误:', error);
+    }
+
+    return frontendPaths;
+  }
+
+  private async executeMixedAnalysis(repoPath: string, analysisData: any): Promise<any[]> {
+    // 混合项目分析：同时进行前后端分析并合并结果
+    const results: any[] = [];
+
+    try {
+      // 执行后端分析
+      try {
+        const jarPath = path.resolve(__dirname, '../../target/gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar');
+        if (fs.existsSync(jarPath)) {
+          console.log('🔧 执行后端分析...');
+          const backendResult = await this.executeJarAnalysis(jarPath, repoPath, analysisData);
+          const backendParsed = this.parseAnalysisResult(backendResult.stdout);
+          results.push(...backendParsed.map(item => ({ ...item, analysisSource: 'backend' })));
+        }
+      } catch (error) {
+        console.warn('后端分析失败:', error);
+      }
+
+      // 执行前端分析
+      try {
+        console.log('🌐 执行前端分析...');
+        const frontendResult = await this.executeFrontendAnalysis(repoPath, analysisData);
+        results.push(...frontendResult.map(item => ({ ...item, analysisSource: 'frontend' })));
+      } catch (error) {
+        console.warn('前端分析失败:', error);
+      }
+
+      // 如果没有任何结果，返回一个说明
+      if (results.length === 0) {
+        results.push({
+          commitId: 'mixed_analysis_empty',
+          message: '混合项目分析 - 未找到可分析的代码',
+          author: { name: '混合分析器', email: 'mixed@diffsense.com' },
+          timestamp: new Date().toISOString(),
+          analysisSource: 'mixed',
+          error: '未能成功分析前端或后端代码'
+        });
+      }
+
+      return results;
+
+    } catch (error) {
+      console.error('混合项目分析失败:', error);
+      throw error;
     }
   }
 

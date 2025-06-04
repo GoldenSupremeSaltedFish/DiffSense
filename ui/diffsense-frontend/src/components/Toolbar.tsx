@@ -18,6 +18,12 @@ const Toolbar = () => {
   const [selectedRange, setSelectedRange] = useState<string>('Last 3 commits');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   
+  // 新增：分析范围和类型状态
+  const [analysisScope, setAnalysisScope] = useState<'backend' | 'frontend' | 'mixed'>('backend');
+  const [projectType, setProjectType] = useState<'backend' | 'frontend' | 'mixed' | 'unknown'>('unknown');
+  const [analysisTypes, setAnalysisTypes] = useState<string[]>([]);
+  const [frontendPath, setFrontendPath] = useState<string>('');
+  
   // Commit ID范围相关状态
   const [startCommitId, setStartCommitId] = useState<string>('');
   const [endCommitId, setEndCommitId] = useState<string>('');
@@ -34,6 +40,25 @@ const Toolbar = () => {
     'Commit ID Range'
   ];
 
+  // 分析类型选项
+  const analysisOptions = {
+    backend: [
+      { id: 'classes', label: '📦 变更影响了哪些类？', description: '分析类级别的影响范围' },
+      { id: 'methods', label: '⚙️ 变更影响了哪些方法？', description: '分析方法级别的影响范围' },
+      { id: 'callChain', label: '🔗 方法调用链是怎样的？', description: '分析方法间的调用关系' }
+    ],
+    frontend: [
+      { id: 'dependencies', label: '📁 哪些文件被哪些组件依赖？', description: '分析文件依赖关系' },
+      { id: 'entryPoints', label: '🚪 哪些方法是入口触发？', description: '分析函数调用入口' },
+      { id: 'uiImpact', label: '🎨 哪些UI会受影响？', description: '分析组件树级联影响' }
+    ],
+    mixed: [
+      { id: 'fullStack', label: '🧩 全栈影响分析', description: '分析前后端交互影响' },
+      { id: 'apiChanges', label: '🔌 API变更影响分析', description: '分析接口变更对前端的影响' },
+      { id: 'dataFlow', label: '📊 数据流影响分析', description: '分析数据传递链路影响' }
+    ]
+  };
+
   // 组件挂载时恢复状态
   useEffect(() => {
     const savedState = getState();
@@ -44,6 +69,15 @@ const Toolbar = () => {
     }
     if (savedState.selectedRange) {
       setSelectedRange(savedState.selectedRange);
+    }
+    if (savedState.analysisScope) {
+      setAnalysisScope(savedState.analysisScope);
+    }
+    if (savedState.analysisTypes) {
+      setAnalysisTypes(savedState.analysisTypes);
+    }
+    if (savedState.frontendPath) {
+      setFrontendPath(savedState.frontendPath);
     }
     if (savedState.startCommitId) {
       setStartCommitId(savedState.startCommitId);
@@ -61,9 +95,10 @@ const Toolbar = () => {
       setBranches(savedState.branches);
     }
 
-    // 请求最新的分支列表和分析结果
+    // 请求最新的分支列表、分析结果和项目类型检测
     postMessage({ command: 'getBranches' });
     postMessage({ command: 'restoreAnalysisResults' });
+    postMessage({ command: 'detectProjectType' });
   }, []);
 
   // 保存状态当状态发生变化时
@@ -71,6 +106,9 @@ const Toolbar = () => {
     const currentState = {
       selectedBranch,
       selectedRange,
+      analysisScope,
+      analysisTypes,
+      frontendPath,
       startCommitId,
       endCommitId,
       customDateFrom,
@@ -80,7 +118,17 @@ const Toolbar = () => {
     
     saveState(currentState);
     console.log('💾 保存状态:', currentState);
-  }, [selectedBranch, selectedRange, startCommitId, endCommitId, customDateFrom, customDateTo, branches]);
+  }, [selectedBranch, selectedRange, analysisScope, analysisTypes, frontendPath, startCommitId, endCommitId, customDateFrom, customDateTo, branches]);
+
+  // 当分析范围改变时，重置分析类型并设置默认值
+  useEffect(() => {
+    if (analysisScope && analysisOptions[analysisScope]) {
+      const defaultTypes = analysisScope === 'backend' ? ['methods', 'callChain'] :
+                          analysisScope === 'frontend' ? ['dependencies', 'entryPoints'] :
+                          ['fullStack'];
+      setAnalysisTypes(defaultTypes);
+    }
+  }, [analysisScope]);
 
   useEffect(() => {
     // 监听来自扩展的消息
@@ -91,6 +139,16 @@ const Toolbar = () => {
           setBranches(message.branches);
           if (message.branches.length > 0 && !selectedBranch) {
             setSelectedBranch(message.branches[0]);
+          }
+          break;
+        case 'projectTypeDetected':
+          setProjectType(message.projectType);
+          // 根据检测结果自动设置分析范围
+          if (message.projectType !== 'unknown' && message.projectType !== 'mixed') {
+            setAnalysisScope(message.projectType);
+          }
+          if (message.frontendPaths && message.frontendPaths.length > 0) {
+            setFrontendPath(message.frontendPaths[0]); // 设置第一个前端路径作为默认值
           }
           break;
         case 'analysisStarted':
@@ -134,11 +192,25 @@ const Toolbar = () => {
       return;
     }
 
+    if (analysisTypes.length === 0) {
+      alert('❌ 请至少选择一种分析类型');
+      return;
+    }
+
     // 构建分析数据
     const analysisData: any = {
       branch: selectedBranch,
-      range: selectedRange
+      range: selectedRange,
+      analysisType: analysisScope, // 新增：分析范围
+      analysisOptions: analysisTypes, // 新增：具体分析类型
     };
+
+    // 前端分析需要指定路径
+    if (analysisScope === 'frontend' || analysisScope === 'mixed') {
+      if (frontendPath) {
+        analysisData.frontendPath = frontendPath;
+      }
+    }
 
     // 根据选择的范围类型添加额外参数
     if (selectedRange === 'Commit ID Range') {
@@ -164,6 +236,31 @@ const Toolbar = () => {
       command: 'analyze',
       data: analysisData
     });
+  };
+
+  // 分析类型切换处理
+  const handleAnalysisTypeToggle = (typeId: string) => {
+    setAnalysisTypes(prev => {
+      if (prev.includes(typeId)) {
+        return prev.filter(id => id !== typeId);
+      } else {
+        return [...prev, typeId];
+      }
+    });
+  };
+
+  // 获取项目类型显示文本和颜色
+  const getProjectTypeInfo = () => {
+    switch (projectType) {
+      case 'backend':
+        return { text: '🔧 Java后端项目', color: '#4CAF50' };
+      case 'frontend':
+        return { text: '🌐 前端项目', color: '#2196F3' };
+      case 'mixed':
+        return { text: '🧩 混合项目', color: '#FF9800' };
+      default:
+        return { text: '❓ 未知项目类型', color: '#757575' };
+    }
   };
 
   const handleRefresh = () => {
@@ -199,6 +296,139 @@ const Toolbar = () => {
       padding: "var(--sidebar-padding)",
       borderBottom: "1px solid var(--vscode-panel-border, #ccc)"
     }}>
+      {/* 项目类型检测信息 */}
+      {projectType !== 'unknown' && (
+        <div style={{
+          padding: "6px 8px",
+          backgroundColor: "var(--vscode-textBlockQuote-background)",
+          border: `1px solid ${getProjectTypeInfo().color}`,
+          borderRadius: "4px",
+          fontSize: "10px",
+          textAlign: "center"
+        }}>
+          <span style={{ color: getProjectTypeInfo().color, fontWeight: "600" }}>
+            {getProjectTypeInfo().text}
+          </span>
+          {projectType === 'mixed' && (
+            <div style={{ marginTop: "2px", fontSize: "9px", color: "var(--vscode-descriptionForeground)" }}>
+              建议先选择分析范围
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 第1层：分析范围选择 */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+        <label style={{ fontSize: "10px", fontWeight: "600" }}>🎯 分析范围:</label>
+        <div style={{ display: "flex", gap: "2px" }}>
+          {[
+            { value: 'backend', label: '🔧 后端', title: 'Java代码分析' },
+            { value: 'frontend', label: '🌐 前端', title: 'TypeScript/React分析' },
+            { value: 'mixed', label: '🧩 全部', title: '混合项目分析' }
+          ].map(option => (
+            <button
+              key={option.value}
+              onClick={() => setAnalysisScope(option.value as any)}
+              disabled={isAnalyzing}
+              title={option.title}
+              style={{
+                flex: 1,
+                padding: "4px 6px",
+                fontSize: "9px",
+                border: "1px solid var(--vscode-button-border)",
+                borderRadius: "2px",
+                backgroundColor: analysisScope === option.value ? 
+                  'var(--vscode-button-background)' : 
+                  'var(--vscode-button-secondaryBackground)',
+                color: analysisScope === option.value ? 
+                  'var(--vscode-button-foreground)' : 
+                  'var(--vscode-button-secondaryForeground)',
+                cursor: isAnalyzing ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 第2层：分析类型选择 */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+        <label style={{ fontSize: "10px", fontWeight: "600" }}>📋 分析类型:</label>
+        <div style={{ 
+          display: "flex", 
+          flexDirection: "column", 
+          gap: "2px",
+          maxHeight: "120px",
+          overflowY: "auto"
+        }}>
+          {analysisOptions[analysisScope]?.map(option => (
+            <label 
+              key={option.id}
+              style={{ 
+                display: "flex", 
+                alignItems: "flex-start", 
+                gap: "6px",
+                padding: "4px",
+                cursor: isAnalyzing ? 'not-allowed' : 'pointer',
+                borderRadius: "2px",
+                backgroundColor: analysisTypes.includes(option.id) ? 
+                  'var(--vscode-list-activeSelectionBackground)' : 
+                  'transparent'
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={analysisTypes.includes(option.id)}
+                onChange={() => handleAnalysisTypeToggle(option.id)}
+                disabled={isAnalyzing}
+                style={{ marginTop: "1px" }}
+              />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: "9px", fontWeight: "500" }}>
+                  {option.label}
+                </div>
+                <div style={{ 
+                  fontSize: "8px", 
+                  color: "var(--vscode-descriptionForeground)",
+                  lineHeight: "1.2"
+                }}>
+                  {option.description}
+                </div>
+              </div>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* 前端路径输入（仅在前端或混合模式下显示） */}
+      {(analysisScope === 'frontend' || analysisScope === 'mixed') && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+          <label style={{ fontSize: "10px", fontWeight: "600" }}>📁 前端代码路径:</label>
+          <input
+            type="text"
+            placeholder="例: ui/frontend 或 src/main/webapp"
+            value={frontendPath}
+            onChange={(e) => setFrontendPath(e.target.value)}
+            disabled={isAnalyzing}
+            style={{
+              padding: "4px",
+              fontSize: "10px",
+              border: "1px solid var(--vscode-input-border)",
+              backgroundColor: "var(--vscode-input-background)",
+              color: "var(--vscode-input-foreground)",
+              borderRadius: "2px"
+            }}
+          />
+          <div style={{ 
+            fontSize: "8px", 
+            color: "var(--vscode-descriptionForeground)" 
+          }}>
+            相对于项目根目录的路径，留空表示自动检测
+          </div>
+        </div>
+      )}
+
       {/* 分支选择 */}
       <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
         <label style={{ fontSize: "10px", fontWeight: "600" }}>Git分支:</label>
