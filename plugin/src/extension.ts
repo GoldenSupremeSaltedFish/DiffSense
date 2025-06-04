@@ -76,6 +76,9 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         case 'exportResults':
           await this.handleExportResults(data.format || 'json');
           break;
+        case 'restoreAnalysisResults':
+          await this.handleRestoreAnalysisResults();
+          break;
       }
     });
 
@@ -668,6 +671,24 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     });
   }
 
+  private async handleRestoreAnalysisResults() {
+    try {
+      // 如果有保存的分析结果，发送给前端
+      if (this._lastAnalysisResult && this._lastAnalysisResult.length > 0) {
+        console.log('🔄 恢复分析结果:', this._lastAnalysisResult.length, '个提交');
+        
+        this._view?.webview.postMessage({
+          command: 'restoredAnalysisResults',
+          data: this._lastAnalysisResult
+        });
+      } else {
+        console.log('📭 没有可恢复的分析结果');
+      }
+    } catch (error) {
+      console.error('恢复分析结果失败:', error);
+    }
+  }
+
   private async handleExportResults(format: string) {
     try {
       if (!this._lastAnalysisResult || this._lastAnalysisResult.length === 0) {
@@ -1005,7 +1026,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     <div class="container">
         <!-- 报告头部 -->
         <div class="header">
-            <h1>🔍 DiffSense 分析报告</h1>
+            <h1>�� DiffSense 分析报告</h1>
             <div class="subtitle">Git 代码影响分析</div>
             
             <div class="info-grid">

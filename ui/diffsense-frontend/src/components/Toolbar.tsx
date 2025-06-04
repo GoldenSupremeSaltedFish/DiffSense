@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { postMessage } from "../utils/vscode";
+import { postMessage, saveState, getState } from "../utils/vscode";
 
 // Mock类型，避免重复定义
 type MockApi = {
@@ -33,6 +33,54 @@ const Toolbar = () => {
     'Custom Date Range',
     'Commit ID Range'
   ];
+
+  // 组件挂载时恢复状态
+  useEffect(() => {
+    const savedState = getState();
+    console.log('🔄 恢复保存的状态:', savedState);
+    
+    if (savedState.selectedBranch) {
+      setSelectedBranch(savedState.selectedBranch);
+    }
+    if (savedState.selectedRange) {
+      setSelectedRange(savedState.selectedRange);
+    }
+    if (savedState.startCommitId) {
+      setStartCommitId(savedState.startCommitId);
+    }
+    if (savedState.endCommitId) {
+      setEndCommitId(savedState.endCommitId);
+    }
+    if (savedState.customDateFrom) {
+      setCustomDateFrom(savedState.customDateFrom);
+    }
+    if (savedState.customDateTo) {
+      setCustomDateTo(savedState.customDateTo);
+    }
+    if (savedState.branches) {
+      setBranches(savedState.branches);
+    }
+
+    // 请求最新的分支列表和分析结果
+    postMessage({ command: 'getBranches' });
+    postMessage({ command: 'restoreAnalysisResults' });
+  }, []);
+
+  // 保存状态当状态发生变化时
+  useEffect(() => {
+    const currentState = {
+      selectedBranch,
+      selectedRange,
+      startCommitId,
+      endCommitId,
+      customDateFrom,
+      customDateTo,
+      branches
+    };
+    
+    saveState(currentState);
+    console.log('💾 保存状态:', currentState);
+  }, [selectedBranch, selectedRange, startCommitId, endCommitId, customDateFrom, customDateTo, branches]);
 
   useEffect(() => {
     // 监听来自扩展的消息
