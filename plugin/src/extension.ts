@@ -1026,7 +1026,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     <div class="container">
         <!-- 报告头部 -->
         <div class="header">
-            <h1>�� DiffSense 分析报告</h1>
+            <h1>🔍 DiffSense 分析报告</h1>
             <div class="subtitle">Git 代码影响分析</div>
             
             <div class="info-grid">
