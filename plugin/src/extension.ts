@@ -29,6 +29,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
   private _view?: vscode.WebviewView;
   private _lastReportPath?: string; // 保存最后生成的报告路径
+  private _lastAnalysisResult?: any[]; // 保存最后的分析结果
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -71,6 +72,9 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
           break;
         case 'openReportInBrowser':
           await this.openReportInBrowser(data.reportPath);
+          break;
+        case 'exportResults':
+          await this.handleExportResults();
           break;
       }
     });
@@ -135,6 +139,9 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       const parsedResult = this.parseAnalysisResult(result.stdout);
       console.log('解析后的结果:', parsedResult);
       console.log('解析后结果数量:', Array.isArray(parsedResult) ? parsedResult.length : '非数组');
+      
+      // 保存分析结果用于导出
+      this._lastAnalysisResult = parsedResult;
       
       // 发送分析完成消息到侧栏，包含报告路径信息
       this._view?.webview.postMessage({
@@ -732,6 +739,70 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         }
       });
     });
+  }
+
+  private async handleExportResults() {
+    try {
+      if (!this._lastAnalysisResult || this._lastAnalysisResult.length === 0) {
+        vscode.window.showWarningMessage('没有可导出的分析结果，请先进行分析');
+        return;
+      }
+
+      // 获取工作区路径
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      if (!workspaceFolder) {
+        throw new Error('未找到工作区文件夹');
+      }
+
+      // 生成导出文件名
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const fileName = `diffsense-analysis-${timestamp}.json`;
+      
+      // 让用户选择保存位置
+      const saveUri = await vscode.window.showSaveDialog({
+        defaultUri: vscode.Uri.file(path.join(workspaceFolder.uri.fsPath, fileName)),
+        filters: {
+          'JSON文件': ['json']
+        }
+      });
+
+      if (!saveUri) {
+        return; // 用户取消了保存
+      }
+
+      // 创建导出数据
+      const exportData = {
+        exportInfo: {
+          timestamp: new Date().toISOString(),
+          repository: workspaceFolder.uri.fsPath,
+          totalCommits: this._lastAnalysisResult.length,
+          exportedBy: 'DiffSense VSCode Extension'
+        },
+        analysisResults: this._lastAnalysisResult
+      };
+
+      // 写入文件
+      const jsonContent = JSON.stringify(exportData, null, 2);
+      await fs.promises.writeFile(saveUri.fsPath, jsonContent, 'utf-8');
+
+      // 显示成功消息
+      const action = await vscode.window.showInformationMessage(
+        `分析结果已导出到: ${path.basename(saveUri.fsPath)}`, 
+        '打开文件', 
+        '在资源管理器中显示'
+      );
+
+      if (action === '打开文件') {
+        const document = await vscode.workspace.openTextDocument(saveUri);
+        await vscode.window.showTextDocument(document);
+      } else if (action === '在资源管理器中显示') {
+        await vscode.commands.executeCommand('revealFileInOS', saveUri);
+      }
+
+    } catch (error) {
+      console.error('导出结果失败:', error);
+      vscode.window.showErrorMessage(`导出失败: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 }
 

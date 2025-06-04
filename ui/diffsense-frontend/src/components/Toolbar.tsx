@@ -128,6 +128,13 @@ const Toolbar = () => {
   const isCustomRange = selectedRange === 'Custom Date Range';
   const isCommitRange = selectedRange === 'Commit ID Range';
 
+  // 导出分析结果为JSON文件
+  const handleExportResults = () => {
+    postMessage({
+      command: 'exportResults'
+    });
+  };
+
   return (
     <div className="toolbar-container react-component" style={{
       display: "flex",
@@ -265,22 +272,49 @@ const Toolbar = () => {
         </div>
       )}
 
-      {/* 分析按钮 */}
-      <button 
-        onClick={handleAnalyze}
-        disabled={isAnalyzing || !selectedBranch}
-        style={{
-          backgroundColor: isAnalyzing ? 
-            "var(--vscode-button-secondaryBackground)" : 
-            "var(--vscode-button-background)",
-          cursor: isAnalyzing ? "not-allowed" : "pointer",
-          height: "var(--button-height)",
-          fontSize: "11px",
-          fontWeight: "600"
-        }}
-      >
-        {isAnalyzing ? "分析中..." : "🔍 开始分析"}
-      </button>
+      {/* 分析按钮和导出按钮 */}
+      <div style={{ 
+        display: 'flex', 
+        gap: '8px',
+        marginTop: '12px'
+      }}>
+        <button 
+          onClick={handleAnalyze}
+          disabled={!selectedBranch || isAnalyzing}
+          style={{ 
+            flex: 1,
+            fontSize: '11px',
+            padding: '6px 8px',
+            backgroundColor: isAnalyzing ? 
+              'var(--vscode-button-secondaryBackground)' : 
+              'var(--vscode-button-background)',
+            color: isAnalyzing ? 
+              'var(--vscode-button-secondaryForeground)' : 
+              'var(--vscode-button-foreground)',
+            border: 'none',
+            borderRadius: '3px',
+            cursor: isAnalyzing ? 'not-allowed' : 'pointer'
+          }}
+        >
+          {isAnalyzing ? '🔄 分析中...' : '🚀 开始分析'}
+        </button>
+        
+        <button 
+          onClick={handleExportResults}
+          style={{ 
+            fontSize: '11px',
+            padding: '6px 8px',
+            backgroundColor: 'var(--vscode-button-secondaryBackground)',
+            color: 'var(--vscode-button-secondaryForeground)',
+            border: 'none',
+            borderRadius: '3px',
+            cursor: 'pointer',
+            minWidth: '80px'
+          }}
+        >
+          📁 导出结果
+        </button>
+      </div>
 
       {/* 状态信息 */}
       {branches.length === 0 && (
