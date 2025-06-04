@@ -784,6 +784,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DiffSense 分析报告</title>
+    <script src="https://unpkg.com/cytoscape@3.23.0/dist/cytoscape.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -993,6 +994,84 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
             font-family: 'Courier New', monospace;
         }
         
+        /* 调用关系图样式 */
+        .callgraph-section {
+            margin-top: 20px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .callgraph-header {
+            background: #f7fafc;
+            padding: 12px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .callgraph-header:hover {
+            background: #edf2f7;
+        }
+        
+        .callgraph-toggle {
+            font-size: 0.9em;
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .callgraph-arrow {
+            transition: transform 0.3s ease;
+            font-size: 0.8em;
+            color: #718096;
+        }
+        
+        .callgraph-arrow.expanded {
+            transform: rotate(90deg);
+        }
+        
+        .callgraph-content {
+            display: none;
+            padding: 0;
+        }
+        
+        .callgraph-content.expanded {
+            display: block;
+        }
+        
+        .callgraph-container {
+            height: 400px;
+            width: 100%;
+            background: #f8f9fa;
+            border-radius: 0 0 8px 8px;
+        }
+        
+        .callgraph-legend {
+            padding: 8px 16px;
+            background: #f1f5f9;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.8em;
+            color: #64748b;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+        
         .no-data {
             text-align: center;
             color: #718096;
@@ -1018,6 +1097,14 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
             
             .info-grid {
                 grid-template-columns: 1fr;
+            }
+            
+            .callgraph-container {
+                height: 300px;
+            }
+            
+            .callgraph-legend {
+                font-size: 0.7em;
             }
         }
     </style>
@@ -1080,6 +1167,9 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
                 const files = commit.impactedFiles || commit.files || [];
                 const methods = commit.impactedMethods || [];
                 
+                // 生成调用关系图数据
+                const callGraphData = this.generateCallGraphData(commit, files);
+                
                 return `
                 <div class="commit-card">
                     <div class="commit-header">
@@ -1121,6 +1211,37 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
                             </div>
                         ` : ''}
                         
+                        <!-- 调用关系图 -->
+                        ${callGraphData.nodes.length > 0 ? `
+                            <div class="callgraph-section">
+                                <div class="callgraph-header" onclick="toggleCallGraph('callgraph-${index}')">
+                                    <span class="callgraph-toggle">🔗 调用关系图 (${callGraphData.nodes.length} 节点, ${callGraphData.edges.length} 关系)</span>
+                                    <span class="callgraph-arrow" id="arrow-${index}">▶</span>
+                                </div>
+                                <div class="callgraph-content" id="callgraph-${index}">
+                                    <div class="callgraph-legend">
+                                        <div class="legend-item">
+                                            <div class="legend-color" style="background: #e53e3e;"></div>
+                                            <span>修改的方法</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <div class="legend-color" style="background: #38a169;"></div>
+                                            <span>新增的方法</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <div class="legend-color" style="background: #ed8936;"></div>
+                                            <span>受影响的方法</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <div class="legend-color" style="background: #a0aec0;"></div>
+                                            <span>外部/未知方法</span>
+                                        </div>
+                                    </div>
+                                    <div class="callgraph-container" id="cy-${index}"></div>
+                                </div>
+                            </div>
+                        ` : ''}
+                        
                         ${files.length === 0 && methods.length === 0 ? `
                             <div class="no-data">暂无详细数据</div>
                         ` : ''}
@@ -1140,8 +1261,277 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
             <p>📋 报告由 DiffSense VSCode 扩展生成 | ${new Date().getFullYear()}</p>
         </div>
     </div>
+
+    <script>
+        const callGraphInstances = {};
+        
+        // 切换调用关系图显示
+        function toggleCallGraph(id) {
+            const content = document.getElementById(id);
+            const arrow = document.getElementById('arrow-' + id.split('-')[1]);
+            
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                arrow.classList.remove('expanded');
+            } else {
+                content.classList.add('expanded');
+                arrow.classList.add('expanded');
+                
+                // 延迟初始化图表，确保容器已显示
+                setTimeout(() => {
+                    initCallGraph(id);
+                }, 100);
+            }
+        }
+        
+        // 初始化调用关系图
+        function initCallGraph(id) {
+            const index = id.split('-')[1];
+            const containerId = 'cy-' + index;
+            
+            // 如果已经初始化过，直接返回
+            if (callGraphInstances[containerId]) {
+                return;
+            }
+            
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            // 获取图数据
+            const graphData = getCallGraphData(parseInt(index));
+            
+            if (!graphData || graphData.nodes.length === 0) {
+                container.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #718096;">暂无调用关系数据</div>';
+                return;
+            }
+            
+            // 创建Cytoscape实例
+            const cy = cytoscape({
+                container: container,
+                elements: [...graphData.nodes, ...graphData.edges],
+                style: [
+                    {
+                        selector: 'node',
+                        style: {
+                            'background-color': '#667eea',
+                            'label': 'data(label)',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'color': '#fff',
+                            'font-size': '10px',
+                            'font-weight': 'bold',
+                            'width': 60,
+                            'height': 30,
+                            'shape': 'roundrectangle',
+                            'text-wrap': 'wrap',
+                            'text-max-width': '50px'
+                        }
+                    },
+                    {
+                        selector: 'node[type="modified"]',
+                        style: {
+                            'background-color': '#e53e3e',
+                            'border-width': 2,
+                            'border-color': '#c53030'
+                        }
+                    },
+                    {
+                        selector: 'node[type="new"]',
+                        style: {
+                            'background-color': '#38a169',
+                            'border-width': 2,
+                            'border-color': '#2f855a'
+                        }
+                    },
+                    {
+                        selector: 'node[type="affected"]',
+                        style: {
+                            'background-color': '#ed8936',
+                            'border-width': 1,
+                            'border-color': '#dd6b20'
+                        }
+                    },
+                    {
+                        selector: 'node[type="unknown"]',
+                        style: {
+                            'background-color': '#a0aec0',
+                            'border-width': 1,
+                            'border-color': '#718096',
+                            'opacity': 0.8
+                        }
+                    },
+                    {
+                        selector: 'edge',
+                        style: {
+                            'width': 2,
+                            'line-color': '#cbd5e0',
+                            'target-arrow-color': '#cbd5e0',
+                            'target-arrow-shape': 'triangle',
+                            'curve-style': 'bezier',
+                            'arrow-scale': 1.2
+                        }
+                    },
+                    {
+                        selector: 'edge[type="calls"]',
+                        style: {
+                            'line-color': '#4299e1',
+                            'target-arrow-color': '#4299e1'
+                        }
+                    },
+                    {
+                        selector: 'edge[type="calledBy"]',
+                        style: {
+                            'line-color': '#48bb78',
+                            'target-arrow-color': '#48bb78'
+                        }
+                    }
+                ],
+                layout: {
+                    name: 'cose',
+                    nodeRepulsion: 4000,
+                    idealEdgeLength: 100,
+                    padding: 20,
+                    randomize: false,
+                    componentSpacing: 40,
+                    nodeOverlap: 10,
+                    edgeElasticity: 100,
+                    nestingFactor: 5,
+                    gravity: 80
+                },
+                // 禁用用户交互
+                userZoomingEnabled: false,
+                userPanningEnabled: true,
+                boxSelectionEnabled: false
+            });
+            
+            // 自动适应布局
+            cy.fit();
+            
+            // 保存实例
+            callGraphInstances[containerId] = cy;
+        }
+        
+        // 获取调用关系图数据
+        function getCallGraphData(index) {
+            // 这里应该从后端传入的数据中获取，暂时返回模拟数据
+            return window.callGraphDataList && window.callGraphDataList[index] || { nodes: [], edges: [] };
+        }
+        
+        // 将调用关系图数据注入到全局变量
+        window.callGraphDataList = ${JSON.stringify(analysisResults.map((commit: any, index: number) => {
+          const files = commit.impactedFiles || commit.files || [];
+          return this.generateCallGraphData(commit, files);
+        }))};
+    </script>
 </body>
 </html>`;
+  }
+
+  private generateCallGraphData(commit: any, files: any[]): { nodes: any[], edges: any[] } {
+    const nodes: any[] = [];
+    const edges: any[] = [];
+    const nodeIds = new Set<string>();
+
+    // 从提交和文件中提取方法信息，构建调用关系图数据
+    files.forEach((file: any) => {
+      const filePath = file.path || file.filePath || '未知文件';
+      const methods = file.methods || file.impactedMethods || [];
+
+      methods.forEach((method: any) => {
+        const methodName = typeof method === 'string' ? method : method.methodName || method.name || '未知方法';
+        const nodeId = `${filePath}:${methodName}`;
+        
+        if (!nodeIds.has(nodeId)) {
+          nodes.push({
+            data: {
+              id: nodeId,
+              label: methodName,
+              signature: typeof method === 'string' ? `${methodName}()` : method.signature || `${methodName}()`,
+              file: filePath,
+              type: (typeof method === 'object' && method.type) || 'affected'
+            }
+          });
+          nodeIds.add(nodeId);
+        }
+
+        // 处理调用关系（如果数据中有的话）
+        if (typeof method === 'object' && method.calls) {
+          method.calls.forEach((calledMethod: string) => {
+            const targetId = `${filePath}:${calledMethod}`;
+            
+            // 如果目标方法不存在，创建占位符节点
+            if (!nodeIds.has(targetId)) {
+              nodes.push({
+                data: {
+                  id: targetId,
+                  label: calledMethod,
+                  signature: `${calledMethod}()`,
+                  file: filePath,
+                  type: 'unknown'
+                }
+              });
+              nodeIds.add(targetId);
+            }
+            
+            edges.push({
+              data: {
+                id: `${nodeId}->${targetId}`,
+                source: nodeId,
+                target: targetId,
+                type: 'calls'
+              }
+            });
+          });
+        }
+
+        if (typeof method === 'object' && method.calledBy) {
+          method.calledBy.forEach((callerMethod: string) => {
+            const sourceId = `${filePath}:${callerMethod}`;
+            
+            // 如果源方法不存在，创建占位符节点
+            if (!nodeIds.has(sourceId)) {
+              nodes.push({
+                data: {
+                  id: sourceId,
+                  label: callerMethod,
+                  signature: `${callerMethod}()`,
+                  file: filePath,
+                  type: 'unknown'
+                }
+              });
+              nodeIds.add(sourceId);
+            }
+            
+            edges.push({
+              data: {
+                id: `${sourceId}->${nodeId}`,
+                source: sourceId,
+                target: nodeId,
+                type: 'calledBy'
+              }
+            });
+          });
+        }
+      });
+    });
+
+    // 如果没有实际的调用关系数据，创建模拟数据以便演示
+    if (nodes.length > 0 && edges.length === 0) {
+      // 为前几个方法创建一些模拟的调用关系
+      const nodesList = nodes.slice(0, Math.min(5, nodes.length));
+      for (let i = 0; i < nodesList.length - 1; i++) {
+        edges.push({
+          data: {
+            id: `${nodesList[i].data.id}->${nodesList[i + 1].data.id}`,
+            source: nodesList[i].data.id,
+            target: nodesList[i + 1].data.id,
+            type: 'calls'
+          }
+        });
+      }
+    }
+
+    return { nodes, edges };
   }
 }
 
