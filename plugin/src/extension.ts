@@ -496,32 +496,6 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
             position: relative;
           }
           
-          /* 调试边框 */
-          body {
-            border: 2px solid red !important;
-            min-height: 100vh !important;
-          }
-          
-          #root {
-            border: 2px solid blue !important;
-            min-height: 200px !important;
-          }
-          
-          /* 紫色边框用于App容器 */
-          .app-container {
-            border: 2px solid purple !important;
-            min-height: 150px !important;
-          }
-          
-          /* 绿色边框用于React组件 */
-          .react-component {
-            border: 1px solid green !important;
-            min-height: 50px !important;
-            padding: 4px;
-            margin: 2px;
-            position: relative;
-          }
-          
           /* 强制可见性 */
           .app-container,
           .react-component,
@@ -532,70 +506,23 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
           }
         </style>
         <script>
-          // 增强的调试脚本
-          console.log('🎯 DiffSense WebView HTML loaded');
-          console.log('🌐 User Agent:', navigator.userAgent);
-          console.log('📍 Location:', window.location.href);
+          // 基本的错误处理和状态监控
+          console.log('DiffSense WebView loaded');
           
           // 错误处理
           window.addEventListener('error', (e) => {
-            console.error('❌ Global error:', e.error);
-            console.error('❌ Error details:', {
-              message: e.message,
-              filename: e.filename,
-              lineno: e.lineno,
-              colno: e.colno
-            });
+            console.error('Global error:', e.error);
           });
           
           window.addEventListener('unhandledrejection', (e) => {
-            console.error('❌ Unhandled promise rejection:', e.reason);
+            console.error('Unhandled promise rejection:', e.reason);
           });
           
-          // DOM监控
-          const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-              if (mutation.type === 'childList') {
-                console.log('🔄 DOM changed:', mutation.target, 'added:', mutation.addedNodes.length, 'removed:', mutation.removedNodes.length);
-              }
-            });
-          });
-          
-          window.addEventListener('load', () => {
-            console.log('✅ Window loaded');
-            console.log('📏 Body dimensions:', document.body.offsetWidth, 'x', document.body.offsetHeight);
-            
-            const root = document.getElementById('root');
-            console.log('🎯 Root element:', root);
-            console.log('📏 Root dimensions:', root?.offsetWidth, 'x', root?.offsetHeight);
-            
-            // 开始监控DOM变化
-            if (root) {
-              observer.observe(root, { childList: true, subtree: true });
-            }
-            
-            // 定期检查
-            let checkCount = 0;
-            const checker = setInterval(() => {
-              checkCount++;
-              console.log('🔍 Check #' + checkCount + ':');
-              console.log('  Root content length:', root?.innerHTML?.length || 0);
-              console.log('  React components:', document.querySelectorAll('.react-component').length);
-              console.log('  App containers:', document.querySelectorAll('.app-container').length);
-              
-              if (checkCount >= 10) {
-                clearInterval(checker);
-                console.log('🏁 Stopping periodic checks');
-              }
-            }, 1000);
-          });
-          
-          // VSCode API检查（不获取API，只检查是否存在）
+          // VSCode API检查
           if (typeof acquireVsCodeApi !== 'undefined') {
-            console.log('✅ VSCode API available');
-            // 不在这里获取API，让React应用去获取
+            console.log('VSCode API available');
           } else {
-            console.warn('⚠️ VSCode API not available');
+            console.warn('VSCode API not available');
           }
         </script>
       `;
