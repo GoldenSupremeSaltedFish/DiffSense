@@ -37,12 +37,25 @@ const CommitList = () => {
               JSON.parse(message.data) : message.data;
             
             console.log('收到分析结果:', jsonData);
+            console.log('数据类型:', typeof jsonData);
+            console.log('是否为数组:', Array.isArray(jsonData));
+            
+            if (Array.isArray(jsonData)) {
+              console.log('数组长度:', jsonData.length);
+              if (jsonData.length > 0) {
+                console.log('第一个元素:', jsonData[0]);
+                console.log('第一个元素的commitId:', jsonData[0]?.commitId);
+                console.log('第一个元素类型:', typeof jsonData[0]);
+              }
+            }
+            
             setImpacts(Array.isArray(jsonData) ? jsonData : []);
             setReportPath(message.reportPath || null);
             setIsLoading(false);
             setError(null);
           } catch (parseError) {
             console.error('解析JSON数据失败:', parseError);
+            console.error('原始数据:', message.data);
             setError('解析分析结果失败');
             setIsLoading(false);
           }

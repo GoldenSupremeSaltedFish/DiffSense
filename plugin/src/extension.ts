@@ -100,6 +100,9 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
   private async handleAnalysisRequest(data: any) {
     try {
+      console.log('=== 开始分析请求 ===');
+      console.log('请求数据:', data);
+      
       // 发送开始分析消息
       this._view?.webview.postMessage({
         command: 'analysisStarted'
@@ -128,7 +131,10 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       const result = await this.executeJarAnalysis(jarPath, repoPath, data);
       
       // 解析结果并发送给前端
+      console.log('=== 开始解析JAR结果 ===');
       const parsedResult = this.parseAnalysisResult(result.stdout);
+      console.log('解析后的结果:', parsedResult);
+      console.log('解析后结果数量:', Array.isArray(parsedResult) ? parsedResult.length : '非数组');
       
       // 发送分析完成消息到侧栏，包含报告路径信息
       this._view?.webview.postMessage({
@@ -320,6 +326,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
       console.log('执行命令:', 'java', args.join(' '));
       console.log('工作目录:', repoPath);
+      console.log('完整参数列表:', args);
 
       // 执行Java JAR，设置工作目录为要分析的仓库路径
       const child = execFile('java', args, {
@@ -335,6 +342,25 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
           console.log('JAR执行成功');
           console.log('stderr信息:', stderr); // 显示调试信息
           console.log('JSON输出长度:', stdout.length);
+          console.log('=== JAR原始输出开始 ===');
+          console.log(stdout);
+          console.log('=== JAR原始输出结束 ===');
+          
+          // 尝试解析JSON以验证格式
+          try {
+            const parsed = JSON.parse(stdout);
+            console.log('JSON解析成功，数据类型:', typeof parsed);
+            console.log('是否为数组:', Array.isArray(parsed));
+            if (Array.isArray(parsed)) {
+              console.log('数组长度:', parsed.length);
+              console.log('第一个元素:', parsed[0]);
+            } else {
+              console.log('JSON对象结构:', Object.keys(parsed));
+            }
+          } catch (parseError) {
+            console.error('JSON解析失败:', parseError);
+            console.log('输出前500字符:', stdout.substring(0, 500));
+          }
           
           // 不再保存报告路径，直接返回JSON输出
           resolve({ stdout });

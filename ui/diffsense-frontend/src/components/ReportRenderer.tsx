@@ -139,7 +139,7 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts }) => {
                   fontSize: "10px",
                   color: "var(--vscode-descriptionForeground)"
                 }}>
-                  {commit.commitId.substring(0, 7)}
+                  {commit.commitId ? commit.commitId.substring(0, 7) : 'Unknown'}
                 </span>
                 <span style={{ 
                   fontSize: "12px", 
@@ -150,10 +150,10 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts }) => {
                 </span>
               </div>
               <div style={{ fontSize: "11px", marginBottom: "4px" }}>
-                {commit.message}
+                {commit.message || '无提交信息'}
               </div>
               <div style={{ fontSize: "9px", color: "var(--vscode-descriptionForeground)" }}>
-                {commit.author.name} • 变更: {commit.changedFilesCount} 文件, {commit.changedMethodsCount} 方法
+                {commit.author?.name || '未知作者'} • 变更: {commit.changedFilesCount || 0} 文件, {commit.changedMethodsCount || 0} 方法
               </div>
             </div>
           ))}
@@ -179,17 +179,17 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts }) => {
                 fontSize: "10px",
                 color: "var(--vscode-textLink-foreground)"
               }}>
-                {commit.commitId.substring(0, 7)}
+                {commit.commitId ? commit.commitId.substring(0, 7) : 'Unknown'}
               </span>
               <span style={{ fontSize: "9px", color: "var(--vscode-descriptionForeground)" }}>
                 {formatDate(commit.timestamp)}
               </span>
             </div>
             <div style={{ fontSize: "11px", marginBottom: "6px", fontWeight: "500" }}>
-              {commit.message}
+              {commit.message || '无提交信息'}
             </div>
             <div style={{ fontSize: "9px", color: "var(--vscode-descriptionForeground)", marginBottom: "4px" }}>
-              作者: {commit.author.name}
+              作者: {commit.author?.name || '未知作者'}
             </div>
             <div style={{ 
               display: "grid", 
@@ -198,10 +198,10 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts }) => {
               fontSize: "9px",
               color: "var(--vscode-descriptionForeground)"
             }}>
-              <div>变更文件: {commit.changedFilesCount}</div>
-              <div>变更方法: {commit.changedMethodsCount}</div>
-              <div>影响方法: {commit.impactedMethods.length}</div>
-              <div>影响测试: {Object.keys(commit.impactedTests).length}</div>
+              <div>变更文件: {commit.changedFilesCount || 0}</div>
+              <div>变更方法: {commit.changedMethodsCount || 0}</div>
+              <div>影响方法: {commit.impactedMethods?.length || 0}</div>
+              <div>影响测试: {Object.keys(commit.impactedTests || {}).length}</div>
             </div>
             {commit.riskScore > 0 && (
               <div style={{ 
