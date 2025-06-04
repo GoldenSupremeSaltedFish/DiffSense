@@ -315,7 +315,8 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
   private hasGoFiles(repoPath: string): boolean {
     try {
       // 查找Go文件，排除vendor目录
-      const goFiles = glob.sync('**/*.go', {
+      const { globSync } = require('glob');
+      const goFiles = globSync('**/*.go', {
         cwd: repoPath,
         ignore: ['vendor/**', '**/vendor/**']
       });
@@ -990,6 +991,11 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     const htmlPath = path.join(this._extensionUri.fsPath, '..', 'ui', 'diffsense-frontend', 'dist', 'index.html');
     
     try {
+      // 检查文件是否存在
+      if (!fs.existsSync(htmlPath)) {
+        throw new Error(`HTML文件不存在: ${htmlPath}`);
+      }
+
       // 读取HTML文件
       let htmlContent = fs.readFileSync(htmlPath, 'utf-8');
       
@@ -997,8 +1003,15 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       const resourceRoot = vscode.Uri.file(path.join(this._extensionUri.fsPath, '..', 'ui', 'diffsense-frontend', 'dist'));
       const resourceUri = webview.asWebviewUri(resourceRoot);
       
-      console.log('HTML路径:', htmlPath);
-      console.log('资源URI:', resourceUri.toString());
+      console.log('🔄 WebView 初始化');
+      console.log('📁 HTML路径:', htmlPath);
+      console.log('🌐 资源URI:', resourceUri.toString());
+      
+      // 检查资源文件是否存在
+      const assetsPath = path.join(this._extensionUri.fsPath, '..', 'ui', 'diffsense-frontend', 'dist', 'assets');
+      if (!fs.existsSync(assetsPath)) {
+        console.warn('⚠️ Assets目录不存在:', assetsPath);
+      }
       
       // 替换所有的资源路径为VSCode webview URI
       htmlContent = htmlContent.replace(
@@ -1014,7 +1027,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         `href="${resourceUri}/vite.svg"`
       );
       
-      // 添加调试样式和重置样式
+      // 添加增强的调试和初始化脚本
       const debugStyles = `
         <style>
           /* 重置和调试样式 */
@@ -1043,7 +1056,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
             position: relative;
           }
           
-          /* 强制可见性 */
+          /* 强制可见性和调试边框 */
           .app-container,
           .react-component,
           .main-view {
@@ -1051,76 +1064,312 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
             opacity: 1 !important;
             display: block !important;
           }
+          
+          /* 加载状态样式 */
+          .loading-indicator {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--vscode-editor-background);
+            color: var(--vscode-foreground);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 9999;
+            font-size: 14px;
+            text-align: center;
+          }
+          
+          .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--vscode-progressBar-background);
+            border-top: 2px solid var(--vscode-progressBar-foreground);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+          }
+          
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
         </style>
         <script>
-          // 基本的错误处理和状态监控
-          console.log('DiffSense WebView loaded');
+          // 增强的调试和初始化脚本
+          console.log('🚀 DiffSense WebView 开始加载');
+          console.log('📱 User Agent:', navigator.userAgent);
+          console.log('🔧 VSCode API可用性:', typeof acquireVsCodeApi);
           
-          // 错误处理
+          // 显示加载指示器
+          function showLoading() {
+            const existing = document.getElementById('loading-indicator');
+            if (existing) return;
+            
+            const loading = document.createElement('div');
+            loading.id = 'loading-indicator';
+            loading.className = 'loading-indicator';
+            loading.innerHTML = '<div class="loading-spinner"></div><div>正在加载 DiffSense...</div>';
+            document.body.appendChild(loading);
+          }
+          
+          // 隐藏加载指示器
+          function hideLoading() {
+            const loading = document.getElementById('loading-indicator');
+            if (loading) {
+              loading.remove();
+            }
+          }
+          
+          // 立即显示加载指示器
+          showLoading();
+          
+          // 全局错误处理
           window.addEventListener('error', (e) => {
-            console.error('Global error:', e.error);
+            console.error('❌ 全局错误:', {
+              message: e.message,
+              filename: e.filename,
+              lineno: e.lineno,
+              colno: e.colno,
+              error: e.error
+            });
+            hideLoading();
           });
           
           window.addEventListener('unhandledrejection', (e) => {
-            console.error('Unhandled promise rejection:', e.reason);
+            console.error('❌ 未处理的Promise拒绝:', e.reason);
+            hideLoading();
           });
           
-          // VSCode API检查
-          if (typeof acquireVsCodeApi !== 'undefined') {
-            console.log('VSCode API available');
-          } else {
-            console.warn('VSCode API not available');
+          // 资源加载检查
+          let resourcesLoaded = 0;
+          let totalResources = 0;
+          
+          function checkResourceLoading() {
+            const scripts = document.querySelectorAll('script[src]');
+            const stylesheets = document.querySelectorAll('link[rel="stylesheet"]');
+            totalResources = scripts.length + stylesheets.length;
+            
+            console.log('📦 总资源数: ' + totalResources + ' (脚本: ' + scripts.length + ', 样式: ' + stylesheets.length + ')');
+            
+            scripts.forEach((script, index) => {
+              script.onload = () => {
+                resourcesLoaded++;
+                console.log('✅ 脚本加载成功 (' + resourcesLoaded + '/' + totalResources + '): ' + script.src);
+                checkAllResourcesLoaded();
+              };
+              script.onerror = (e) => {
+                console.error('❌ 脚本加载失败: ' + script.src, e);
+                hideLoading();
+              };
+            });
+            
+            stylesheets.forEach((link, index) => {
+              link.onload = () => {
+                resourcesLoaded++;
+                console.log('✅ 样式加载成功 (' + resourcesLoaded + '/' + totalResources + '): ' + link.href);
+                checkAllResourcesLoaded();
+              };
+              link.onerror = (e) => {
+                console.error('❌ 样式加载失败: ' + link.href, e);
+                hideLoading();
+              };
+            });
           }
+          
+          function checkAllResourcesLoaded() {
+            if (resourcesLoaded >= totalResources) {
+              console.log('🎉 所有资源加载完成');
+              setTimeout(() => {
+                hideLoading();
+                // 检查React应用是否已挂载
+                checkReactMount();
+              }, 500);
+            }
+          }
+          
+          function checkReactMount() {
+            const root = document.getElementById('root');
+            if (root && root.children.length > 0) {
+              console.log('⚛️ React应用已挂载');
+            } else {
+              console.warn('⚠️ React应用未挂载到#root');
+              setTimeout(checkReactMount, 1000);
+            }
+          }
+          
+          // DOM加载完成后开始检查
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', checkResourceLoading);
+          } else {
+            checkResourceLoading();
+          }
+          
+          // VSCode API初始化
+          if (typeof acquireVsCodeApi !== 'undefined') {
+            console.log('🔗 VSCode API 可用，正在初始化...');
+            window.vscode = acquireVsCodeApi();
+            console.log('✅ VSCode API 已初始化');
+          } else {
+            console.warn('⚠️ VSCode API 不可用 (可能在开发模式下)');
+            // 提供模拟API用于开发
+            window.vscode = {
+              postMessage: (msg) => console.log('📤 模拟发送消息:', msg),
+              getState: () => ({}),
+              setState: (state) => console.log('💾 模拟保存状态:', state)
+            };
+          }
+          
+          // 10秒后如果还在加载，显示警告
+          setTimeout(() => {
+            const loading = document.getElementById('loading-indicator');
+            if (loading) {
+              loading.innerHTML = '<div class="loading-spinner"></div><div>加载时间较长，请检查网络连接...</div><div style="font-size: 12px; margin-top: 8px; opacity: 0.7;">如果持续无响应，请尝试刷新扩展</div>';
+            }
+          }, 10000);
         </script>
       `;
       
       // 插入调试样式到head中
       htmlContent = htmlContent.replace('</head>', `${debugStyles}</head>`);
       
+      console.log('✅ WebView HTML生成成功');
       return htmlContent;
-    } catch (error) {
-      console.error('读取HTML文件失败:', error);
       
-      // 返回更详细的fallback HTML
+    } catch (error) {
+      console.error('❌ 读取HTML文件失败:', error);
+      
+      // 返回增强的fallback HTML，包含详细诊断信息
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const fileExists = fs.existsSync(htmlPath) ? '是' : '否';
+      const currentTime = new Date().toLocaleString();
+      
       return `
         <!DOCTYPE html>
         <html>
         <head>
-          <title>DiffSense - Debug</title>
+          <title>DiffSense - 诊断模式</title>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
             body { 
-              font-family: var(--vscode-font-family); 
+              font-family: var(--vscode-font-family, 'Segoe UI', sans-serif); 
               padding: 20px; 
-              color: var(--vscode-foreground);
-              background-color: var(--vscode-editor-background);
-              border: 2px solid orange;
+              color: var(--vscode-foreground, #333);
+              background-color: var(--vscode-editor-background, #fff);
+              margin: 0;
+              line-height: 1.5;
             }
-            .error { 
-              color: var(--vscode-errorForeground); 
-              background: var(--vscode-inputValidation-errorBackground); 
-              padding: 10px; 
-              border-radius: 4px; 
+            .error-container { 
+              background: var(--vscode-inputValidation-errorBackground, #ffe6e6); 
+              border: 1px solid var(--vscode-inputValidation-errorBorder, #ff6b6b);
+              padding: 16px; 
+              border-radius: 6px; 
+              margin-bottom: 16px;
+            }
+            .error-title {
+              color: var(--vscode-errorForeground, #d32f2f);
+              font-weight: 600;
+              font-size: 16px;
+              margin-bottom: 8px;
             }
             .debug-info {
-              margin-top: 10px;
-              font-size: 10px;
-              color: var(--vscode-descriptionForeground);
+              background: var(--vscode-textBlockQuote-background, #f5f5f5);
+              border-left: 4px solid var(--vscode-textBlockQuote-border, #ccc);
+              padding: 12px;
+              margin: 12px 0;
+              font-family: 'Courier New', monospace;
+              font-size: 11px;
+              color: var(--vscode-descriptionForeground, #666);
+              border-radius: 0 4px 4px 0;
+            }
+            .debug-item {
+              margin: 4px 0;
+              word-break: break-all;
+            }
+            .retry-button {
+              background: var(--vscode-button-background, #007acc);
+              color: var(--vscode-button-foreground, #fff);
+              border: none;
+              padding: 8px 16px;
+              border-radius: 4px;
+              cursor: pointer;
+              font-size: 13px;
+              margin-top: 12px;
+            }
+            .retry-button:hover {
+              background: var(--vscode-button-hoverBackground, #005a9e);
+            }
+            .status {
+              padding: 8px 12px;
+              background: var(--vscode-inputValidation-infoBackground, #e3f2fd);
+              border-left: 4px solid var(--vscode-inputValidation-infoBorder, #2196f3);
+              margin: 12px 0;
+              border-radius: 0 4px 4px 0;
+              font-size: 13px;
             }
           </style>
         </head>
         <body>
-          <div class="error">
-            <h3>⚠️ 前端资源加载失败</h3>
-            <p>无法找到前端构建文件</p>
-            <div class="debug-info">
-              <p>路径: ${htmlPath}</p>
-              <p>Extension URI: ${this._extensionUri.fsPath}</p>
-              <p>错误: ${error}</p>
-            </div>
+          <div class="error-container">
+            <div class="error-title">⚠️ DiffSense 前端资源加载失败</div>
+            <p>无法加载前端构建文件。这通常是由于以下原因之一：</p>
+            <ul>
+              <li>前端项目尚未构建或构建失败</li>
+              <li>构建产物路径不正确</li>
+              <li>VSCode扩展权限限制</li>
+            </ul>
           </div>
+          
+          <div class="debug-info">
+            <strong>🔍 诊断信息：</strong><br>
+            <div class="debug-item"><strong>目标HTML路径:</strong> ${htmlPath}</div>
+            <div class="debug-item"><strong>扩展根路径:</strong> ${this._extensionUri.fsPath}</div>
+            <div class="debug-item"><strong>错误详情:</strong> ${errorMessage}</div>
+            <div class="debug-item"><strong>文件是否存在:</strong> ${fileExists}</div>
+            <div class="debug-item"><strong>当前时间:</strong> ${currentTime}</div>
+          </div>
+          
+          <div class="status">
+            <strong>💡 解决方案：</strong><br>
+            1. 确保已在 ui/diffsense-frontend 目录运行 <code>npm run build</code><br>
+            2. 检查 dist/ 目录是否存在且包含 index.html<br>
+            3. 重新加载 VSCode 窗口 (Ctrl+Shift+P → "Developer: Reload Window")<br>
+            4. 如果问题持续，请查看 VSCode 开发者控制台获取更多信息
+          </div>
+          
+          <button class="retry-button" onclick="location.reload()">🔄 重新加载</button>
+          
           <script>
-            console.log('Fallback HTML loaded');
-            console.log('VSCode API available:', typeof acquireVsCodeApi);
+            console.log('🔧 DiffSense 诊断模式启动');
+            console.log('📊 诊断信息:', {
+              htmlPath: '${htmlPath}',
+              extensionPath: '${this._extensionUri.fsPath}',
+              error: '${errorMessage}',
+              timestamp: new Date().toISOString()
+            });
+            
+            // 检查VSCode API
+            if (typeof acquireVsCodeApi !== 'undefined') {
+              console.log('✅ VSCode API 可用');
+              window.vscode = acquireVsCodeApi();
+            } else {
+              console.warn('⚠️ VSCode API 不可用');
+            }
+            
+            // 定期发送心跳，确认webview正在运行
+            setInterval(() => {
+              console.log('💓 WebView 心跳:', new Date().toLocaleTimeString());
+            }, 30000);
+            
+            // 添加键盘快捷键支持
+            document.addEventListener('keydown', (e) => {
+              if (e.ctrlKey && e.key === 'r') {
+                e.preventDefault();
+                location.reload();
+              }
+            });
           </script>
         </body>
         </html>

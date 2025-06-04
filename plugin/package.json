@@ -56,6 +56,9 @@
   "scripts": {
     "compile": "tsc"
   },
+  "dependencies": {
+    "glob": "^10.3.0"
+  },
   "devDependencies": {
     "@types/glob": "^8.1.0",
     "@types/node": "18.x",
