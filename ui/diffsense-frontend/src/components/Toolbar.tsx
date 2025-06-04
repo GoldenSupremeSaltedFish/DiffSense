@@ -21,6 +21,7 @@ const Toolbar = () => {
   // 新增：分析范围和类型状态
   const [analysisScope, setAnalysisScope] = useState<'backend' | 'frontend' | 'mixed'>('backend');
   const [projectType, setProjectType] = useState<'backend' | 'frontend' | 'mixed' | 'unknown'>('unknown');
+  const [backendLanguage, setBackendLanguage] = useState<'java' | 'golang' | 'unknown'>('unknown');
   const [analysisTypes, setAnalysisTypes] = useState<string[]>([]);
   const [frontendPath, setFrontendPath] = useState<string>('');
   
@@ -79,6 +80,9 @@ const Toolbar = () => {
     if (savedState.frontendPath) {
       setFrontendPath(savedState.frontendPath);
     }
+    if (savedState.backendLanguage) {
+      setBackendLanguage(savedState.backendLanguage);
+    }
     if (savedState.startCommitId) {
       setStartCommitId(savedState.startCommitId);
     }
@@ -109,6 +113,7 @@ const Toolbar = () => {
       analysisScope,
       analysisTypes,
       frontendPath,
+      backendLanguage,
       startCommitId,
       endCommitId,
       customDateFrom,
@@ -118,7 +123,7 @@ const Toolbar = () => {
     
     saveState(currentState);
     console.log('💾 保存状态:', currentState);
-  }, [selectedBranch, selectedRange, analysisScope, analysisTypes, frontendPath, startCommitId, endCommitId, customDateFrom, customDateTo, branches]);
+  }, [selectedBranch, selectedRange, analysisScope, analysisTypes, frontendPath, backendLanguage, startCommitId, endCommitId, customDateFrom, customDateTo, branches]);
 
   // 当分析范围改变时，重置分析类型并设置默认值
   useEffect(() => {
@@ -143,6 +148,7 @@ const Toolbar = () => {
           break;
         case 'projectTypeDetected':
           setProjectType(message.projectType);
+          setBackendLanguage(message.backendLanguage || 'unknown');
           // 根据检测结果自动设置分析范围
           if (message.projectType !== 'unknown' && message.projectType !== 'mixed') {
             setAnalysisScope(message.projectType);
@@ -253,11 +259,17 @@ const Toolbar = () => {
   const getProjectTypeInfo = () => {
     switch (projectType) {
       case 'backend':
-        return { text: '🔧 Java后端项目', color: '#4CAF50' };
+        const backendText = backendLanguage === 'java' ? '☕ Java后端项目' : 
+                           backendLanguage === 'golang' ? '🐹 Golang后端项目' : 
+                           '🔧 后端项目';
+        return { text: backendText, color: '#4CAF50' };
       case 'frontend':
         return { text: '🌐 前端项目', color: '#2196F3' };
       case 'mixed':
-        return { text: '🧩 混合项目', color: '#FF9800' };
+        const mixedText = backendLanguage === 'java' ? '🧩 混合项目 (Java + 前端)' :
+                         backendLanguage === 'golang' ? '🧩 混合项目 (Golang + 前端)' :
+                         '🧩 混合项目';
+        return { text: mixedText, color: '#FF9800' };
       default:
         return { text: '❓ 未知项目类型', color: '#757575' };
     }

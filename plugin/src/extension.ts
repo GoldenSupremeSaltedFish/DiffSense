@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { execFile, spawn } from 'child_process';
 import * as fs from 'fs';
+import * as glob from 'glob';
 
 export function activate(context: vscode.ExtensionContext) {
   // 注册侧栏Webview Provider
@@ -146,23 +147,40 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         console.log('🔍 执行后端代码分析...');
         console.log('分析选项:', analysisOptions);
         
-        // 构建JAR文件路径
-        const jarPath = path.resolve(__dirname, '../../target/gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar');
-        
-        // 检查JAR文件是否存在
-        if (!fs.existsSync(jarPath)) {
-          throw new Error(`JAR文件不存在: ${jarPath}`);
+        // 检测后端语言
+        const backendLanguage = await this.detectBackendLanguage(repoPath);
+        console.log('🔍 检测到的后端语言:', backendLanguage);
+
+        if (backendLanguage === 'java') {
+          // Java分析
+          console.log('☕ 使用Java分析器...');
+          
+          // 构建JAR文件路径
+          const jarPath = path.resolve(__dirname, '../../target/gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar');
+          
+          // 检查JAR文件是否存在
+          if (!fs.existsSync(jarPath)) {
+            throw new Error(`JAR文件不存在: ${jarPath}`);
+          }
+
+          console.log(`正在分析Java仓库: ${repoPath}`);
+          console.log(`使用JAR: ${jarPath}`);
+
+          // 调用JAR进行分析
+          const result = await this.executeJarAnalysis(jarPath, repoPath, data);
+          
+          // 解析结果并发送给前端
+          console.log('=== 开始解析JAR结果 ===');
+          analysisResult = this.parseAnalysisResult(result.stdout);
+          
+        } else if (backendLanguage === 'golang') {
+          // Golang分析
+          console.log('🐹 使用Golang分析器...');
+          analysisResult = await this.executeGolangAnalysis(repoPath, data);
+          
+        } else {
+          throw new Error(`不支持的后端语言: ${backendLanguage}。目前支持Java和Golang。`);
         }
-
-        console.log(`正在分析仓库: ${repoPath}`);
-        console.log(`使用JAR: ${jarPath}`);
-
-        // 调用JAR进行分析
-        const result = await this.executeJarAnalysis(jarPath, repoPath, data);
-        
-        // 解析结果并发送给前端
-        console.log('=== 开始解析JAR结果 ===');
-        analysisResult = this.parseAnalysisResult(result.stdout);
       }
       
       console.log('解析后的结果:', analysisResult);
@@ -201,14 +219,22 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       const repoPath = workspaceFolder.uri.fsPath;
       const projectType = await this.detectProjectType(repoPath);
       const frontendPaths = await this.findFrontendPaths(repoPath);
+      
+      // 获取具体的后端语言信息
+      let backendLanguage = 'unknown';
+      if (projectType === 'backend' || projectType === 'mixed') {
+        backendLanguage = await this.detectBackendLanguage(repoPath);
+      }
 
       console.log('🔍 项目类型检测结果:', projectType);
+      console.log('🔍 后端语言:', backendLanguage);
       console.log('📁 前端路径检测结果:', frontendPaths);
 
       // 发送检测结果给前端
       this._view?.webview.postMessage({
         command: 'projectTypeDetected',
         projectType: projectType,
+        backendLanguage: backendLanguage,
         frontendPaths: frontendPaths
       });
 
@@ -219,6 +245,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       this._view?.webview.postMessage({
         command: 'projectTypeDetected',
         projectType: 'unknown',
+        backendLanguage: 'unknown',
         frontendPaths: []
       });
     }
@@ -229,6 +256,9 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       // 检查常见的项目标识文件
       const hasPom = fs.existsSync(path.join(repoPath, 'pom.xml'));
       const hasGradle = fs.existsSync(path.join(repoPath, 'build.gradle')) || fs.existsSync(path.join(repoPath, 'build.gradle.kts'));
+      const hasGoMod = fs.existsSync(path.join(repoPath, 'go.mod'));
+      const hasGoFiles = this.hasGoFiles(repoPath);
+      
       const hasPackageJson = fs.existsSync(path.join(repoPath, 'package.json'));
       const hasTsConfig = fs.existsSync(path.join(repoPath, 'tsconfig.json'));
       
@@ -250,8 +280,21 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         }
       }
 
-      const isBackend = hasPom || hasGradle;
+      // 判断后端类型
+      const isJavaBackend = hasPom || hasGradle;
+      const isGoBackend = hasGoMod || hasGoFiles;
+      const isBackend = isJavaBackend || isGoBackend;
+      
+      // 判断前端类型
       const isFrontend = hasPackageJson && (hasTsConfig || hasReact || hasVue || hasAngular);
+
+      // 记录检测到的语言信息
+      const detectedLanguages = [];
+      if (isJavaBackend) detectedLanguages.push('Java');
+      if (isGoBackend) detectedLanguages.push('Golang');
+      if (isFrontend) detectedLanguages.push('Frontend');
+      
+      console.log('🔍 检测到的语言:', detectedLanguages.join(', ') || '未知');
 
       if (isBackend && isFrontend) {
         return 'mixed';
@@ -265,6 +308,40 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
     } catch (error) {
       console.error('项目类型检测错误:', error);
+      return 'unknown';
+    }
+  }
+
+  private hasGoFiles(repoPath: string): boolean {
+    try {
+      // 查找Go文件，排除vendor目录
+      const goFiles = glob.sync('**/*.go', {
+        cwd: repoPath,
+        ignore: ['vendor/**', '**/vendor/**']
+      });
+      return goFiles.length > 0;
+    } catch (error) {
+      console.warn('检查Go文件失败:', error);
+      return false;
+    }
+  }
+
+  private async detectBackendLanguage(repoPath: string): Promise<'java' | 'golang' | 'unknown'> {
+    try {
+      const hasPom = fs.existsSync(path.join(repoPath, 'pom.xml'));
+      const hasGradle = fs.existsSync(path.join(repoPath, 'build.gradle')) || fs.existsSync(path.join(repoPath, 'build.gradle.kts'));
+      const hasGoMod = fs.existsSync(path.join(repoPath, 'go.mod'));
+      const hasGoFiles = this.hasGoFiles(repoPath);
+
+      if (hasPom || hasGradle) {
+        return 'java';
+      } else if (hasGoMod || hasGoFiles) {
+        return 'golang';
+      } else {
+        return 'unknown';
+      }
+    } catch (error) {
+      console.error('后端语言检测错误:', error);
       return 'unknown';
     }
   }
@@ -315,14 +392,23 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     const results: any[] = [];
 
     try {
-      // 执行后端分析
+      // 执行后端分析（支持Java和Golang）
       try {
-        const jarPath = path.resolve(__dirname, '../../target/gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar');
-        if (fs.existsSync(jarPath)) {
-          console.log('🔧 执行后端分析...');
-          const backendResult = await this.executeJarAnalysis(jarPath, repoPath, analysisData);
-          const backendParsed = this.parseAnalysisResult(backendResult.stdout);
-          results.push(...backendParsed.map(item => ({ ...item, analysisSource: 'backend' })));
+        const backendLanguage = await this.detectBackendLanguage(repoPath);
+        console.log('🔍 混合项目检测到的后端语言:', backendLanguage);
+
+        if (backendLanguage === 'java') {
+          const jarPath = path.resolve(__dirname, '../../target/gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar');
+          if (fs.existsSync(jarPath)) {
+            console.log('☕ 执行Java后端分析...');
+            const backendResult = await this.executeJarAnalysis(jarPath, repoPath, analysisData);
+            const backendParsed = this.parseAnalysisResult(backendResult.stdout);
+            results.push(...backendParsed.map(item => ({ ...item, analysisSource: 'backend', language: 'java' })));
+          }
+        } else if (backendLanguage === 'golang') {
+          console.log('🐹 执行Golang后端分析...');
+          const backendResult = await this.executeGolangAnalysis(repoPath, analysisData);
+          results.push(...backendResult.map(item => ({ ...item, analysisSource: 'backend', language: 'golang' })));
         }
       } catch (error) {
         console.warn('后端分析失败:', error);
@@ -481,6 +567,141 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         impactedFiles: [],
         frontendSummary: frontendResult.summary,
         frontendDependencies: frontendResult.dependencies
+      });
+    }
+    
+    return commits;
+  }
+
+  private async executeGolangAnalysis(repoPath: string, analysisData: any): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      // Golang分析器脚本路径
+      const analyzerPath = path.join(__dirname, '../../ui/golang-analyzer/analyze.js');
+      
+      console.log('执行Golang分析命令:', 'node', analyzerPath, repoPath);
+      console.log('分析目录:', repoPath);
+
+      // 执行Golang分析器
+      const child = execFile('node', [analyzerPath, repoPath, 'json'], {
+        cwd: repoPath,
+        timeout: 60000, // 60秒超时
+        maxBuffer: 1024 * 1024 * 10 // 10MB buffer
+      }, (error, stdout, stderr) => {
+        if (error) {
+          console.error('Golang分析器执行错误:', error);
+          console.error('stderr:', stderr);
+          reject(new Error(`Golang分析失败: ${error.message}\n${stderr}`));
+        } else {
+          console.log('Golang分析器执行成功');
+          console.log('stderr信息:', stderr); // 显示调试信息
+          
+          try {
+            const result = JSON.parse(stdout);
+            console.log('Golang分析结果:', result);
+            
+            // 转换为与后端分析结果兼容的格式
+            const convertedResult = this.convertGolangResult(result, repoPath);
+            resolve(convertedResult);
+            
+          } catch (parseError) {
+            console.error('Golang分析结果JSON解析失败:', parseError);
+            console.log('输出前500字符:', stdout.substring(0, 500));
+            reject(new Error(`Golang分析结果解析失败: ${parseError}`));
+          }
+        }
+      });
+
+      // 监听进程退出
+      child.on('exit', (code) => {
+        console.log(`Golang分析器进程退出，代码: ${code}`);
+      });
+    });
+  }
+
+  private convertGolangResult(golangResult: any, targetDir: string): any[] {
+    // 将Golang分析结果转换为与后端分析结果兼容的格式
+    const commits = [];
+    
+    if (golangResult && golangResult.files) {
+      // 按包组织数据，模拟提交结构
+      const packageGroups = new Map();
+      
+      golangResult.files.forEach((file: any, index: number) => {
+        const packageName = file.packageName || 'main';
+        
+        if (!packageGroups.has(packageName)) {
+          packageGroups.set(packageName, {
+            commitId: `golang_${packageName}_analysis`,
+            message: `Golang包分析 - ${packageName}`,
+            author: { name: 'Golang分析器', email: 'golang@diffsense.com' },
+            timestamp: golangResult.timestamp,
+            changedFilesCount: 0,
+            changedMethodsCount: 0,
+            impactedMethods: [],
+            impactedTests: {},
+            riskScore: 0,
+            impactedFiles: [],
+            language: 'golang',
+            packageName: packageName
+          });
+        }
+        
+        const group = packageGroups.get(packageName);
+        group.changedFilesCount++;
+        group.changedMethodsCount += file.functions ? file.functions.length : 0;
+        
+        // 添加文件信息
+        group.impactedFiles.push({
+          path: file.relativePath,
+          filePath: file.relativePath,
+          packageName: file.packageName,
+          functions: file.functions || [],
+          types: file.types || [],
+          methods: file.methods || [],
+          imports: file.imports || [],
+          impactedMethods: file.functions ? file.functions.map((f: any) => ({
+            methodName: f.name,
+            signature: f.signature,
+            type: f.type,
+            receiver: f.receiver,
+            calls: f.calls || [],
+            calledBy: [],
+            isExported: f.isExported
+          })) : []
+        });
+        
+        // 累加函数名
+        if (file.functions) {
+          file.functions.forEach((func: any) => {
+            group.impactedMethods.push(func.name);
+          });
+        }
+        
+        // 基于函数复杂度的风险评分计算
+        const exportedFunctions = file.functions ? file.functions.filter((f: any) => f.isExported).length : 0;
+        const totalFunctions = file.functions ? file.functions.length : 0;
+        group.riskScore += Math.min(exportedFunctions * 3 + totalFunctions * 1, 30);
+      });
+      
+      commits.push(...Array.from(packageGroups.values()));
+    }
+    
+    // 如果没有文件数据，创建一个摘要提交
+    if (commits.length === 0) {
+      commits.push({
+        commitId: 'golang_summary',
+        message: 'Golang代码分析摘要',
+        author: { name: 'Golang分析器', email: 'golang@diffsense.com' },
+        timestamp: golangResult.timestamp,
+        changedFilesCount: golangResult.summary?.totalFiles || 0,
+        changedMethodsCount: golangResult.summary?.totalFunctions || 0,
+        impactedMethods: [],
+        impactedTests: {},
+        riskScore: golangResult.summary?.totalFiles || 0,
+        impactedFiles: [],
+        language: 'golang',
+        golangSummary: golangResult.summary,
+        golangModules: golangResult.modules
       });
     }
     

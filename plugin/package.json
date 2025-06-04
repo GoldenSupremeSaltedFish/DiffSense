@@ -57,6 +57,7 @@
     "compile": "tsc"
   },
   "devDependencies": {
+    "@types/glob": "^8.1.0",
     "@types/node": "18.x",
     "@types/vscode": "^1.74.0",
     "typescript": "^5.2.2"
