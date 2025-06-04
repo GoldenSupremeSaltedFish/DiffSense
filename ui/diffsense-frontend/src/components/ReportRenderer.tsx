@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import CallGraphView from './CallGraphView';
 
 interface CommitImpact {
   commitId: string;
@@ -20,7 +21,7 @@ interface ReportRendererProps {
 }
 
 const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'risks' | 'commits'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'risks' | 'commits' | 'callgraph'>('overview');
 
   if (!impacts || impacts.length === 0) {
     return (
@@ -238,7 +239,8 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts }) => {
         {[
           { key: 'overview', label: '概览', icon: '📊' },
           { key: 'risks', label: '风险', icon: '⚠️' },
-          { key: 'commits', label: '提交', icon: '📝' }
+          { key: 'commits', label: '提交', icon: '📝' },
+          { key: 'callgraph', label: '调用关系', icon: '🔗' }
         ].map((tab) => (
           <button
             key={tab.key}
@@ -268,6 +270,7 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts }) => {
         {activeTab === 'overview' && renderOverview()}
         {activeTab === 'risks' && renderRisks()}
         {activeTab === 'commits' && renderCommits()}
+        {activeTab === 'callgraph' && <CallGraphView analysisResults={impacts} />}
       </div>
     </div>
   );
