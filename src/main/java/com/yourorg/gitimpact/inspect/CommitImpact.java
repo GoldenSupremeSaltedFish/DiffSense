@@ -1,5 +1,6 @@
 package com.yourorg.gitimpact.inspect;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.Instant;
 import java.util.Map;
@@ -33,16 +34,17 @@ public class CommitImpact {
     @JsonProperty("riskScore")
     private final int riskScore;
 
+    @JsonCreator
     public CommitImpact(
-        String commitId,
-        String message,
-        AuthorInfo author,
-        Instant timestamp,
-        int changedFilesCount,
-        int changedMethodsCount,
-        Set<String> impactedMethods,
-        Map<String, Set<String>> impactedTests,
-        int riskScore
+        @JsonProperty("commitId") String commitId,
+        @JsonProperty("message") String message,
+        @JsonProperty("author") AuthorInfo author,
+        @JsonProperty("timestamp") Instant timestamp,
+        @JsonProperty("changedFilesCount") int changedFilesCount,
+        @JsonProperty("changedMethodsCount") int changedMethodsCount,
+        @JsonProperty("impactedMethods") Set<String> impactedMethods,
+        @JsonProperty("impactedTests") Map<String, Set<String>> impactedTests,
+        @JsonProperty("riskScore") int riskScore
     ) {
         this.commitId = commitId;
         this.message = message;

@@ -109,9 +109,6 @@ public class InspectConfig {
             if (commits == null && since == null) {
                 throw new IllegalStateException("必须指定 commits 或 since 参数之一");
             }
-            if (reportPath == null) {
-                throw new IllegalStateException("报告输出路径是必需的");
-            }
             return new InspectConfig(this);
         }
     }

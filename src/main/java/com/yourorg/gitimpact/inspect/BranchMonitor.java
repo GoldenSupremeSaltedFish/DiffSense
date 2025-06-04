@@ -1,7 +1,16 @@
 package com.yourorg.gitimpact.inspect;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.yourorg.gitimpact.ast.DiffToASTMapper;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.stream.Collectors;
+
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -9,18 +18,18 @@ import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.stream.Collectors;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.yourorg.gitimpact.ast.DiffToASTMapper;
 
 public class BranchMonitor {
     private static final Logger logger = LoggerFactory.getLogger(BranchMonitor.class);
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final ObjectMapper objectMapper;
+    
+    static {
+        objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+    }
     
     private final InspectConfig config;
     private final Path projectRoot;
@@ -79,9 +88,32 @@ public class BranchMonitor {
     }
 
     private List<RevCommit> getCommitsToAnalyze(Git git) throws Exception {
+        // 首先尝试解析分支引用
+        String branchName = config.getBranch();
+        org.eclipse.jgit.lib.ObjectId branchId = git.getRepository().resolve(branchName);
+        
+        // 如果直接解析失败，尝试添加refs/heads/前缀
+        if (branchId == null) {
+            branchId = git.getRepository().resolve("refs/heads/" + branchName);
+        }
+        
+        // 如果仍然失败，尝试远程分支
+        if (branchId == null) {
+            branchId = git.getRepository().resolve("refs/remotes/origin/" + branchName);
+        }
+        
+        // 如果所有尝试都失败，抛出有意义的错误
+        if (branchId == null) {
+            throw new IllegalArgumentException(
+                String.format("无法找到分支 '%s'。请检查分支名称是否正确。", branchName)
+            );
+        }
+        
+        logger.info("分析分支: {} (ObjectId: {})", branchName, branchId.getName());
+        
         // 获取指定分支的提交
         Iterable<RevCommit> commits = git.log()
-            .add(git.getRepository().resolve(config.getBranch()))
+            .add(branchId)
             .call();
         
         List<RevCommit> filteredCommits = new ArrayList<>();
@@ -104,17 +136,19 @@ public class BranchMonitor {
             filteredCommits.add(commit);
         }
         
+        logger.info("找到 {} 个符合条件的提交", filteredCommits.size());
         return filteredCommits;
     }
 
     private Future<CommitImpact> analyzeCommitAsync(RevCommit commit, Git git) {
         return executor.submit(() -> {
-            Path cacheFile = getCacheFilePath(commit);
+            // 暂时禁用缓存，直接进行分析
+            // Path cacheFile = getCacheFilePath(commit);
             
             // 检查缓存
-            if (Files.exists(cacheFile)) {
-                return objectMapper.readValue(cacheFile.toFile(), CommitImpact.class);
-            }
+            // if (Files.exists(cacheFile)) {
+            //     return objectMapper.readValue(cacheFile.toFile(), CommitImpact.class);
+            // }
             
             // 分析提交
             List<DiffToASTMapper.ImpactedMethod> changedMethods = new ArrayList<>();
@@ -134,8 +168,9 @@ public class BranchMonitor {
             // 执行分析
             CommitImpact impact = commitAnalyzer.analyzeCommit(commit, changedFiles, changedMethods);
             
-            // 缓存结果
-            objectMapper.writeValue(cacheFile.toFile(), impact);
+            // 暂时不缓存结果
+            // Files.createDirectories(cacheFile.getParent());
+            // objectMapper.writeValue(cacheFile.toFile(), impact);
             
             return impact;
         });

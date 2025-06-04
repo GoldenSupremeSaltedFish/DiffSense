@@ -1,5 +1,6 @@
 package com.yourorg.gitimpact.inspect;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class AuthorInfo {
@@ -9,7 +10,11 @@ public class AuthorInfo {
     @JsonProperty("email")
     private final String email;
 
-    public AuthorInfo(String name, String email) {
+    @JsonCreator
+    public AuthorInfo(
+        @JsonProperty("name") String name, 
+        @JsonProperty("email") String email
+    ) {
         this.name = name;
         this.email = email;
     }

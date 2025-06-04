@@ -3,70 +3,142 @@
 @tailwind utilities;
 
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: var(--vscode-font-family, system-ui, Avenir, Helvetica, Arial, sans-serif);
   line-height: 1.5;
   font-weight: 400;
 
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color: var(--vscode-foreground, rgba(255, 255, 255, 0.87));
+  background-color: var(--vscode-editor-background, #242424);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  
+  /* 侧栏适配变量 */
+  --sidebar-padding: 8px;
+  --sidebar-gap: 6px;
+  --button-height: 28px;
+  --select-height: 24px;
 }
 
 a {
   font-weight: 500;
-  color: #646cff;
+  color: var(--vscode-textLink-foreground, #646cff);
   text-decoration: inherit;
 }
 a:hover {
-  color: #535bf2;
+  color: var(--vscode-textLink-activeForeground, #535bf2);
 }
 
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+/* 移除可能导致问题的body样式，让插件控制 */
+/* body 样式现在由插件的HTML注入控制 */
+
+#root {
+  /* 由插件HTML控制，这里不设置 */
 }
 
 h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+  font-size: 1.4em;
+  line-height: 1.2;
+  margin: 0 0 var(--sidebar-gap) 0;
 }
 
+h2 {
+  font-size: 1.2em;
+  line-height: 1.2;
+  margin: var(--sidebar-gap) 0;
+}
+
+h3 {
+  font-size: 1.1em;
+  line-height: 1.2;
+  margin: var(--sidebar-gap) 0;
+}
+
+/* 侧栏按钮样式 */
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  padding: 4px 8px;
+  font-size: 11px;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: var(--vscode-button-background, #1a1a1a);
+  color: var(--vscode-button-foreground, #ffffff);
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  transition: background-color 0.25s;
+  height: var(--button-height);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-@media (prefers-color-scheme: light) {
+button:hover {
+  background-color: var(--vscode-button-hoverBackground, #646cff);
+}
+
+button:focus,
+button:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder, #646cff);
+  outline-offset: 1px;
+}
+
+button:disabled {
+  background-color: var(--vscode-button-secondaryBackground, #ccc);
+  color: var(--vscode-button-secondaryForeground, #666);
+  cursor: not-allowed;
+}
+
+/* 侧栏下拉选择框样式 */
+select {
+  border-radius: 4px;
+  border: 1px solid var(--vscode-dropdown-border, #ccc);
+  padding: 2px 4px;
+  font-size: 11px;
+  font-family: inherit;
+  background-color: var(--vscode-dropdown-background, #ffffff);
+  color: var(--vscode-dropdown-foreground, #000000);
+  height: var(--select-height);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+select:focus {
+  outline: 1px solid var(--vscode-focusBorder, #646cff);
+  outline-offset: 1px;
+}
+
+/* 侧栏标签样式 */
+label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--vscode-foreground, #000);
+  margin: 0;
+  padding: 0;
+}
+
+/* 确保所有容器元素都有最小高度和可见性 */
+.main-view,
+.react-component {
+  min-height: 20px !important;
+  min-width: 100px !important;
+  position: relative !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* 响应式调整 */
+@media (max-width: 300px) {
   :root {
-    color: #213547;
-    background-color: #ffffff;
+    --sidebar-padding: 4px;
+    --sidebar-gap: 4px;
   }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
+  
+  /* 移除可能导致问题的字体大小调整 */
+  button, select, label {
+    font-size: 10px;
   }
 }

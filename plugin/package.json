@@ -1,40 +1,64 @@
 {
   "name": "diffsense",
+  "displayName": "DiffSense",
+  "description": "",
   "version": "0.0.1",
-  "main": "./dist/extension.js",
   "engines": {
-    "vscode": "^1.60.0"
+    "vscode": "^1.74.0"
   },
-  "activationEvents": [
-    "onCommand:diffsense.runAnalysis"
+  "categories": [
+    "Other"
   ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "diffsense.runAnalysis",
-        "title": "Run DiffSense Analysis"
+        "title": "Run Analysis",
+        "category": "DiffSense"
+      },
+      {
+        "command": "diffsense.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
       }
-    ]
+    ],
+    "views": {
+      "diffsense": [
+        {
+          "type": "webview",
+          "id": "diffsense.analysisView",
+          "name": "Git Impact Analysis",
+          "when": "true"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "diffsense",
+          "title": "DiffSense",
+          "icon": "$(git-branch)"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "diffsense.refresh",
+          "when": "view == diffsense.analysisView",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
-    "compile": "tsc",
-    "package": "vsce package",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "compile": "tsc"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "devDependencies": {
-    "@types/node": "^22.15.29",
-    "@types/vscode": "^1.100.0",
-    "@typescript-eslint/eslint-plugin": "^8.33.1",
-    "@typescript-eslint/parser": "^8.33.1",
-    "@vscode/test-electron": "^2.5.2",
-    "@vscode/webview-ui-toolkit": "^1.4.0",
-    "esbuild": "^0.25.5",
-    "eslint": "^9.28.0",
-    "typescript": "^5.8.3",
-    "vscode": "^1.1.37"
+    "@types/node": "18.x",
+    "@types/vscode": "^1.74.0",
+    "typescript": "^5.2.2"
   }
 }
