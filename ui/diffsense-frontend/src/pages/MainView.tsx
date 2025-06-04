@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Toolbar from "../components/Toolbar";
 import CommitList from "../components/CommitList";
-import { postMessage, saveState, getState } from "../utils/vscode";
+import { saveState, getState } from "../utils/vscode";
 
 const MainView = () => {
   const [analysisResults, setAnalysisResults] = useState<any[]>([]);
