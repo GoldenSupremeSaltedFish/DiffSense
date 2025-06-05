@@ -1873,18 +1873,22 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     // 语言配置
     const isEnglish = language === 'en-US';
     const text = {
-      title: isEnglish ? '🔍 DiffSense Analysis Report' : '🔍 DiffSense 分析报告',
+      title: isEnglish ? 'DiffSense Analysis Report' : 'DiffSense 分析报告',
       subtitle: isEnglish ? 'Git Code Impact Analysis' : 'Git 代码影响分析',
       generatedTime: isEnglish ? 'Generated Time' : '生成时间',
       repositoryPath: isEnglish ? 'Repository Path' : '仓库路径',
       analysisEngine: isEnglish ? 'Analysis Engine' : '分析引擎',
       analysisOverview: isEnglish ? '📊 Analysis Overview' : '📊 分析概览',
-      totalCommits: isEnglish ? 'Analyzed Commits' : '分析提交数',
-      totalFiles: isEnglish ? 'Affected Files' : '影响文件数',
-      totalMethods: isEnglish ? 'Affected Methods' : '影响方法数',
+      overview: isEnglish ? '📊 Analysis Overview' : '📊 分析概览',
+      testCoverageOverview: isEnglish ? '🔍 Test Coverage Overview' : '🔍 测试覆盖概览',
+      totalCommits: isEnglish ? 'Total Commits' : '总提交数',
+      totalFiles: isEnglish ? 'Total Files' : '总文件数',
+      totalMethods: isEnglish ? 'Total Methods' : '总方法数',
       totalRiskScore: isEnglish ? 'Total Risk Score' : '总风险评分',
+      averageRisk: isEnglish ? 'Average Risk Score' : '平均风险评分',
       testCoverage: isEnglish ? 'Test Coverage Analysis' : '测试覆盖分析',
       testGaps: isEnglish ? 'Test Coverage Gaps' : '测试覆盖漏洞',
+      totalGaps: isEnglish ? 'Total Gaps' : '总漏洞数',
       highRiskGaps: isEnglish ? 'High Risk Gaps' : '高风险漏洞',
       mediumRiskGaps: isEnglish ? 'Medium Risk Gaps' : '中风险漏洞',
       lowRiskGaps: isEnglish ? 'Low Risk Gaps' : '低风险漏洞',
@@ -1914,7 +1918,13 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       methodChanges: isEnglish ? 'No method changes' : '无方法变更',
       riskReason: isEnglish ? 'Risk Reason' : '风险原因',
       impactedCallersCount: isEnglish ? 'Impacted Callers' : '受影响调用者',
-      noTestCoverageGaps: isEnglish ? 'No test coverage gaps found' : '未发现测试覆盖漏洞'
+      noTestCoverageGaps: isEnglish ? 'No test coverage gaps found' : '未发现测试覆盖漏洞',
+      viewImpactedCallers: isEnglish ? 'View Impacted Callers' : '查看受影响的调用者',
+      andMore: isEnglish ? 'and' : '以及',
+      moreFiles: isEnglish ? 'more files' : '个更多文件',
+      moreMethods: isEnglish ? 'more methods' : '个更多方法',
+      moreTestGaps: isEnglish ? 'more test gaps' : '个更多测试漏洞',
+      toggleGraph: isEnglish ? 'Show/Hide Graph' : '显示/隐藏图表'
     };
     
     // 计算统计信息
@@ -2322,11 +2332,11 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         <!-- Test Coverage Section -->
         ${testCoverageStats.totalGaps > 0 ? `
         <div class="test-coverage-section">
-            <div class="stats-title">${text.testCoverage}</div>
+            <div class="stats-title">${text.testCoverageOverview}</div>
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-number">${testCoverageStats.totalGaps}</div>
-                    <div class="stat-label">${text.testGaps}</div>
+                    <div class="stat-label">${text.totalGaps}</div>
                 </div>
                 <div class="stat-card risk-high">
                     <div class="stat-number">${testCoverageStats.highRisk}</div>
@@ -2364,7 +2374,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
                             ${gap.impactedCallers && gap.impactedCallers.length > 0 ? `
                                 <details>
                                     <summary style="cursor: pointer; color: #667eea; margin-bottom: 8px;">
-                                        查看受影响的调用者 (${gap.impactedCallers.length})
+                                        ${text.viewImpactedCallers} (${gap.impactedCallers.length})
                                     </summary>
                                     <div style="background: #f1f5f9; padding: 8px; border-radius: 4px; margin-top: 8px;">
                                         ${gap.impactedCallers.map((caller: string) => `
@@ -2417,7 +2427,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
                                     ${commit.impactedFiles.slice(0, 10).map((file: string) => `
                                         <div class="file-item">${file}</div>
                                     `).join('')}
-                                    ${commit.impactedFiles.length > 10 ? `<div class="file-item">... ${isEnglish ? 'and' : '以及'} ${commit.impactedFiles.length - 10} ${isEnglish ? 'more files' : '个更多文件'}</div>` : ''}
+                                    ${commit.impactedFiles.length > 10 ? `<div class="file-item">... ${text.andMore} ${commit.impactedFiles.length - 10} ${text.moreFiles}</div>` : ''}
                                 </div>
                             </div>
                         ` : commit.files && commit.files.length > 0 ? `
@@ -2427,7 +2437,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
                                     ${commit.files.slice(0, 10).map((file: any) => `
                                         <div class="file-item">${file.path || file}</div>
                                     `).join('')}
-                                    ${commit.files.length > 10 ? `<div class="file-item">... ${isEnglish ? 'and' : '以及'} ${commit.files.length - 10} ${isEnglish ? 'more files' : '个更多文件'}</div>` : ''}
+                                    ${commit.files.length > 10 ? `<div class="file-item">... ${text.andMore} ${commit.files.length - 10} ${text.moreFiles}</div>` : ''}
                                 </div>
                             </div>
                         ` : ''}
@@ -2439,7 +2449,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
                                     ${commit.impactedMethods.slice(0, 15).map((method: string) => `
                                         <div class="method-item">${method}</div>
                                     `).join('')}
-                                    ${commit.impactedMethods.length > 15 ? `<div class="method-item">... ${isEnglish ? 'and' : '以及'} ${commit.impactedMethods.length - 15} ${isEnglish ? 'more methods' : '个更多方法'}</div>` : ''}
+                                    ${commit.impactedMethods.length > 15 ? `<div class="method-item">... ${text.andMore} ${commit.impactedMethods.length - 15} ${text.moreMethods}</div>` : ''}
                                 </div>
                             </div>
                         ` : ''}
@@ -2460,7 +2470,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
                                 `).join('')}
                                 ${commit.testCoverageGaps.length > 5 ? `
                                     <div style="color: #718096; font-size: 0.9em; margin-top: 10px;">
-                                        ... ${isEnglish ? 'and' : '以及'} ${commit.testCoverageGaps.length - 5} ${isEnglish ? 'more test gaps' : '个更多测试漏洞'}
+                                        ... ${text.andMore} ${commit.testCoverageGaps.length - 5} ${text.moreTestGaps}
                                     </div>
                                 ` : ''}
                             </div>
@@ -2470,7 +2480,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
                             <div class="section-title">
                                 ${text.callRelationships}
                                 <button class="toggle-details" onclick="toggleCallGraph('graph-${index}')">
-                                    ${isEnglish ? 'Show/Hide Graph' : '显示/隐藏图表'}
+                                    ${text.toggleGraph}
                                 </button>
                             </div>
                             <div id="graph-${index}" class="details-content hidden">
