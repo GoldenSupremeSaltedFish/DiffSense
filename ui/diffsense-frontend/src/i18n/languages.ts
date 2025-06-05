@@ -63,6 +63,8 @@ export interface LanguageConfig {
     analyzing: string;
     exportJSON: string;
     exportHTML: string;
+    reportBug: string;
+    reportBugTitle: string;
     
     loadingBranches: string;
   };
@@ -195,6 +197,8 @@ export const zhCN: LanguageConfig = {
     analyzing: '🔄 分析中...',
     exportJSON: '📄 导出JSON',
     exportHTML: '🌐 导出HTML',
+    reportBug: '📩 出bug了？点我汇报😊',
+    reportBugTitle: '报告问题或建议',
     
     loadingBranches: '正在加载分支列表...'
   },
@@ -323,6 +327,8 @@ export const enUS: LanguageConfig = {
     analyzing: '🔄 Analyzing...',
     exportJSON: '📄 Export JSON',
     exportHTML: '🌐 Export HTML',
+    reportBug: '📩 Bug Report 🐛',
+    reportBugTitle: 'Report Issue or Suggestion',
     
     loadingBranches: 'Loading branch list...'
   },

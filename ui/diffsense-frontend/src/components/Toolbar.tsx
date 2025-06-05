@@ -306,6 +306,32 @@ const Toolbar = () => {
     });
   };
 
+  const handleReportBug = () => {
+    // 收集当前状态信息用于bug报告
+    const reportData = {
+      projectType,
+      backendLanguage,
+      selectedBranch,
+      selectedRange,
+      analysisScope,
+      analysisTypes,
+      frontendPath,
+      startCommitId,
+      endCommitId,
+      customDateFrom,
+      customDateTo,
+      branches: branches.length,
+      userAgent: navigator.userAgent,
+      currentLanguage,
+      timestamp: new Date().toISOString()
+    };
+
+    postMessage({ 
+      command: 'reportBug',
+      data: reportData
+    });
+  };
+
   return (
     <div className="toolbar-container react-component" style={{
       display: "flex",
@@ -674,6 +700,38 @@ const Toolbar = () => {
             {t('toolbar.exportHTML')}
           </button>
         </div>
+      </div>
+
+      {/* Bug汇报按钮 */}
+      <div style={{ 
+        marginTop: '8px'
+      }}>
+        <button 
+          onClick={handleReportBug}
+          style={{ 
+            width: '100%',
+            fontSize: '10px',
+            padding: '6px 8px',
+            backgroundColor: 'var(--vscode-button-secondaryBackground)',
+            color: 'var(--vscode-button-secondaryForeground)',
+            border: '1px solid var(--vscode-button-border)',
+            borderRadius: '3px',
+            cursor: 'pointer',
+            transition: 'background-color 0.2s',
+            fontWeight: '500'
+          }}
+          title={t('toolbar.reportBugTitle')}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--vscode-button-hoverBackground)';
+            e.currentTarget.style.color = 'var(--vscode-button-foreground)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--vscode-button-secondaryBackground)';
+            e.currentTarget.style.color = 'var(--vscode-button-secondaryForeground)';
+          }}
+        >
+          {t('toolbar.reportBug')}
+        </button>
       </div>
 
       {/* 状态信息 */}

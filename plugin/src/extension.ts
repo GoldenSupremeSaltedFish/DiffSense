@@ -83,6 +83,9 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         case 'detectProjectType':
           await this.handleDetectProjectType();
           break;
+        case 'reportBug':
+          await this.handleReportBug(data.data);
+          break;
       }
     });
 
@@ -199,6 +202,12 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
     } catch (error) {
       console.error('分析失败:', error);
+      
+      // 记录错误到日志
+      this.addErrorToLog(
+        error instanceof Error ? error.message : String(error),
+        `分析请求失败 - 类型: ${data.analysisType || 'unknown'}, 分支: ${data.branch}`
+      );
       
       // 发送错误消息给前端
       this._view?.webview.postMessage({
@@ -1668,6 +1677,91 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  private async handleReportBug(reportData: any) {
+    try {
+      console.log('📩 处理bug汇报请求:', reportData);
+      
+      // 获取工作区信息
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      const workspacePath = workspaceFolder?.uri.fsPath || '未知路径';
+      const workspaceName = workspaceFolder?.name || '未知项目';
+      
+      // 收集系统信息
+      const systemInfo = {
+        platform: process.platform,
+        arch: process.arch,
+        nodeVersion: process.version,
+        vscodeVersion: vscode.version,
+        extensionVersion: vscode.extensions.getExtension('diffsense.analysis')?.packageJSON?.version || '未知版本'
+      };
+      
+      // 收集Git信息（如果可用）
+      let gitInfo: any = {};
+      try {
+        gitInfo = await this.collectGitInfo(workspacePath);
+      } catch (error) {
+        gitInfo = { error: 'Git信息收集失败' };
+      }
+      
+      // 收集最近的错误日志（如果有的话）
+      const recentErrors = this.getRecentErrors();
+      
+      // 构建GitHub Issue内容
+      const issueTitle = this.generateIssueTitle(reportData, systemInfo);
+      const issueBody = this.generateIssueBody({
+        reportData,
+        systemInfo,
+        gitInfo,
+        workspacePath,
+        workspaceName,
+        recentErrors,
+        timestamp: new Date().toISOString()
+      });
+      
+      // 构建GitHub Issue URL
+      const githubRepoUrl = 'https://github.com/your-org/diffsense'; // 替换为实际的GitHub仓库地址
+      const issueUrl = this.buildGitHubIssueUrl(githubRepoUrl, issueTitle, issueBody);
+      
+      console.log('🔗 生成的GitHub Issue URL长度:', issueUrl.length);
+      
+      // 使用VSCode API打开GitHub Issue页面
+      await vscode.env.openExternal(vscode.Uri.parse(issueUrl));
+      
+      // 显示成功消息
+      const action = await vscode.window.showInformationMessage(
+        '📩 感谢您的反馈！已为您打开GitHub Issue页面，请检查并提交问题报告。',
+        '🔗 重新打开链接',
+        '📋 复制到剪贴板'
+      );
+      
+      if (action === '🔗 重新打开链接') {
+        await vscode.env.openExternal(vscode.Uri.parse(issueUrl));
+      } else if (action === '📋 复制到剪贴板') {
+        await vscode.env.clipboard.writeText(issueUrl);
+        vscode.window.showInformationMessage('📋 GitHub Issue URL已复制到剪贴板');
+      }
+      
+    } catch (error) {
+      console.error('Bug汇报处理失败:', error);
+      
+      // 显示错误消息
+      const action = await vscode.window.showErrorMessage(
+        `Bug汇报功能暂时不可用: ${error instanceof Error ? error.message : String(error)}`,
+        '🔧 手动报告',
+        '📋 复制错误信息'
+      );
+      
+      if (action === '🔧 手动报告') {
+        // 打开GitHub仓库的Issues页面
+        await vscode.env.openExternal(vscode.Uri.parse('https://github.com/your-org/diffsense/issues/new'));
+      } else if (action === '📋 复制错误信息') {
+        const errorInfo = JSON.stringify({ reportData, error: error instanceof Error ? error.message : String(error) }, null, 2);
+        await vscode.env.clipboard.writeText(errorInfo);
+        vscode.window.showInformationMessage('📋 错误信息已复制到剪贴板');
+      }
+    }
+  }
+
   private async handleExportResults(format: string, language: string = 'zh-CN') {
     try {
       if (!this._lastAnalysisResult || this._lastAnalysisResult.length === 0) {
@@ -2563,6 +2657,201 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     }
 
     return { nodes, edges };
+  }
+
+  // Bug汇报相关的辅助方法
+  private recentErrors: Array<{timestamp: string, error: string, context?: string}> = [];
+
+  private async collectGitInfo(workspacePath: string): Promise<any> {
+    return new Promise((resolve) => {
+      const { execFile } = require('child_process');
+      
+      // 收集基本Git信息
+      const gitCommands = [
+        ['git', ['rev-parse', 'HEAD'], 'currentCommit'],
+        ['git', ['rev-parse', '--abbrev-ref', 'HEAD'], 'currentBranch'],
+        ['git', ['remote', 'get-url', 'origin'], 'remoteUrl'],
+        ['git', ['status', '--porcelain'], 'workingTreeStatus'],
+        ['git', ['log', '--oneline', '-5'], 'recentCommits']
+      ];
+      
+      const gitInfo: any = {};
+      let completed = 0;
+      
+      gitCommands.forEach(([command, args, key]) => {
+        execFile(command as string, args as string[], { cwd: workspacePath, timeout: 5000 }, (error: any, stdout: any, stderr: any) => {
+          if (!error) {
+            gitInfo[key as string] = stdout.trim();
+          } else {
+            gitInfo[key as string] = `Error: ${stderr || error.message}`;
+          }
+          
+          completed++;
+          if (completed === gitCommands.length) {
+            resolve(gitInfo);
+          }
+        });
+      });
+      
+      // 5秒超时
+      setTimeout(() => {
+        if (completed < gitCommands.length) {
+          resolve({ ...gitInfo, timeout: true });
+        }
+      }, 5000);
+    });
+  }
+
+  private getRecentErrors(): Array<{timestamp: string, error: string, context?: string}> {
+    // 返回最近的错误（最多10个）
+    return this.recentErrors.slice(-10);
+  }
+
+  private addErrorToLog(error: string, context?: string) {
+    this.recentErrors.push({
+      timestamp: new Date().toISOString(),
+      error,
+      context
+    });
+    
+    // 保持最多50个错误记录
+    if (this.recentErrors.length > 50) {
+      this.recentErrors = this.recentErrors.slice(-50);
+    }
+  }
+
+  private generateIssueTitle(reportData: any, systemInfo: any): string {
+    const { projectType, analysisScope, backendLanguage } = reportData;
+    const platform = systemInfo.platform;
+    
+    // 生成有意义的标题
+    let title = '🐛 ';
+    
+    if (projectType && projectType !== 'unknown') {
+      title += `${projectType}项目分析问题`;
+      if (backendLanguage && backendLanguage !== 'unknown') {
+        title += ` (${backendLanguage})`;
+      }
+    } else {
+      title += 'DiffSense分析问题';
+    }
+    
+    title += ` - ${platform}`;
+    
+    return title;
+  }
+
+  private generateIssueBody(data: any): string {
+    const { reportData, systemInfo, gitInfo, workspacePath, workspaceName, recentErrors, timestamp } = data;
+    
+    const body = `
+## 🐛 问题描述
+
+**发生时间**: ${new Date(timestamp).toLocaleString('zh-CN')}
+**报告来源**: DiffSense VSCode 扩展自动汇报
+
+## 📊 用户环境信息
+
+**项目信息**:
+- 项目名称: ${workspaceName}
+- 项目类型: ${reportData.projectType || '未知'}
+- 后端语言: ${reportData.backendLanguage || '未知'}
+- 分析范围: ${reportData.analysisScope || '未设置'}
+
+**系统环境**:
+- 操作系统: ${systemInfo.platform} ${systemInfo.arch}
+- Node.js版本: ${systemInfo.nodeVersion}
+- VSCode版本: ${systemInfo.vscodeVersion}
+- 扩展版本: ${systemInfo.extensionVersion}
+- 用户代理: ${reportData.userAgent || '未知'}
+
+**Git信息**:
+- 当前分支: ${gitInfo.currentBranch || '未知'}
+- 当前提交: ${gitInfo.currentCommit || '未知'}
+- 远程仓库: ${gitInfo.remoteUrl || '未知'}
+- 工作区状态: ${gitInfo.workingTreeStatus || '干净'}
+
+## 🔧 插件状态信息
+
+**分析配置**:
+- 选中分支: ${reportData.selectedBranch || '未选择'}
+- 分析范围: ${reportData.selectedRange || '未设置'}
+- 分析类型: ${reportData.analysisTypes?.join(', ') || '未选择'}
+- 前端路径: ${reportData.frontendPath || '未设置'}
+- 语言设置: ${reportData.currentLanguage || '未知'}
+
+**时间信息**:
+- 开始Commit: ${reportData.startCommitId || '未设置'}
+- 结束Commit: ${reportData.endCommitId || '未设置'}
+- 自定义开始日期: ${reportData.customDateFrom || '未设置'}
+- 自定义结束日期: ${reportData.customDateTo || '未设置'}
+
+**其他状态**:
+- 可用分支数: ${reportData.branches || 0}
+
+## 🚨 最近错误日志
+
+${recentErrors.length > 0 ? 
+  recentErrors.map((err: any, idx: number) => 
+    `**错误 ${idx + 1}** (${new Date(err.timestamp).toLocaleString('zh-CN')}):
+\`\`\`
+${err.error}
+\`\`\`
+${err.context ? `上下文: ${err.context}` : ''}
+`).join('\n') : 
+  '无最近错误记录'}
+
+## 📝 重现步骤
+
+请描述您遇到问题时的操作步骤：
+1. 
+2. 
+3. 
+
+## 🎯 期望行为
+
+请描述您期望的正确行为：
+
+## 📸 截图（可选）
+
+如果可能，请粘贴相关截图
+
+## 💡 其他信息
+
+请提供任何其他有用的信息：
+
+---
+
+> 此问题报告由DiffSense VSCode扩展自动生成。
+> 如有隐私相关的信息，请在提交前进行编辑。
+> 项目路径: \`${workspacePath}\`
+`;
+
+    return body;
+  }
+
+  private buildGitHubIssueUrl(repoUrl: string, title: string, body: string): string {
+    // 构建GitHub Issue URL
+    const encodedTitle = encodeURIComponent(title);
+    const encodedBody = encodeURIComponent(body);
+    
+    // GitHub URL参数有长度限制，检查并截断
+    const maxUrlLength = 8000; // GitHub的实际限制可能更小，但这是一个安全值
+    let issueUrl = `${repoUrl}/issues/new?title=${encodedTitle}&body=${encodedBody}`;
+    
+    if (issueUrl.length > maxUrlLength) {
+      console.warn('⚠️ GitHub Issue URL太长，将截断body内容');
+      
+      // 计算可用的body长度
+      const baseUrl = `${repoUrl}/issues/new?title=${encodedTitle}&body=`;
+      const availableLength = maxUrlLength - baseUrl.length - 100; // 保留100字符的缓冲
+      
+      // 截断body内容
+      const truncatedBody = body.substring(0, availableLength) + '\n\n... (内容因长度限制被截断，请查看VSCode控制台获取完整信息)';
+      issueUrl = baseUrl + encodeURIComponent(truncatedBody);
+    }
+    
+    return issueUrl;
   }
 }
 
