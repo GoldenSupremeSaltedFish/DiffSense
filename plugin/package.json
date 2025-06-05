@@ -1,16 +1,46 @@
 {
   "name": "diffsense",
-  "displayName": "DiffSense",
-  "description": "",
-  "version": "0.0.1",
+  "displayName": "DiffSense - Git Code Impact Analysis",
+  "description": "智能Git代码影响分析工具，支持Java、Golang、前端代码的变更影响分析和可视化",
+  "version": "0.1.0",
+  "publisher": "diffsense",
+  "author": {
+    "name": "DiffSense Team"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/diffsense.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/diffsense/issues"
+  },
+  "homepage": "https://github.com/your-org/diffsense#readme",
+  "keywords": [
+    "git",
+    "code analysis",
+    "impact analysis",
+    "java",
+    "golang",
+    "frontend",
+    "diff",
+    "code review"
+  ],
   "engines": {
     "vscode": "^1.74.0"
   },
   "categories": [
-    "Other"
+    "Other",
+    "Testing",
+    "Visualization"
   ],
   "activationEvents": [],
   "main": "./dist/extension.js",
+  "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
   "contributes": {
     "commands": [
       {
@@ -54,7 +84,9 @@
     }
   },
   "scripts": {
-    "compile": "tsc"
+    "compile": "tsc",
+    "package": "vsce package",
+    "publish": "vsce publish"
   },
   "dependencies": {
     "glob": "^10.3.0"
