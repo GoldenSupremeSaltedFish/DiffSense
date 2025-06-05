@@ -1719,7 +1719,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       });
       
       // 构建GitHub Issue URL
-      const githubRepoUrl = 'https://github.com/your-org/diffsense'; // 替换为实际的GitHub仓库地址
+      const githubRepoUrl = 'https://github.com/GoldenSupremeSaltedFish/DiffSense'; // 更新为实际的GitHub仓库地址
       const issueUrl = this.buildGitHubIssueUrl(githubRepoUrl, issueTitle, issueBody);
       
       console.log('🔗 生成的GitHub Issue URL长度:', issueUrl.length);
@@ -1753,7 +1753,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       
       if (action === '🔧 手动报告') {
         // 打开GitHub仓库的Issues页面
-        await vscode.env.openExternal(vscode.Uri.parse('https://github.com/your-org/diffsense/issues/new'));
+        await vscode.env.openExternal(vscode.Uri.parse('https://github.com/GoldenSupremeSaltedFish/DiffSense/issues/new'));
       } else if (action === '📋 复制错误信息') {
         const errorInfo = JSON.stringify({ reportData, error: error instanceof Error ? error.message : String(error) }, null, 2);
         await vscode.env.clipboard.writeText(errorInfo);
