@@ -522,7 +522,7 @@ const Toolbar = () => {
             {branches.map(branch => (
               <option key={branch} value={branch}>{branch}</option>
             ))}
-          </select>
+      </select>
           <button 
             onClick={handleRefresh}
             disabled={isAnalyzing}
@@ -549,7 +549,7 @@ const Toolbar = () => {
           {ranges.map(range => (
             <option key={range} value={range}>{range}</option>
           ))}
-        </select>
+      </select>
       </div>
 
       {/* Commit ID 范围输入 */}

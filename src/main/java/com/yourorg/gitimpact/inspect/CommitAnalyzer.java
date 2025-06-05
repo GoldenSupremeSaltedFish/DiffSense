@@ -37,8 +37,14 @@ public class CommitAnalyzer {
             // 获取影响的测试
             Map<String, Set<String>> impactedTests = analyzer.findImpactedTests(changedMethods);
             
-            // 计算风险分数
-            int riskScore = calculateRiskScore(changedFiles, changedMethods, impactedMethods, impactedTests);
+            // 分析测试覆盖漏洞
+            List<Map<String, Object>> testCoverageGaps = analyzer.analyzeTestCoverageGaps(changedMethods);
+            
+            // 获取测试覆盖统计信息
+            Map<String, Object> testCoverageStats = analyzer.getTestCoverageStatistics(changedMethods);
+            
+            // 计算风险分数（包含测试覆盖风险）
+            int riskScore = calculateRiskScore(changedFiles, changedMethods, impactedMethods, impactedTests, testCoverageGaps);
             
             return new CommitImpact(
                 commit.getName(),
@@ -49,7 +55,9 @@ public class CommitAnalyzer {
                 changedMethods.size(),
                 impactedMethods,
                 impactedTests,
-                riskScore
+                riskScore,
+                testCoverageGaps,
+                testCoverageStats
             );
         } catch (Exception e) {
             throw new RuntimeException("分析提交时发生错误: " + commit.getName(), e);
@@ -67,7 +75,8 @@ public class CommitAnalyzer {
         List<Path> changedFiles,
         List<ImpactedMethod> changedMethods,
         Set<String> impactedMethods,
-        Map<String, Set<String>> impactedTests
+        Map<String, Set<String>> impactedTests,
+        List<Map<String, Object>> testCoverageGaps
     ) {
         int score = 0;
         
@@ -91,6 +100,24 @@ public class CommitAnalyzer {
                          f.toString().toLowerCase().contains("common"));
         if (hasUtilChanges) {
             score += 5;
+        }
+        
+        // 6. 测试覆盖风险评分
+        if (testCoverageGaps != null && !testCoverageGaps.isEmpty()) {
+            for (Map<String, Object> gap : testCoverageGaps) {
+                String riskLevel = (String) gap.get("riskLevel");
+                switch (riskLevel) {
+                    case "HIGH":
+                        score += 15; // 高风险测试漏洞
+                        break;
+                    case "MEDIUM":
+                        score += 8;  // 中风险测试漏洞
+                        break;
+                    case "LOW":
+                        score += 3;  // 低风险测试漏洞
+                        break;
+                }
+            }
         }
         
         return score;

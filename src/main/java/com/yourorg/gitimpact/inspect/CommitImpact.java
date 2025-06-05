@@ -3,6 +3,7 @@ package com.yourorg.gitimpact.inspect;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -33,6 +34,12 @@ public class CommitImpact {
     
     @JsonProperty("riskScore")
     private final int riskScore;
+    
+    @JsonProperty("testCoverageGaps")
+    private final List<Map<String, Object>> testCoverageGaps;
+    
+    @JsonProperty("testCoverageStats")
+    private final Map<String, Object> testCoverageStats;
 
     @JsonCreator
     public CommitImpact(
@@ -44,7 +51,9 @@ public class CommitImpact {
         @JsonProperty("changedMethodsCount") int changedMethodsCount,
         @JsonProperty("impactedMethods") Set<String> impactedMethods,
         @JsonProperty("impactedTests") Map<String, Set<String>> impactedTests,
-        @JsonProperty("riskScore") int riskScore
+        @JsonProperty("riskScore") int riskScore,
+        @JsonProperty("testCoverageGaps") List<Map<String, Object>> testCoverageGaps,
+        @JsonProperty("testCoverageStats") Map<String, Object> testCoverageStats
     ) {
         this.commitId = commitId;
         this.message = message;
@@ -55,6 +64,8 @@ public class CommitImpact {
         this.impactedMethods = impactedMethods;
         this.impactedTests = impactedTests;
         this.riskScore = riskScore;
+        this.testCoverageGaps = testCoverageGaps;
+        this.testCoverageStats = testCoverageStats;
     }
 
     public String getCommitId() { return commitId; }
@@ -66,4 +77,6 @@ public class CommitImpact {
     public Set<String> getImpactedMethods() { return impactedMethods; }
     public Map<String, Set<String>> getImpactedTests() { return impactedTests; }
     public int getRiskScore() { return riskScore; }
+    public List<Map<String, Object>> getTestCoverageGaps() { return testCoverageGaps; }
+    public Map<String, Object> getTestCoverageStats() { return testCoverageStats; }
 } 

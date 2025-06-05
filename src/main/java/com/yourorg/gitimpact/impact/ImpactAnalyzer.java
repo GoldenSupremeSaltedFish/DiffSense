@@ -3,6 +3,7 @@ package com.yourorg.gitimpact.impact;
 import com.yourorg.gitimpact.ast.DiffToASTMapper.ImpactedMethod;
 import com.yourorg.gitimpact.test.TestMethodIdentifier;
 import com.yourorg.gitimpact.test.TestImpactAnalyzer;
+import com.yourorg.gitimpact.test.TestCoverageAnalyzer;
 import com.yourorg.gitimpact.config.AnalysisConfig;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -18,6 +19,7 @@ public class ImpactAnalyzer {
     private Map<MethodRef, Set<MethodRef>> reverseCallGraph;
     private Set<MethodRef> testMethods;
     private TestImpactAnalyzer testImpactAnalyzer;
+    private TestCoverageAnalyzer testCoverageAnalyzer;
 
     public ImpactAnalyzer(List<Path> sourceFiles, Path baseDir) {
         this(sourceFiles, baseDir, AnalysisConfig.getDefault());
@@ -40,6 +42,8 @@ public class ImpactAnalyzer {
         this.testMethods = testMethodIdentifier.identifyTestMethods();
         // 初始化测试影响分析器
         this.testImpactAnalyzer = new TestImpactAnalyzer(testMethods, reverseCallGraph);
+        // 初始化测试覆盖分析器
+        this.testCoverageAnalyzer = new TestCoverageAnalyzer(testMethods, reverseCallGraph, callGraph, config);
     }
 
     public Set<String> findImpactedMethods(List<ImpactedMethod> changedMethods) {
@@ -88,6 +92,74 @@ public class ImpactAnalyzer {
         // testImpactAnalyzer.getImpactedTests(impactedMethodRefs); // 这是一个示例，需要根据TestImpactAnalyzer的实际方法调整
 
         return testImpacts;
+    }
+
+    /**
+     * 分析测试覆盖漏洞
+     * @param changedMethods 变更的方法列表
+     * @return 测试覆盖漏洞分析结果
+     */
+    public List<Map<String, Object>> analyzeTestCoverageGaps(List<ImpactedMethod> changedMethods) {
+        if (testCoverageAnalyzer == null) {
+            throw new IllegalStateException("必须先调用 buildCallGraph() 来初始化分析器");
+        }
+        
+        List<TestCoverageAnalyzer.TestGap> testGaps = testCoverageAnalyzer.analyzeTestCoverage(changedMethods);
+        List<Map<String, Object>> result = new ArrayList<>();
+        
+        for (TestCoverageAnalyzer.TestGap gap : testGaps) {
+            result.add(gap.toMap());
+        }
+        
+        return result;
+    }
+
+    /**
+     * 获取测试覆盖统计信息
+     */
+    public Map<String, Object> getTestCoverageStatistics(List<ImpactedMethod> changedMethods) {
+        if (testCoverageAnalyzer == null) {
+            throw new IllegalStateException("必须先调用 buildCallGraph() 来初始化分析器");
+        }
+        
+        List<TestCoverageAnalyzer.TestGap> testGaps = testCoverageAnalyzer.analyzeTestCoverage(changedMethods);
+        
+        Map<String, Object> stats = new HashMap<>();
+        
+        // 总计信息
+        stats.put("totalGaps", testGaps.size());
+        
+        // 按风险等级统计
+        Map<String, Long> riskStats = new HashMap<>();
+        for (TestCoverageAnalyzer.RiskLevel level : TestCoverageAnalyzer.RiskLevel.values()) {
+            long count = testGaps.stream()
+                .mapToLong(gap -> gap.getRiskLevel() == level ? 1 : 0)
+                .sum();
+            riskStats.put(level.name(), count);
+        }
+        stats.put("riskLevelStats", riskStats);
+        
+        // 受影响方法总数统计
+        int totalImpactedMethods = testGaps.stream()
+            .mapToInt(gap -> gap.getImpactedCallers().size())
+            .sum();
+        stats.put("totalImpactedCallers", totalImpactedMethods);
+        
+        // 平均风险分数
+        double avgRiskScore = testGaps.stream()
+            .mapToDouble(gap -> {
+                switch (gap.getRiskLevel()) {
+                    case HIGH: return 3.0;
+                    case MEDIUM: return 2.0;
+                    case LOW: return 1.0;
+                    default: return 0.0;
+                }
+            })
+            .average()
+            .orElse(0.0);
+        stats.put("averageRiskScore", avgRiskScore);
+        
+        return stats;
     }
 
     private MethodRef convertImpactedMethodToMethodRef(ImpactedMethod impactedMethod) {
