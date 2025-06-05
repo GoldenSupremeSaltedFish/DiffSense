@@ -1160,7 +1160,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       // 添加增强的调试和初始化脚本
       const debugStyles = `
         <style>
-          /* 重置和调试样式 */
+          /* VSCode 主题适配重置样式 */
           * {
             box-sizing: border-box;
           }
@@ -1172,8 +1172,8 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
             height: 100% !important;
             overflow: hidden;
             font-family: var(--vscode-font-family, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
-            color: var(--vscode-foreground, #000);
-            background-color: var(--vscode-editor-background, #fff);
+            color: var(--vscode-foreground) !important;
+            background-color: var(--vscode-editor-background) !important;
             font-size: 12px;
           }
           
@@ -1184,6 +1184,13 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
             overflow-y: auto;
             overflow-x: hidden;
             position: relative;
+            color: var(--vscode-foreground) !important;
+            background-color: var(--vscode-editor-background) !important;
+          }
+          
+          /* 强制所有文本元素使用VSCode主题颜色 */
+          *, *::before, *::after {
+            color: var(--vscode-foreground) !important;
           }
           
           /* 强制可见性和调试边框 */
@@ -1193,6 +1200,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
             visibility: visible !important;
             opacity: 1 !important;
             display: block !important;
+            color: var(--vscode-foreground) !important;
           }
           
           /* 加载状态样式 */
@@ -1201,21 +1209,22 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: var(--vscode-editor-background);
-            color: var(--vscode-foreground);
+            background: var(--vscode-editor-background) !important;
+            color: var(--vscode-foreground) !important;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             z-index: 9999;
             font-size: 14px;
             text-align: center;
+            border: 1px solid var(--vscode-panel-border, rgba(128,128,128,0.2));
           }
           
           .loading-spinner {
             width: 20px;
             height: 20px;
-            border: 2px solid var(--vscode-progressBar-background);
-            border-top: 2px solid var(--vscode-progressBar-foreground);
+            border: 2px solid var(--vscode-progressBar-background, rgba(128,128,128,0.3));
+            border-top: 2px solid var(--vscode-progressBar-foreground, var(--vscode-foreground));
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin: 0 auto 10px;
@@ -1225,12 +1234,56 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
           }
+
+          /* 确保按钮和输入框也使用正确的颜色 */
+          button {
+            background-color: var(--vscode-button-background) !important;
+            color: var(--vscode-button-foreground) !important;
+            border: 1px solid var(--vscode-button-border, transparent) !important;
+          }
+          
+          button:hover {
+            background-color: var(--vscode-button-hoverBackground) !important;
+          }
+          
+          select, input {
+            background-color: var(--vscode-dropdown-background, var(--vscode-input-background)) !important;
+            color: var(--vscode-dropdown-foreground, var(--vscode-input-foreground)) !important;
+            border: 1px solid var(--vscode-dropdown-border, var(--vscode-input-border)) !important;
+          }
+          
+          /* 确保链接颜色正确 */
+          a {
+            color: var(--vscode-textLink-foreground) !important;
+          }
+          
+          a:hover {
+            color: var(--vscode-textLink-activeForeground) !important;
+          }
         </style>
         <script>
           // 增强的调试和初始化脚本
           console.log('🚀 DiffSense WebView 开始加载');
           console.log('📱 User Agent:', navigator.userAgent);
           console.log('🔧 VSCode API可用性:', typeof acquireVsCodeApi);
+          
+          // 检测并应用VSCode主题
+          function detectAndApplyTheme() {
+            const body = document.body;
+            const computedStyle = getComputedStyle(document.documentElement);
+            const foregroundColor = computedStyle.getPropertyValue('--vscode-foreground');
+            const backgroundColor = computedStyle.getPropertyValue('--vscode-editor-background');
+            
+            console.log('🎨 检测到的主题颜色:');
+            console.log('  前景色:', foregroundColor);
+            console.log('  背景色:', backgroundColor);
+            
+            // 如果VSCode变量不可用，尝试手动检测
+            if (!foregroundColor && !backgroundColor) {
+              console.warn('⚠️ VSCode主题变量不可用，使用fallback');
+              // 可以在这里添加其他检测逻辑
+            }
+          }
           
           // 显示加载指示器
           function showLoading() {
@@ -1254,6 +1307,9 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
           
           // 立即显示加载指示器
           showLoading();
+          
+          // 检测主题
+          detectAndApplyTheme();
           
           // 全局错误处理
           window.addEventListener('error', (e) => {
