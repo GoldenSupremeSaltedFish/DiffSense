@@ -1126,8 +1126,22 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
   }
 
   private _getHtmlForWebview(webview: vscode.Webview) {
-    // 获取前端构建的index.html文件路径
-    const htmlPath = path.join(this._extensionUri.fsPath, '..', 'ui', 'diffsense-frontend', 'dist', 'index.html');
+    // 在VSIX包中，前端资源应该位于插件目录内部
+    // 首先检查是否在VSIX包中
+    const isVSIXPackage = !fs.existsSync(path.join(this._extensionUri.fsPath, '..', 'ui'));
+    
+    let htmlPath: string;
+    let resourceRoot: vscode.Uri;
+    
+    if (isVSIXPackage) {
+      // VSIX包环境：前端资源应该被复制到插件目录内
+      htmlPath = path.join(this._extensionUri.fsPath, 'ui', 'diffsense-frontend', 'dist', 'index.html');
+      resourceRoot = vscode.Uri.file(path.join(this._extensionUri.fsPath, 'ui', 'diffsense-frontend', 'dist'));
+    } else {
+      // 开发环境：使用原有的路径结构
+      htmlPath = path.join(this._extensionUri.fsPath, '..', 'ui', 'diffsense-frontend', 'dist', 'index.html');
+      resourceRoot = vscode.Uri.file(path.join(this._extensionUri.fsPath, '..', 'ui', 'diffsense-frontend', 'dist'));
+    }
     
     try {
       // 检查文件是否存在
@@ -1139,17 +1153,19 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       let htmlContent = fs.readFileSync(htmlPath, 'utf-8');
       
       // 获取资源URI基础路径
-      const resourceRoot = vscode.Uri.file(path.join(this._extensionUri.fsPath, '..', 'ui', 'diffsense-frontend', 'dist'));
       const resourceUri = webview.asWebviewUri(resourceRoot);
       
       console.log('🔄 WebView 初始化');
+      console.log('📦 VSIX包模式:', isVSIXPackage);
       console.log('📁 HTML路径:', htmlPath);
       console.log('🌐 资源URI:', resourceUri.toString());
       
       // 检查资源文件是否存在
-      const assetsPath = path.join(this._extensionUri.fsPath, '..', 'ui', 'diffsense-frontend', 'dist', 'assets');
+      const assetsPath = path.join(resourceRoot.fsPath, 'assets');
       if (!fs.existsSync(assetsPath)) {
         console.warn('⚠️ Assets目录不存在:', assetsPath);
+      } else {
+        console.log('✅ Assets目录存在:', assetsPath);
       }
       
       // 替换所有的资源路径为VSCode webview URI

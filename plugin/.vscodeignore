@@ -1,0 +1,34 @@
+# Development files
+.vscode/**
+.vscode-test/**
+src/**
+**/*.ts
+**/*.map
+tsconfig.json
+webpack.config.js
+.eslintrc.json
+.gitignore
+
+# Dependencies (will be bundled)
+node_modules/**
+
+# Build intermediate files
+.nyc_output
+coverage
+
+# Runtime test files
+**/*.test.*
+**/*.spec.*
+
+# Source maps
+**/*.js.map
+
+# Logs
+*.log
+
+# Temporary files
+.DS_Store
+Thumbs.db
+
+# Don't exclude frontend build files - these are needed
+!ui/diffsense-frontend/dist/** 
