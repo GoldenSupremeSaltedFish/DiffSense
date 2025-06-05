@@ -253,48 +253,33 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
   private async detectProjectType(repoPath: string): Promise<'backend' | 'frontend' | 'mixed' | 'unknown'> {
     try {
-      // 检查常见的项目标识文件
-      const hasPom = fs.existsSync(path.join(repoPath, 'pom.xml'));
-      const hasGradle = fs.existsSync(path.join(repoPath, 'build.gradle')) || fs.existsSync(path.join(repoPath, 'build.gradle.kts'));
-      const hasGoMod = fs.existsSync(path.join(repoPath, 'go.mod'));
-      const hasGoFiles = this.hasGoFiles(repoPath);
+      console.log('🔍 开始深度检测项目类型...');
       
-      const hasPackageJson = fs.existsSync(path.join(repoPath, 'package.json'));
-      const hasTsConfig = fs.existsSync(path.join(repoPath, 'tsconfig.json'));
-      
-      // 检查是否有前端框架标识
-      let hasReact = false;
-      let hasVue = false;
-      let hasAngular = false;
-      
-      if (hasPackageJson) {
-        try {
-          const packageJson = JSON.parse(fs.readFileSync(path.join(repoPath, 'package.json'), 'utf-8'));
-          const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
-          
-          hasReact = 'react' in dependencies;
-          hasVue = 'vue' in dependencies;
-          hasAngular = '@angular/core' in dependencies;
-        } catch (error) {
-          console.warn('解析package.json失败:', error);
-        }
-      }
+      // 使用深度搜索检测各种语言特征
+      const javaFeatures = await this.findJavaFeatures(repoPath);
+      const goFeatures = await this.findGoFeatures(repoPath);
+      const frontendFeatures = await this.findFrontendFeatures(repoPath);
 
-      // 判断后端类型
-      const isJavaBackend = hasPom || hasGradle;
-      const isGoBackend = hasGoMod || hasGoFiles;
-      const isBackend = isJavaBackend || isGoBackend;
-      
-      // 判断前端类型
-      const isFrontend = hasPackageJson && (hasTsConfig || hasReact || hasVue || hasAngular);
-
-      // 记录检测到的语言信息
+      // 记录检测结果
       const detectedLanguages = [];
-      if (isJavaBackend) detectedLanguages.push('Java');
-      if (isGoBackend) detectedLanguages.push('Golang');
-      if (isFrontend) detectedLanguages.push('Frontend');
+      if (javaFeatures.detected) {
+        detectedLanguages.push(`Java (${javaFeatures.paths.length}个位置)`);
+        console.log('☕ Java特征文件:', javaFeatures.paths);
+      }
+      if (goFeatures.detected) {
+        detectedLanguages.push(`Golang (${goFeatures.paths.length}个位置)`);
+        console.log('🐹 Go特征文件:', goFeatures.paths);
+      }
+      if (frontendFeatures.detected) {
+        detectedLanguages.push(`Frontend (${frontendFeatures.paths.length}个位置)`);
+        console.log('🌐 前端特征文件:', frontendFeatures.paths);
+      }
       
       console.log('🔍 检测到的语言:', detectedLanguages.join(', ') || '未知');
+
+      // 根据检测结果返回项目类型
+      const isBackend = javaFeatures.detected || goFeatures.detected;
+      const isFrontend = frontendFeatures.detected;
 
       if (isBackend && isFrontend) {
         return 'mixed';
@@ -312,13 +297,160 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  private async findJavaFeatures(repoPath: string): Promise<{detected: boolean, paths: string[]}> {
+    try {
+      const { globSync } = require('glob');
+      const result = { detected: false, paths: [] as string[] };
+
+      // 搜索 Maven 项目文件
+      const pomFiles = globSync('**/pom.xml', {
+        cwd: repoPath,
+        ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/build/**']
+      });
+
+      // 搜索 Gradle 项目文件
+      const gradleFiles = globSync('**/build.gradle*', {
+        cwd: repoPath,
+        ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/build/**']
+      });
+
+      // 搜索 Java 源文件
+      const javaFiles = globSync('**/*.java', {
+        cwd: repoPath,
+        ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/build/**'],
+        nodir: true
+      }).slice(0, 5); // 只取前5个作为示例
+
+      if (pomFiles.length > 0) {
+        result.detected = true;
+        result.paths.push(...pomFiles.map((p: string) => `Maven: ${p}`));
+      }
+
+      if (gradleFiles.length > 0) {
+        result.detected = true;
+        result.paths.push(...gradleFiles.map((p: string) => `Gradle: ${p}`));
+      }
+
+      if (javaFiles.length > 0) {
+        result.detected = true;
+        result.paths.push(`Java源文件: ${javaFiles.length}个文件 (如: ${javaFiles[0]})`);
+      }
+
+      return result;
+    } catch (error) {
+      console.warn('Java特征检测失败:', error);
+      return { detected: false, paths: [] };
+    }
+  }
+
+  private async findGoFeatures(repoPath: string): Promise<{detected: boolean, paths: string[]}> {
+    try {
+      const { globSync } = require('glob');
+      const result = { detected: false, paths: [] as string[] };
+
+      // 搜索 Go module 文件
+      const goModFiles = globSync('**/go.mod', {
+        cwd: repoPath,
+        ignore: ['**/node_modules/**', '**/vendor/**', '**/target/**', '**/dist/**']
+      });
+
+      // 搜索 Go 源文件
+      const goFiles = globSync('**/*.go', {
+        cwd: repoPath,
+        ignore: ['**/node_modules/**', '**/vendor/**', '**/target/**', '**/dist/**'],
+        nodir: true
+      }).slice(0, 5); // 只取前5个作为示例
+
+      if (goModFiles.length > 0) {
+        result.detected = true;
+        result.paths.push(...goModFiles.map((p: string) => `Go Module: ${p}`));
+      }
+
+      if (goFiles.length > 0) {
+        result.detected = true;
+        result.paths.push(`Go源文件: ${goFiles.length}个文件 (如: ${goFiles[0]})`);
+      }
+
+      return result;
+    } catch (error) {
+      console.warn('Go特征检测失败:', error);
+      return { detected: false, paths: [] };
+    }
+  }
+
+  private async findFrontendFeatures(repoPath: string): Promise<{detected: boolean, paths: string[]}> {
+    try {
+      const { globSync } = require('glob');
+      const result = { detected: false, paths: [] as string[] };
+
+      // 搜索 package.json 文件
+      const packageJsonFiles = globSync('**/package.json', {
+        cwd: repoPath,
+        ignore: ['**/node_modules/**', '**/target/**', '**/dist/**']
+      });
+
+      // 搜索 TypeScript 配置文件
+      const tsConfigFiles = globSync('**/tsconfig.json', {
+        cwd: repoPath,
+        ignore: ['**/node_modules/**', '**/target/**', '**/dist/**']
+      });
+
+      // 搜索常见前端文件
+      const frontendFiles = globSync('**/*.{ts,tsx,js,jsx,vue}', {
+        cwd: repoPath,
+        ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/build/**', '**/*.test.*', '**/*.spec.*'],
+        nodir: true
+      }).slice(0, 5); // 只取前5个作为示例
+
+      // 分析 package.json 内容
+      for (const packageFile of packageJsonFiles) {
+        try {
+          const fullPath = path.join(repoPath, packageFile);
+          const packageContent = JSON.parse(fs.readFileSync(fullPath, 'utf-8'));
+          const dependencies = { ...packageContent.dependencies, ...packageContent.devDependencies };
+          
+          const frameworks = [];
+          if ('react' in dependencies) frameworks.push('React');
+          if ('vue' in dependencies) frameworks.push('Vue');
+          if ('@angular/core' in dependencies) frameworks.push('Angular');
+          if ('svelte' in dependencies) frameworks.push('Svelte');
+          if ('next' in dependencies) frameworks.push('Next.js');
+          if ('nuxt' in dependencies) frameworks.push('Nuxt.js');
+          
+          if (frameworks.length > 0 || 'typescript' in dependencies) {
+            result.detected = true;
+            const frameworkInfo = frameworks.length > 0 ? ` (${frameworks.join(', ')})` : '';
+            result.paths.push(`package.json: ${packageFile}${frameworkInfo}`);
+          }
+        } catch (parseError) {
+          console.warn(`解析package.json失败: ${packageFile}`, parseError);
+        }
+      }
+
+      if (tsConfigFiles.length > 0) {
+        result.detected = true;
+        result.paths.push(...tsConfigFiles.map((p: string) => `TypeScript: ${p}`));
+      }
+
+      if (frontendFiles.length > 0) {
+        result.detected = true;
+        result.paths.push(`前端源文件: ${frontendFiles.length}个文件 (如: ${frontendFiles[0]})`);
+      }
+
+      return result;
+    } catch (error) {
+      console.warn('前端特征检测失败:', error);
+      return { detected: false, paths: [] };
+    }
+  }
+
   private hasGoFiles(repoPath: string): boolean {
     try {
       // 查找Go文件，排除vendor目录
       const { globSync } = require('glob');
       const goFiles = globSync('**/*.go', {
         cwd: repoPath,
-        ignore: ['vendor/**', '**/vendor/**']
+        ignore: ['vendor/**', '**/vendor/**', '**/node_modules/**']
       });
       return goFiles.length > 0;
     } catch (error) {
@@ -329,14 +461,13 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
   private async detectBackendLanguage(repoPath: string): Promise<'java' | 'golang' | 'unknown'> {
     try {
-      const hasPom = fs.existsSync(path.join(repoPath, 'pom.xml'));
-      const hasGradle = fs.existsSync(path.join(repoPath, 'build.gradle')) || fs.existsSync(path.join(repoPath, 'build.gradle.kts'));
-      const hasGoMod = fs.existsSync(path.join(repoPath, 'go.mod'));
-      const hasGoFiles = this.hasGoFiles(repoPath);
+      const javaFeatures = await this.findJavaFeatures(repoPath);
+      const goFeatures = await this.findGoFeatures(repoPath);
 
-      if (hasPom || hasGradle) {
+      // 优先级：如果两种语言都存在，Java优先（通常是主要后端语言）
+      if (javaFeatures.detected) {
         return 'java';
-      } else if (hasGoMod || hasGoFiles) {
+      } else if (goFeatures.detected) {
         return 'golang';
       } else {
         return 'unknown';
@@ -348,44 +479,43 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
   }
 
   private async findFrontendPaths(repoPath: string): Promise<string[]> {
-    const frontendPaths: string[] = [];
-    
     try {
-      // 常见的前端目录名
-      const commonFrontendDirs = [
-        'ui', 'frontend', 'web', 'client', 'src/main/webapp', 
-        'src/main/resources/static', 'public', 'dist', 'www'
-      ];
+      const frontendFeatures = await this.findFrontendFeatures(repoPath);
+      const frontendPaths: string[] = [];
+      
+      if (frontendFeatures.detected) {
+        // 从检测到的特征文件中提取目录路径
+        const { globSync } = require('glob');
+        const packageJsonFiles = globSync('**/package.json', {
+          cwd: repoPath,
+          ignore: ['**/node_modules/**', '**/target/**', '**/dist/**']
+        });
 
-      for (const dir of commonFrontendDirs) {
-        const fullPath = path.join(repoPath, dir);
-        if (fs.existsSync(fullPath)) {
-          const stat = fs.statSync(fullPath);
-          if (stat.isDirectory()) {
-            // 检查是否包含前端文件
-            const hasJs = fs.existsSync(path.join(fullPath, 'package.json')) || 
-                         fs.existsSync(path.join(fullPath, 'tsconfig.json'));
-            if (hasJs) {
-              frontendPaths.push(dir);
+        for (const packageFile of packageJsonFiles) {
+          try {
+            const fullPath = path.join(repoPath, packageFile);
+            const packageContent = JSON.parse(fs.readFileSync(fullPath, 'utf-8'));
+            const dependencies = { ...packageContent.dependencies, ...packageContent.devDependencies };
+            
+            // 检查是否是前端项目
+            const hasFrontendDeps = ['react', 'vue', '@angular/core', 'svelte', 'next', 'nuxt', 'typescript'].some(dep => dep in dependencies);
+            
+            if (hasFrontendDeps) {
+              const dirPath = path.dirname(packageFile);
+              frontendPaths.push(dirPath === '.' ? '' : dirPath);
             }
+          } catch (parseError) {
+            console.warn(`解析package.json失败: ${packageFile}`, parseError);
           }
         }
       }
 
-      // 如果没有找到明显的前端目录，检查根目录
-      if (frontendPaths.length === 0) {
-        const hasRootFrontend = fs.existsSync(path.join(repoPath, 'package.json')) && 
-                               fs.existsSync(path.join(repoPath, 'tsconfig.json'));
-        if (hasRootFrontend) {
-          frontendPaths.push('');
-        }
-      }
-
+      // 去重并返回
+      return [...new Set(frontendPaths)];
     } catch (error) {
       console.error('前端路径检测错误:', error);
+      return [];
     }
-
-    return frontendPaths;
   }
 
   private async executeMixedAnalysis(repoPath: string, analysisData: any): Promise<any[]> {
