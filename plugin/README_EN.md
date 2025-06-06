@@ -1,113 +1,94 @@
 # DiffSense - Git Code Impact Analysis
 
-[![Version](https://img.shields.io/badge/version-0.1.1-blue.svg)](https://marketplace.visualstudio.com/items?itemName=humphreyLi.diffsense)
+[![Version](https://img.shields.io/badge/version-0.1.7-blue.svg)](https://marketplace.visualstudio.com/items?itemName=humphreyLi.diffsense)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE.txt)
 [![VSCode](https://img.shields.io/badge/VSCode-1.74.0+-orange.svg)](https://code.visualstudio.com/)
 
-**DiffSense** is an intelligent Git code impact analysis tool that supports change impact analysis and visualization for Java, Golang, and frontend projects. It helps developers understand the impact scope of code changes and provides smart regression analysis.
+🚀 **Intelligent Git Code Impact Analysis Tool** - Supports change impact analysis and visualization for Java, Golang, and frontend projects
+
+[中文](readme.md) | English
 
 ![DiffSense Demo](https://github.com/GoldenSupremeSaltedFish/DiffSense/raw/main/demo.gif)
 
-## 🚀 Key Features
+## ✨ Key Features
 
-### 📊 Multi-Language Code Analysis
-- **Java Projects**: Maven/Gradle project support with deep call graph analysis
-- **Golang Projects**: Go modules, test coverage, goroutine and channel analysis
-- **Frontend Projects**: React/Vue/Angular/TypeScript dependency analysis
-- **Mixed Projects**: Comprehensive analysis for full-stack applications
+- **🔍 Multi-Language Support**: Java, Golang, TypeScript/React code analysis
+- **📊 Impact Analysis**: Automatically detect the impact scope of code changes
+- **🎯 Smart Detection**: Automatically identify project types and languages
+- **📈 Visualization**: Intuitive call relationship graphs and impact reports
+- **📩 One-Click Bug Report**: Smart bug reporting feature
+- **🌐 Remote Development**: Full support for SSH, WSL, and container environments
+- **🏗️ Microservices Support**: Enhanced deep directory analysis up to 100 levels
 
-### 🔍 Advanced Impact Analysis
-- **Call Graph Analysis**: Visualize method call relationships and dependencies
-- **Change Impact Detection**: Identify affected code areas from Git changes
-- **Test Coverage Analysis**: Find untested code paths and potential risks
-- **Regression Risk Scoring**: Smart risk assessment for code changes
+## 🚀 Quick Start
 
-### 🎯 Smart Project Detection
-- **Automatic Type Detection**: Intelligently recognizes project types
-- **Microservices Support**: Enhanced recursive depth for complex project structures
-- **Monorepo Compatibility**: Supports multi-project repositories
-- **Deep Directory Analysis**: Up to 15 levels of directory recursion
+1. **Install Extension**
+   - Search "DiffSense" in VSCode Extensions
+   - Or install from `.vsix` file
 
-### 📈 Visual Analytics
-- **Interactive Call Graphs**: Explore code relationships visually
-- **Impact Heatmaps**: Visualize change impact intensity
-- **Risk Dashboards**: Comprehensive risk assessment reports
-- **Export Options**: HTML, Markdown, and JSON report formats
+2. **Open Your Project**
+   - Open a project containing a Git repository in VSCode
+   - Find the DiffSense icon in the activity bar
 
-## 🛠️ Installation
+3. **Configure Analysis**
+   - Select analysis scope and type
+   - Choose Git branch and commit range
+   - Click "Start Analysis"
 
-### From VSCode Marketplace
-1. Open VSCode
-2. Go to Extensions (Ctrl+Shift+X)
-3. Search for "DiffSense"
-4. Click Install
+## 📋 Supported Analysis Types
 
-### From VSIX File
-1. Download the latest `.vsix` file
-2. Open VSCode
-3. Press `Ctrl+Shift+P` and type "Extensions: Install from VSIX..."
-4. Select the downloaded VSIX file
+### 🖥️ Backend Analysis
+- **Java Projects**: Maven/Gradle project analysis with deep call graph
+- **Golang Projects**: Go module analysis with dependency tracking
+- **Method Call Chains**: Deep call relationship analysis
 
-## 📖 Quick Start
+### 🌐 Frontend Analysis
+- **Dependency Analysis**: File dependency relationships
+- **Component Impact**: UI component change impact
+- **Entry Point Analysis**: Function call entry analysis
+- **Framework Support**: React, Vue, Angular, Svelte
 
-### 1. Basic Usage
-1. Open your project in VSCode
-2. Click the DiffSense icon in the activity bar
-3. The extension will automatically detect your project type
-4. Configure analysis parameters:
-   - Select Git branch
-   - Choose commit range
-   - Set analysis scope
+### 🔄 Mixed Projects
+- **Full-Stack Analysis**: Frontend-backend interaction impact
+- **API Change Impact**: Interface change impact analysis
+- **Microservices**: Complex microservice architecture support
 
-### 2. Supported Project Types
+## 🛠️ System Requirements
 
-#### Java Projects
-```
-project/
-├── src/main/java/
-├── pom.xml (Maven)
-└── build.gradle (Gradle)
-```
+- **VSCode**: 1.74.0 or higher
+- **Git**: Any recent version
+- **Java Projects**: Maven or Gradle
+- **Golang Projects**: Go 1.16+
+- **Frontend Projects**: Node.js
 
-#### Golang Projects
-```
-project/
-├── go.mod
-├── main.go
-└── internal/
-    ├── service/
-    └── domain/
-```
+## 🌍 Environment Support
 
-#### Frontend Projects
-```
-project/
-├── package.json
-├── src/
-│   ├── components/
-│   └── pages/
-└── tsconfig.json
-```
+### ✅ Local Development
+- VSCode Desktop
+- Plugin Development Mode
+- Compiled Extension Package
 
-### 3. Analysis Configuration
+### ✅ Remote Development
+- **VSCode Remote - SSH**: Linux servers, remote development
+- **VSCode Remote - WSL**: Windows Subsystem for Linux
+- **VSCode Remote - Containers**: Docker development environments
+- **GitHub Codespaces**: Cloud development
+- **GitPod**: Browser-based IDE
 
-#### Basic Analysis
-- **Branch Selection**: Choose the branch to analyze
-- **Commit Range**: Specify start and end commits
-- **File Filters**: Include/exclude specific file patterns
+### ✅ Enterprise Environments
+- Corporate networks with proxy settings
+- Restricted file system permissions
+- Large-scale monorepo structures
 
-#### Advanced Options
-- **Call Graph Depth**: Configure analysis depth (default: 10)
-- **Test Coverage**: Enable/disable test coverage analysis
-- **Risk Thresholds**: Set custom risk scoring parameters
-
-## 🔧 Configuration Options
+## 🔧 Configuration
 
 ### Extension Settings
 
+Configure DiffSense through VSCode settings:
+
 ```json
 {
-  "diffsense.maxAnalysisDepth": 10,
+  "diffsense.maxAnalysisDepth": 100,
   "diffsense.enableTestCoverage": true,
   "diffsense.autoDetectProjectType": true,
   "diffsense.excludePatterns": [
@@ -126,10 +107,11 @@ Create a `.diffsense.json` file in your project root:
 ```json
 {
   "projectType": "mixed",
-  "frontendPaths": ["ui/", "frontend/"],
-  "backendPaths": ["api/", "service/"],
-  "excludePatterns": ["**/test/**"],
-  "analysisDepth": 15,
+  "frontendPaths": ["ui/", "frontend/", "web/"],
+  "backendPaths": ["api/", "service/", "server/"],
+  "microservicePaths": ["*_service/", "service_*/", "*-service/"],
+  "excludePatterns": ["**/test/**", "**/spec/**"],
+  "analysisDepth": 100,
   "riskThresholds": {
     "high": 80,
     "medium": 50,
@@ -141,134 +123,180 @@ Create a `.diffsense.json` file in your project root:
 ## 📊 Understanding Analysis Results
 
 ### Call Graph Visualization
-- **Nodes**: Represent methods/functions
-- **Edges**: Show call relationships
-- **Colors**: Indicate risk levels (Red: High, Yellow: Medium, Green: Low)
+- **Nodes**: Represent methods/functions/components
+- **Edges**: Show call relationships and dependencies
+- **Colors**: Indicate risk levels (🔴 High, 🟡 Medium, 🟢 Low)
 - **Size**: Reflects complexity or impact score
 
-### Risk Assessment
-- **High Risk (80-100)**: Critical changes requiring thorough testing
-- **Medium Risk (50-79)**: Moderate impact, requires review
-- **Low Risk (0-49)**: Minor changes with limited impact
+### Risk Assessment Categories
+- **🔴 High Risk (80-100)**: Critical changes requiring thorough testing
+- **🟡 Medium Risk (50-79)**: Moderate impact, requires review
+- **🟢 Low Risk (0-49)**: Minor changes with limited impact
 
-### Test Coverage Gaps
-- **Uncovered Methods**: Functions without test coverage
-- **Risk Patterns**: Commonly risky code patterns
-- **Recommendations**: Suggested testing strategies
-
-## 🌍 Environment Support
-
-### Local Development
-- ✅ VSCode Desktop
-- ✅ Plugin Development Mode
-- ✅ Compiled Extension Package
-
-### Remote Development
-- ✅ VSCode Remote - SSH
-- ✅ VSCode Remote - WSL
-- ✅ VSCode Remote - Containers
-- ✅ GitHub Codespaces
-- ✅ GitPod
-
-### CI/CD Integration
-- ✅ Command Line Interface
-- ✅ Docker Support
-- ✅ Jenkins/GitHub Actions Integration
+### Impact Analysis Reports
+- **Affected Files**: List of files impacted by changes
+- **Method Dependencies**: Functions that call or are called by changed code
+- **Test Coverage Gaps**: Areas lacking test coverage
+- **Regression Risks**: Potential areas for bugs
 
 ## 🚨 Troubleshooting
 
-### Common Issues
+### Common Issues and Solutions
 
-#### "Analyzer not found" Error
-```bash
-# Ensure dependencies are installed
-cd ui/node-analyzer && npm install
-cd ui/golang-analyzer && npm install
-```
+#### "Unsupported backend language: unknown"
+**Solution**: 
+- Ensure your project has the correct structure (pom.xml for Java, go.mod for Go)
+- Check that files are not deeply nested beyond 100 levels
+- Verify file permissions in remote environments
 
-#### Path Resolution Issues
-- Check VSCode Output panel for detailed path information
-- Verify extension installation location
-- Ensure analyzer scripts have proper permissions
+#### "Cannot find module 'glob'"
+**Solution**: 
+- This has been fixed in v0.1.4+
+- Update to the latest version
+- The glob module is now bundled with the extension
 
-#### Performance Issues
-- Reduce analysis depth for large projects
-- Use file exclusion patterns
-- Enable incremental analysis mode
+#### "JAR file not found"
+**Solution**: 
+- Fixed in v0.1.6+ with multi-strategy path resolution
+- The Java analyzer JAR is now included in the extension
+- Works in all remote environments
+
+#### Path Resolution Issues in Remote Development
+**Solution**: 
+- Updated in v0.1.7 with enhanced path detection
+- Supports SSH, WSL, containers, and cloud environments
+- Automatic environment detection and adaptation
 
 ### Debug Mode
-Enable detailed logging by setting:
-```json
-{
-  "diffsense.debug": true,
-  "diffsense.verboseLogging": true
-}
-```
 
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-### Development Setup
-```bash
-# Clone the repository
-git clone https://github.com/GoldenSupremeSaltedFish/DiffSense.git
-
-# Install dependencies
-cd DiffSense/plugin
-npm install
-
-# Install analyzer dependencies
-cd ../ui/node-analyzer && npm install
-cd ../golang-analyzer && npm install
-
-# Build the project
-npm run compile
-
-# Package for testing
-npm run package
-```
-
-### Running Tests
-```bash
-npm test
-```
+Enable detailed logging in VSCode Output panel:
+1. Open Output panel (View → Output)
+2. Select "DiffSense" from the dropdown
+3. Look for detailed path resolution and analysis logs
 
 ## 📝 Changelog
 
-### Version 0.1.1 (Latest)
-- 🚀 **Enhanced Microservices Support**: Increased recursive depth from 5 to 15 levels
-- 🔧 **Remote Development Fix**: Fixed analyzer path resolution for VSCode remote environments
-- 📊 **Improved Analysis Accuracy**: Enhanced file type detection for complex project structures
-- 🐛 **Bug Fixes**: Resolved path issues in SSH, WSL, and container environments
-- 📈 **Performance Improvements**: Optimized file scanning and dependency analysis
+### Version 0.1.7 (Latest) 🚀
+- 🔧 **Enhanced Path Resolution**: 5-strategy path finding for all environments
+- 🌐 **Remote Environment Fixes**: Perfect compatibility with SSH/WSL/containers
+- 📦 **JAR File Bundling**: Java analyzer now bundled in extension
+- 🔍 **Improved Diagnostics**: Detailed environment detection and debugging
+- 🏗️ **Microservices Support**: Up to 100-level directory recursion
+- 🐛 **Glob Module Fix**: Complete dependency bundling
 
-### Version 0.1.0
-- 🎉 Initial release with basic Java, Golang, and frontend analysis
-- 📊 Call graph visualization
-- 🔍 Basic impact analysis
-- 📈 Risk scoring system
+### Version 0.1.6
+- 🛠️ **Path Logic Overhaul**: Multi-strategy JAR file location
+- 🌐 **Remote Development**: Enhanced support for remote VSCode environments
 
-## 📄 License
+### Version 0.1.4
+- 📦 **JAR Bundling**: Java analyzer JAR included in extension package
+- 🔧 **Dependency Fixes**: Complete glob module bundling
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE.txt](LICENSE.txt) file for details.
+### Version 0.1.2-0.1.3
+- 🏗️ **Microservice Enhancement**: Recursive depth increased from 15 to 25+ levels
+- 🌐 **Remote Development**: Fixed analyzer path issues in SSH/WSL/container environments
+- 📊 **Analysis Accuracy**: Enhanced file type detection for deep directory structures
+- 🚀 **Performance**: Optimized file scanning and dependency analysis algorithms
 
-## 🙏 Acknowledgments
+### Version 0.1.0-0.1.1
+- 🎉 **Initial Release**: Java, Golang, frontend project analysis support
+- 📊 **Call Graph Visualization**: Interactive dependency visualization
+- 🔍 **Basic Impact Analysis**: Change impact detection
+- 📈 **Risk Scoring System**: Automated risk assessment
 
-- [Eclipse JGit](https://www.eclipse.org/jgit/) for Git integration
-- [Spoon](https://spoon.gforge.inria.fr/) for Java code analysis
-- [TypeScript Compiler API](https://github.com/microsoft/TypeScript) for frontend analysis
-- [Visual Studio Code Extension API](https://code.visualstudio.com/api)
+## 💻 Supported Project Structures
 
-## 📞 Support
+### Java Projects
+```
+enterprise-project/
+├── user-service/
+│   ├── src/main/java/
+│   └── pom.xml
+├── order-service/
+│   ├── src/main/java/
+│   └── pom.xml
+├── common/
+│   └── shared-models/
+└── build.gradle (root)
+```
 
+### Golang Projects
+```
+microservice-platform/
+├── cmd/
+│   ├── user-svc/
+│   └── order-svc/
+├── internal/
+│   ├── domain/
+│   ├── repository/
+│   └── service/
+├── pkg/
+└── go.mod
+```
+
+### Frontend Projects
+```
+frontend-workspace/
+├── apps/
+│   ├── admin-dashboard/
+│   └── customer-portal/
+├── libs/
+│   ├── ui-components/
+│   └── shared-utils/
+├── package.json
+└── nx.json
+```
+
+### Mixed Full-Stack Projects
+```
+full-stack-app/
+├── backend/
+│   ├── api/
+│   ├── service/
+│   └── pom.xml
+├── frontend/
+│   ├── src/
+│   └── package.json
+└── docker-compose.yml
+```
+
+## 📞 Support & Feedback
+
+Encountered an issue? Use the built-in 📩 **One-Click Bug Report** feature for fast response!
+
+**Support Channels**:
 - 🐛 **Bug Reports**: [GitHub Issues](https://github.com/GoldenSupremeSaltedFish/DiffSense/issues)
 - 💡 **Feature Requests**: [GitHub Discussions](https://github.com/GoldenSupremeSaltedFish/DiffSense/discussions)
-- 📧 **Email**: support@diffsense.com
 - 📚 **Documentation**: [Wiki](https://github.com/GoldenSupremeSaltedFish/DiffSense/wiki)
+- 📧 **Direct Contact**: Open DiffSense → Click "Report Bug" → Auto-generated issue
+
+## 🎯 Use Cases
+
+### For Individual Developers
+- **Code Review**: Understand the impact of your changes before committing
+- **Refactoring**: Safely refactor code with impact visualization
+- **Bug Hunting**: Trace call paths to identify potential bug sources
+
+### For Development Teams
+- **Pull Request Reviews**: Automated impact analysis for code reviews
+- **Testing Strategy**: Identify critical paths that need testing
+- **Architecture Understanding**: Visualize system dependencies
+
+### For DevOps & QA
+- **Regression Testing**: Focus testing on impacted areas
+- **Release Planning**: Risk assessment for deployments
+- **Quality Gates**: Automated quality checks in CI/CD pipelines
+
+## 🔮 Roadmap
+
+- **IDE Integration**: IntelliJ IDEA, WebStorm support
+- **CI/CD Tools**: Jenkins, GitHub Actions plugins
+- **Advanced Analytics**: ML-powered risk prediction
+- **Team Collaboration**: Shared analysis reports
+- **API Support**: REST API change impact analysis
 
 ---
 
-**Made with ❤️ by the DiffSense Team**
+Made with ❤️ by DiffSense Team
 
-*Empowering developers with intelligent code impact analysis* 
+**Download Latest Version**: [DiffSense v0.1.7](https://github.com/GoldenSupremeSaltedFish/DiffSense/releases) 
