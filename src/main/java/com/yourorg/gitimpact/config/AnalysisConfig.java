@@ -5,8 +5,8 @@ public class AnalysisConfig {
     private final int maxFiles;
     private final String scope;
 
-    private static final int DEFAULT_MAX_DEPTH = 5;
-    private static final int DEFAULT_MAX_FILES = 200;
+    private static final int DEFAULT_MAX_DEPTH = 10;
+    private static final int DEFAULT_MAX_FILES = 500;
     private static final String DEFAULT_SCOPE = "";
 
     private AnalysisConfig(Builder builder) {

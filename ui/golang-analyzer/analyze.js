@@ -25,6 +25,7 @@ class GolangAnalyzer {
       analyzeGoroutines: true, // 新增：分析goroutine
       analyzeChannels: true, // 新增：分析channel
       analyzeInterfaces: true, // 新增：深度接口分析
+      maxDepth: 15, // 增加递归深度以支持微服务项目
       ...options
     };
     
@@ -196,13 +197,15 @@ class GolangAnalyzer {
     const businessFiles = glob.sync(this.options.filePattern, {
       cwd: this.targetDir,
       ignore: [...this.options.exclude, '**/*_test.go'],
-      absolute: true
+      absolute: true,
+      maxDepth: this.options.maxDepth // 使用配置的深度
     });
 
     const testFiles = this.options.includeTests ? glob.sync('**/*_test.go', {
       cwd: this.targetDir,
       ignore: this.options.exclude,
-      absolute: true
+      absolute: true,
+      maxDepth: this.options.maxDepth // 使用配置的深度
     }) : [];
 
     console.error(`📄 找到 ${businessFiles.length} 个业务文件，${testFiles.length} 个测试文件`);

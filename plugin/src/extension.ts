@@ -311,23 +311,26 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       const { globSync } = require('glob');
       const result = { detected: false, paths: [] as string[] };
 
-      // 搜索 Maven 项目文件
+      // 搜索 Maven 项目文件 - 增加深度限制配置
       const pomFiles = globSync('**/pom.xml', {
         cwd: repoPath,
-        ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/build/**']
+        ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/build/**'],
+        maxDepth: 15  // 增加递归深度以支持微服务项目
       });
 
-      // 搜索 Gradle 项目文件
+      // 搜索 Gradle 项目文件 - 增加深度限制配置
       const gradleFiles = globSync('**/build.gradle*', {
         cwd: repoPath,
-        ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/build/**']
+        ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/build/**'],
+        maxDepth: 15  // 增加递归深度以支持微服务项目
       });
 
-      // 搜索 Java 源文件
+      // 搜索 Java 源文件 - 增加深度限制配置
       const javaFiles = globSync('**/*.java', {
         cwd: repoPath,
         ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/build/**'],
-        nodir: true
+        nodir: true,
+        maxDepth: 15  // 增加递归深度以支持微服务项目
       }).slice(0, 5); // 只取前5个作为示例
 
       if (pomFiles.length > 0) {
@@ -357,17 +360,19 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       const { globSync } = require('glob');
       const result = { detected: false, paths: [] as string[] };
 
-      // 搜索 Go module 文件
+      // 搜索 Go module 文件 - 增加深度限制配置
       const goModFiles = globSync('**/go.mod', {
         cwd: repoPath,
-        ignore: ['**/node_modules/**', '**/vendor/**', '**/target/**', '**/dist/**']
+        ignore: ['**/node_modules/**', '**/vendor/**', '**/target/**', '**/dist/**'],
+        maxDepth: 15  // 增加递归深度以支持微服务项目
       });
 
-      // 搜索 Go 源文件
+      // 搜索 Go 源文件 - 增加深度限制配置
       const goFiles = globSync('**/*.go', {
         cwd: repoPath,
         ignore: ['**/node_modules/**', '**/vendor/**', '**/target/**', '**/dist/**'],
-        nodir: true
+        nodir: true,
+        maxDepth: 15  // 增加递归深度以支持微服务项目
       }).slice(0, 5); // 只取前5个作为示例
 
       if (goModFiles.length > 0) {
@@ -392,23 +397,26 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       const { globSync } = require('glob');
       const result = { detected: false, paths: [] as string[] };
 
-      // 搜索 package.json 文件
+      // 搜索 package.json 文件 - 增加深度限制配置
       const packageJsonFiles = globSync('**/package.json', {
         cwd: repoPath,
-        ignore: ['**/node_modules/**', '**/target/**', '**/dist/**']
+        ignore: ['**/node_modules/**', '**/target/**', '**/dist/**'],
+        maxDepth: 15  // 增加递归深度以支持微服务项目
       });
 
-      // 搜索 TypeScript 配置文件
+      // 搜索 TypeScript 配置文件 - 增加深度限制配置
       const tsConfigFiles = globSync('**/tsconfig.json', {
         cwd: repoPath,
-        ignore: ['**/node_modules/**', '**/target/**', '**/dist/**']
+        ignore: ['**/node_modules/**', '**/target/**', '**/dist/**'],
+        maxDepth: 15  // 增加递归深度以支持微服务项目
       });
 
-      // 搜索常见前端文件
+      // 搜索常见前端文件 - 增加深度限制配置
       const frontendFiles = globSync('**/*.{ts,tsx,js,jsx,vue}', {
         cwd: repoPath,
         ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/build/**', '**/*.test.*', '**/*.spec.*'],
-        nodir: true
+        nodir: true,
+        maxDepth: 15  // 增加递归深度以支持微服务项目
       }).slice(0, 5); // 只取前5个作为示例
 
       // 分析 package.json 内容
@@ -455,11 +463,12 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
   private hasGoFiles(repoPath: string): boolean {
     try {
-      // 查找Go文件，排除vendor目录
+      // 查找Go文件，排除vendor目录 - 增加深度限制配置
       const { globSync } = require('glob');
       const goFiles = globSync('**/*.go', {
         cwd: repoPath,
-        ignore: ['vendor/**', '**/vendor/**', '**/node_modules/**']
+        ignore: ['vendor/**', '**/vendor/**', '**/node_modules/**'],
+        maxDepth: 15  // 增加递归深度以支持微服务项目
       });
       return goFiles.length > 0;
     } catch (error) {
@@ -493,11 +502,12 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       const frontendPaths: string[] = [];
       
       if (frontendFeatures.detected) {
-        // 从检测到的特征文件中提取目录路径
+        // 从检测到的特征文件中提取目录路径 - 增加深度限制配置
         const { globSync } = require('glob');
         const packageJsonFiles = globSync('**/package.json', {
           cwd: repoPath,
-          ignore: ['**/node_modules/**', '**/target/**', '**/dist/**']
+          ignore: ['**/node_modules/**', '**/target/**', '**/dist/**'],
+          maxDepth: 15  // 增加递归深度以支持微服务项目
         });
 
         for (const packageFile of packageJsonFiles) {
@@ -585,8 +595,8 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
   private async executeFrontendAnalysis(repoPath: string, analysisData: any): Promise<any[]> {
     return new Promise((resolve, reject) => {
-      // 前端分析器脚本路径
-      const analyzerPath = path.join(__dirname, '../../ui/node-analyzer/analyze.js');
+      // 前端分析器脚本路径 - 修复远程开发环境路径问题
+      const analyzerPath = this.getAnalyzerPath('node-analyzer');
       
       // 确定要分析的目录
       let targetDir = repoPath;
@@ -596,6 +606,12 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       
       console.log('执行前端分析命令:', 'node', analyzerPath, targetDir);
       console.log('分析目录:', targetDir);
+
+      // 检查分析器文件是否存在
+      if (!fs.existsSync(analyzerPath)) {
+        reject(new Error(`前端分析器文件不存在: ${analyzerPath}`));
+        return;
+      }
 
       // 执行前端分析器
       const child = execFile('node', [analyzerPath, targetDir, 'json'], {
@@ -715,11 +731,17 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
   private async executeGolangAnalysis(repoPath: string, analysisData: any): Promise<any[]> {
     return new Promise((resolve, reject) => {
-      // Golang分析器脚本路径
-      const analyzerPath = path.join(__dirname, '../../ui/golang-analyzer/analyze.js');
+      // Golang分析器脚本路径 - 修复远程开发环境路径问题
+      const analyzerPath = this.getAnalyzerPath('golang-analyzer');
       
       console.log('执行Golang分析命令:', 'node', analyzerPath, repoPath);
       console.log('分析目录:', repoPath);
+
+      // 检查分析器文件是否存在
+      if (!fs.existsSync(analyzerPath)) {
+        reject(new Error(`Golang分析器文件不存在: ${analyzerPath}`));
+        return;
+      }
 
       // 执行Golang分析器
       const child = execFile('node', [analyzerPath, repoPath, 'json'], {
@@ -2734,6 +2756,37 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     }
 
     return { nodes, edges };
+  }
+
+  /**
+   * 获取分析器脚本的正确路径
+   * 处理远程开发环境和本地开发环境的路径差异
+   */
+  private getAnalyzerPath(analyzerType: string): string {
+    // 尝试多个可能的路径
+    const possiblePaths = [
+      // 标准插件安装路径
+      path.join(this._extensionUri.fsPath, 'ui', analyzerType, 'analyze.js'),
+      // 相对于扩展目录的路径
+      path.join(__dirname, '../../ui', analyzerType, 'analyze.js'),
+      // 当前工作目录的相对路径
+      path.join(process.cwd(), 'ui', analyzerType, 'analyze.js'),
+      // 尝试从node_modules查找
+      path.join(__dirname, '../../../ui', analyzerType, 'analyze.js')
+    ];
+
+    for (const possiblePath of possiblePaths) {
+      if (fs.existsSync(possiblePath)) {
+        console.log(`找到${analyzerType}分析器: ${possiblePath}`);
+        return possiblePath;
+      }
+    }
+
+    // 如果都找不到，返回默认路径并记录错误
+    const defaultPath = path.join(this._extensionUri.fsPath, 'ui', analyzerType, 'analyze.js');
+    console.error(`无法找到${analyzerType}分析器，尝试的路径:`, possiblePaths);
+    console.error(`使用默认路径: ${defaultPath}`);
+    return defaultPath;
   }
 
   // Bug汇报相关的辅助方法

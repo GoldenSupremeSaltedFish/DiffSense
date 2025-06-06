@@ -1,18 +1,19 @@
 package com.yourorg.gitimpact.cli;
 
-import com.yourorg.gitimpact.inspect.BranchMonitor;
-import com.yourorg.gitimpact.inspect.CommitImpact;
-import com.yourorg.gitimpact.inspect.InspectConfig;
-import com.yourorg.gitimpact.report.HtmlReportGenerator;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import picocli.CommandLine.Command;
-import picocli.CommandLine.Option;
-
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.Callable;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.yourorg.gitimpact.inspect.BranchMonitor;
+import com.yourorg.gitimpact.inspect.CommitImpact;
+import com.yourorg.gitimpact.inspect.InspectConfig;
+import com.yourorg.gitimpact.report.HtmlReportGenerator;
+
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 
 @Command(
     name = "inspect",
@@ -64,7 +65,7 @@ public class InspectCommand implements Callable<Integer> {
 
     @Option(
         names = {"--depth"},
-        description = "分析调用链的最大深度（默认: 5）",
+        description = "分析调用链的最大深度（默认: 10）",
         required = false
     )
     private Integer depth;
@@ -84,7 +85,7 @@ public class InspectCommand implements Callable<Integer> {
             .since(since)
             .baseline(baseline)
             .reportPath(reportPath)
-            .depth(depth != null ? depth : 5)
+            .depth(depth != null ? depth : 10)
             .build();
 
         // 执行分析

@@ -1,7 +1,7 @@
 package com.yourorg.gitimpact.inspect;
 
-import java.time.LocalDate;
 import java.nio.file.Path;
+import java.time.LocalDate;
 
 public class InspectConfig {
     private final String branch;
@@ -12,7 +12,7 @@ public class InspectConfig {
     private final int depth;
     private final Path cacheDir;
 
-    private static final int DEFAULT_DEPTH = 5;
+    private static final int DEFAULT_DEPTH = 10;
     private static final String DEFAULT_BASELINE = "main";
     private static final String DEFAULT_CACHE_DIR = ".inspect_cache";
 

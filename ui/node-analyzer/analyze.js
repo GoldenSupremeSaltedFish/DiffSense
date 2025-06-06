@@ -18,6 +18,7 @@ class FrontendAnalyzer {
       includeNodeModules: false,
       filePattern: '**/*.{js,jsx,ts,tsx}',
       exclude: ['node_modules/**', 'dist/**', 'build/**', '**/*.test.*', '**/*.spec.*'],
+      maxDepth: 15, // 增加递归深度以支持微服务项目
       ...options
     };
     this.project = null;
@@ -102,7 +103,8 @@ class FrontendAnalyzer {
     const files = glob.sync(this.options.filePattern, {
       cwd: this.targetDir,
       ignore: this.options.exclude,
-      absolute: true
+      absolute: true,
+      maxDepth: this.options.maxDepth // 使用配置的深度
     });
 
     console.error(`📄 找到 ${files.length} 个文件`);
