@@ -262,7 +262,22 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
   private async detectProjectType(repoPath: string): Promise<'backend' | 'frontend' | 'mixed' | 'unknown'> {
     try {
-      console.log('🔍 开始深度检测项目类型...');
+      console.log(`🚀 开始深度检测项目类型，路径: ${repoPath}`);
+      
+      // 先检查路径是否存在和可访问
+      const fs = require('fs');
+      if (!fs.existsSync(repoPath)) {
+        console.error(`❌ 项目路径不存在: ${repoPath}`);
+        return 'unknown';
+      }
+
+      // 显示项目根目录内容以帮助调试
+      try {
+        const dirContents = fs.readdirSync(repoPath);
+        console.log(`📁 项目根目录内容 (${dirContents.length} 项):`, dirContents.slice(0, 20));
+      } catch (dirError) {
+        console.warn(`⚠️ 无法读取目录内容:`, dirError);
+      }
       
       // 使用深度搜索检测各种语言特征
       const javaFeatures = await this.findJavaFeatures(repoPath);
@@ -284,21 +299,29 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         console.log('🌐 前端特征文件:', frontendFeatures.paths);
       }
       
+      console.log(`🔍 检测结果汇总:`);
+      console.log(`   Java: ${javaFeatures.detected ? '✅' : '❌'}`);
+      console.log(`   Go: ${goFeatures.detected ? '✅' : '❌'}`);
+      console.log(`   Frontend: ${frontendFeatures.detected ? '✅' : '❌'}`);
       console.log('🔍 检测到的语言:', detectedLanguages.join(', ') || '未知');
 
       // 根据检测结果返回项目类型
       const isBackend = javaFeatures.detected || goFeatures.detected;
       const isFrontend = frontendFeatures.detected;
 
+      let projectType: 'backend' | 'frontend' | 'mixed' | 'unknown';
       if (isBackend && isFrontend) {
-        return 'mixed';
+        projectType = 'mixed';
       } else if (isBackend) {
-        return 'backend';
+        projectType = 'backend';
       } else if (isFrontend) {
-        return 'frontend';
+        projectType = 'frontend';
       } else {
-        return 'unknown';
+        projectType = 'unknown';
       }
+
+      console.log(`🎯 最终项目类型判定: ${projectType}`);
+      return projectType;
 
     } catch (error) {
       console.error('项目类型检测错误:', error);
@@ -311,27 +334,54 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       const { globSync } = require('glob');
       const result = { detected: false, paths: [] as string[] };
 
+      console.log(`🔍 开始Java特征检测，项目路径: ${repoPath}`);
+
+      // 增加更大的递归深度以支持复杂微服务项目
+      const maxDepth = 25; // 进一步增加深度
+      
       // 搜索 Maven 项目文件 - 增加深度限制配置
+      console.log(`🔍 搜索Maven文件 (pom.xml)，最大深度: ${maxDepth}`);
       const pomFiles = globSync('**/pom.xml', {
         cwd: repoPath,
         ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/build/**'],
-        maxDepth: 15  // 增加递归深度以支持微服务项目
+        maxDepth: maxDepth
       });
+      console.log(`📄 找到 ${pomFiles.length} 个Maven文件:`, pomFiles);
 
       // 搜索 Gradle 项目文件 - 增加深度限制配置
+      console.log(`🔍 搜索Gradle文件 (build.gradle*)，最大深度: ${maxDepth}`);
       const gradleFiles = globSync('**/build.gradle*', {
         cwd: repoPath,
         ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/build/**'],
-        maxDepth: 15  // 增加递归深度以支持微服务项目
+        maxDepth: maxDepth
       });
+      console.log(`📄 找到 ${gradleFiles.length} 个Gradle文件:`, gradleFiles);
 
       // 搜索 Java 源文件 - 增加深度限制配置
+      console.log(`🔍 搜索Java源文件 (*.java)，最大深度: ${maxDepth}`);
       const javaFiles = globSync('**/*.java', {
         cwd: repoPath,
         ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/build/**'],
         nodir: true,
-        maxDepth: 15  // 增加递归深度以支持微服务项目
-      }).slice(0, 5); // 只取前5个作为示例
+        maxDepth: maxDepth
+      });
+      console.log(`📄 找到 ${javaFiles.length} 个Java文件`);
+      
+      // 显示前10个Java文件作为调试信息
+      if (javaFiles.length > 0) {
+        console.log(`📄 Java文件样例 (前10个):`, javaFiles.slice(0, 10));
+      }
+
+      // 特别检查用户提到的路径模式
+      const specificJavaCheck = globSync('**/file_service/**/*.java', {
+        cwd: repoPath,
+        nodir: true,
+        maxDepth: maxDepth
+      });
+      console.log(`🔍 特别检查file_service目录下的Java文件: ${specificJavaCheck.length} 个`);
+      if (specificJavaCheck.length > 0) {
+        console.log(`📄 file_service Java文件:`, specificJavaCheck);
+      }
 
       if (pomFiles.length > 0) {
         result.detected = true;
@@ -348,9 +398,12 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         result.paths.push(`Java源文件: ${javaFiles.length}个文件 (如: ${javaFiles[0]})`);
       }
 
+      console.log(`🎯 Java特征检测结果: ${result.detected ? '✅ 检测到Java项目' : '❌ 未检测到Java项目'}`);
+      console.log(`🎯 检测到的路径:`, result.paths);
+
       return result;
     } catch (error) {
-      console.warn('Java特征检测失败:', error);
+      console.error('Java特征检测失败:', error);
       return { detected: false, paths: [] };
     }
   }
@@ -479,17 +532,27 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
   private async detectBackendLanguage(repoPath: string): Promise<'java' | 'golang' | 'unknown'> {
     try {
+      console.log(`🔍 开始后端语言检测，路径: ${repoPath}`);
+      
       const javaFeatures = await this.findJavaFeatures(repoPath);
       const goFeatures = await this.findGoFeatures(repoPath);
 
+      console.log(`🔍 后端语言检测结果:`);
+      console.log(`   Java: ${javaFeatures.detected ? '✅' : '❌'} (${javaFeatures.paths.length} 个特征)`);
+      console.log(`   Go: ${goFeatures.detected ? '✅' : '❌'} (${goFeatures.paths.length} 个特征)`);
+
       // 优先级：如果两种语言都存在，Java优先（通常是主要后端语言）
+      let backendLanguage: 'java' | 'golang' | 'unknown';
       if (javaFeatures.detected) {
-        return 'java';
+        backendLanguage = 'java';
       } else if (goFeatures.detected) {
-        return 'golang';
+        backendLanguage = 'golang';
       } else {
-        return 'unknown';
+        backendLanguage = 'unknown';
       }
+
+      console.log(`🎯 最终后端语言判定: ${backendLanguage}`);
+      return backendLanguage;
     } catch (error) {
       console.error('后端语言检测错误:', error);
       return 'unknown';
