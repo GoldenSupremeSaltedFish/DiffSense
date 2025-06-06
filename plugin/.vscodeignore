@@ -9,8 +9,20 @@ webpack.config.js
 .eslintrc.json
 .gitignore
 
-# Dependencies (will be bundled)
+# Dependencies - include runtime dependencies for glob
 node_modules/**
+!node_modules/glob/**
+!node_modules/@types/glob/**
+!node_modules/minimatch/**
+!node_modules/foreground-child/**
+!node_modules/jackspeak/**
+!node_modules/minipass/**
+!node_modules/package-json-from-dist/**
+!node_modules/path-scurry/**
+!node_modules/lru-cache/**
+!node_modules/signal-exit/**
+!node_modules/brace-expansion/**
+!node_modules/balanced-match/**
 
 # Build intermediate files
 .nyc_output
@@ -31,4 +43,7 @@ coverage
 Thumbs.db
 
 # Don't exclude frontend build files - these are needed
-!ui/diffsense-frontend/dist/** 
+!ui/diffsense-frontend/dist/**
+
+# Include Java analyzer JAR file in plugin directory
+!analyzers/** 

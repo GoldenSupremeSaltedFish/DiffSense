@@ -158,8 +158,8 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
           // Java分析
           console.log('☕ 使用Java分析器...');
           
-          // 构建JAR文件路径
-          const jarPath = path.resolve(__dirname, '../../target/gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar');
+          // 构建JAR文件路径 - 支持多种环境
+          const jarPath = this.getJavaAnalyzerPath();
           
           // 检查JAR文件是否存在
           if (!fs.existsSync(jarPath)) {
@@ -262,50 +262,114 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
   private async detectProjectType(repoPath: string): Promise<'backend' | 'frontend' | 'mixed' | 'unknown'> {
     try {
-      console.log(`🚀 开始深度检测项目类型，路径: ${repoPath}`);
+      // === 第一步：环境诊断 ===
+      console.log(`🚀 [DiffSense] 开始深度项目类型检测 (远程Linux适配版)`);
+      console.log(`📍 [环境] 工作区路径: ${repoPath}`);
+      console.log(`📍 [环境] Node.js版本: ${process.version}`);
+      console.log(`📍 [环境] 平台: ${process.platform}`);
+      console.log(`📍 [环境] 架构: ${process.arch}`);
+      console.log(`📍 [环境] VSCode版本: ${vscode.version}`);
+      console.log(`📍 [环境] 是否为远程环境: ${vscode.env.remoteName ? '是 (' + vscode.env.remoteName + ')' : '否'}`);
       
-      // 先检查路径是否存在和可访问
+      // === 第二步：路径和权限检查 ===
       const fs = require('fs');
-      if (!fs.existsSync(repoPath)) {
-        console.error(`❌ 项目路径不存在: ${repoPath}`);
+      const os = require('os');
+      
+      // 规范化路径以适配Linux
+      const normalizedPath = path.resolve(repoPath).replace(/\\/g, '/');
+      console.log(`📍 [路径] 规范化后路径: ${normalizedPath}`);
+      
+      // 检查路径是否存在
+      if (!fs.existsSync(normalizedPath)) {
+        console.error(`❌ [路径] 项目路径不存在: ${normalizedPath}`);
+        console.log(`💡 [建议] 请检查VSCode工作区设置，确保指向正确的项目根目录`);
         return 'unknown';
       }
 
-      // 显示项目根目录内容以帮助调试
+      // 检查路径权限 (Linux特有)
       try {
-        const dirContents = fs.readdirSync(repoPath);
-        console.log(`📁 项目根目录内容 (${dirContents.length} 项):`, dirContents.slice(0, 20));
-      } catch (dirError) {
-        console.warn(`⚠️ 无法读取目录内容:`, dirError);
-      }
-      
-      // 使用深度搜索检测各种语言特征
-      const javaFeatures = await this.findJavaFeatures(repoPath);
-      const goFeatures = await this.findGoFeatures(repoPath);
-      const frontendFeatures = await this.findFrontendFeatures(repoPath);
+        fs.accessSync(normalizedPath, fs.constants.R_OK);
+        console.log(`✅ [权限] 路径可读权限正常`);
+        
+        // 检查是否有写权限
+        try {
+          fs.accessSync(normalizedPath, fs.constants.W_OK);
+          console.log(`✅ [权限] 路径可写权限正常`);
+        } catch (writeError) {
+          console.warn(`⚠️ [权限] 路径无写权限，可能影响某些功能`);
+        }
+             } catch (permError: any) {
+         console.error(`❌ [权限] 路径权限不足:`, permError.message);
+         console.log(`💡 [建议] 请检查用户对项目目录的读取权限`);
+         return 'unknown';
+       }
 
-      // 记录检测结果
+      // === 第三步：目录内容分析 ===
+      try {
+        const dirContents = fs.readdirSync(normalizedPath);
+        console.log(`📁 [目录] 根目录包含 ${dirContents.length} 个项目`);
+        console.log(`📁 [目录] 内容预览 (前20个):`, dirContents.slice(0, 20));
+        
+        // 检查是否有常见的项目结构指示器
+        const commonIndicators = {
+          maven: dirContents.includes('pom.xml'),
+                     gradle: dirContents.some((f: string) => f.startsWith('build.gradle')),
+          npm: dirContents.includes('package.json'),
+          go: dirContents.includes('go.mod'),
+          git: dirContents.includes('.git'),
+          src: dirContents.includes('src'),
+          'file_service': dirContents.includes('file_service'),
+          'user_service': dirContents.includes('user_service'),
+          'common': dirContents.includes('common')
+        };
+        console.log(`📋 [指示器] 项目结构指示器:`, commonIndicators);
+        
+             } catch (dirError: any) {
+         console.warn(`⚠️ [目录] 无法读取目录内容:`, dirError.message);
+       }
+
+      // === 第四步：模块依赖检查 ===
+      try {
+        console.log(`🔧 [依赖] 检查glob模块...`);
+        const globModule = require('glob');
+        console.log(`✅ [依赖] glob模块加载成功`);
+        
+        // 测试glob基础功能
+        const testPattern = normalizedPath + '/*';
+        const testFiles = globModule.globSync(testPattern);
+        console.log(`🧪 [测试] glob基础测试找到 ${testFiles.length} 个项目`);
+        
+             } catch (globError: any) {
+         console.error(`❌ [依赖] glob模块加载失败:`, globError.message);
+         console.log(`💡 [建议] 尝试重新安装插件或检查Node.js环境`);
+         return 'unknown';
+       }
+
+       // === 第五步：增强的语言特征检测 ===
+       console.log(`🔍 [检测] 开始多层次语言特征检测...`);
+       
+       const javaFeatures = await this.findJavaFeatures(normalizedPath);
+       const goFeatures = await this.findGoFeatures(normalizedPath);
+       const frontendFeatures = await this.findFrontendFeatures(normalizedPath);
+
+      // === 第六步：结果分析和推荐 ===
       const detectedLanguages = [];
       if (javaFeatures.detected) {
-        detectedLanguages.push(`Java (${javaFeatures.paths.length}个位置)`);
-        console.log('☕ Java特征文件:', javaFeatures.paths);
+        detectedLanguages.push(`Java (${javaFeatures.paths.length}个特征)`);
+        console.log('☕ [Java] 检测结果:', javaFeatures.paths);
       }
       if (goFeatures.detected) {
-        detectedLanguages.push(`Golang (${goFeatures.paths.length}个位置)`);
-        console.log('🐹 Go特征文件:', goFeatures.paths);
+        detectedLanguages.push(`Golang (${goFeatures.paths.length}个特征)`);
+        console.log('🐹 [Go] 检测结果:', goFeatures.paths);
       }
       if (frontendFeatures.detected) {
-        detectedLanguages.push(`Frontend (${frontendFeatures.paths.length}个位置)`);
-        console.log('🌐 前端特征文件:', frontendFeatures.paths);
+        detectedLanguages.push(`Frontend (${frontendFeatures.paths.length}个特征)`);
+        console.log('🌐 [Frontend] 检测结果:', frontendFeatures.paths);
       }
       
-      console.log(`🔍 检测结果汇总:`);
-      console.log(`   Java: ${javaFeatures.detected ? '✅' : '❌'}`);
-      console.log(`   Go: ${goFeatures.detected ? '✅' : '❌'}`);
-      console.log(`   Frontend: ${frontendFeatures.detected ? '✅' : '❌'}`);
-      console.log('🔍 检测到的语言:', detectedLanguages.join(', ') || '未知');
+      console.log(`📊 [汇总] 检测到的语言: ${detectedLanguages.join(', ') || '未检测到任何支持的语言'}`);
 
-      // 根据检测结果返回项目类型
+      // === 第七步：项目类型判定 ===
       const isBackend = javaFeatures.detected || goFeatures.detected;
       const isFrontend = frontendFeatures.detected;
 
@@ -318,13 +382,24 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         projectType = 'frontend';
       } else {
         projectType = 'unknown';
+        
+        // 提供详细的故障排除建议
+        console.log(`❌ [故障排除] 未能检测到项目类型，可能原因:`);
+        console.log(`   1. 项目结构过深，超出搜索深度限制`);
+        console.log(`   2. 文件被gitignore或类似规则忽略`);
+        console.log(`   3. 文件权限问题或符号链接`);
+        console.log(`   4. 远程文件系统延迟或不稳定`);
+        console.log(`   5. 项目使用了不支持的语言或框架`);
+        console.log(`💡 [建议] 请在VSCode开发者控制台查看详细日志`);
+        console.log(`💡 [建议] 手动验证命令: find "${normalizedPath}" -name "*.java" -o -name "pom.xml" | head -10`);
       }
 
-      console.log(`🎯 最终项目类型判定: ${projectType}`);
+      console.log(`🎯 [最终] 项目类型判定: ${projectType}`);
       return projectType;
 
-    } catch (error) {
-      console.error('项目类型检测错误:', error);
+    } catch (error: any) {
+      console.error('💥 [错误] 项目类型检测发生严重错误:', error);
+      console.error('💥 [栈] 错误堆栈:', error.stack);
       return 'unknown';
     }
   }
@@ -334,76 +409,120 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       const { globSync } = require('glob');
       const result = { detected: false, paths: [] as string[] };
 
-      console.log(`🔍 开始Java特征检测，项目路径: ${repoPath}`);
+      console.log(`☕ [Java] 开始增强Java特征检测，项目路径: ${repoPath}`);
 
-      // 增加更大的递归深度以支持复杂微服务项目
-      const maxDepth = 25; // 进一步增加深度
-      
-      // 搜索 Maven 项目文件 - 增加深度限制配置
-      console.log(`🔍 搜索Maven文件 (pom.xml)，最大深度: ${maxDepth}`);
-      const pomFiles = globSync('**/pom.xml', {
-        cwd: repoPath,
-        ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/build/**'],
-        maxDepth: maxDepth
-      });
-      console.log(`📄 找到 ${pomFiles.length} 个Maven文件:`, pomFiles);
+      // 使用多种深度和策略适配远程Linux环境
+      const searchStrategies = [
+        { name: '标准深度', maxDepth: 25 },
+        { name: '超深度', maxDepth: 50 },
+        { name: '极深度', maxDepth: 100 }
+      ];
 
-      // 搜索 Gradle 项目文件 - 增加深度限制配置
-      console.log(`🔍 搜索Gradle文件 (build.gradle*)，最大深度: ${maxDepth}`);
-      const gradleFiles = globSync('**/build.gradle*', {
-        cwd: repoPath,
-        ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/build/**'],
-        maxDepth: maxDepth
-      });
-      console.log(`📄 找到 ${gradleFiles.length} 个Gradle文件:`, gradleFiles);
+      let detectionSuccess = false;
 
-      // 搜索 Java 源文件 - 增加深度限制配置
-      console.log(`🔍 搜索Java源文件 (*.java)，最大深度: ${maxDepth}`);
-      const javaFiles = globSync('**/*.java', {
-        cwd: repoPath,
-        ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/build/**'],
-        nodir: true,
-        maxDepth: maxDepth
-      });
-      console.log(`📄 找到 ${javaFiles.length} 个Java文件`);
-      
-      // 显示前10个Java文件作为调试信息
-      if (javaFiles.length > 0) {
-        console.log(`📄 Java文件样例 (前10个):`, javaFiles.slice(0, 10));
+      for (const strategy of searchStrategies) {
+        console.log(`☕ [Java] 尝试${strategy.name}搜索策略 (深度: ${strategy.maxDepth})`);
+        
+        const searchOptions = {
+          cwd: repoPath,
+          ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/build/**', '**/.git/**'],
+          nodir: true,
+          dot: false, // 不搜索隐藏文件
+          maxDepth: strategy.maxDepth,
+          // Linux远程环境优化
+          silent: true, // 减少不必要的警告
+          follow: false // 不跟随符号链接避免循环
+        };
+
+        try {
+          // 搜索Java文件
+          const javaFiles = globSync('**/*.java', searchOptions);
+          console.log(`☕ [Java] ${strategy.name}策略找到 ${javaFiles.length} 个Java文件`);
+          
+          if (javaFiles.length > 0) {
+            result.detected = true;
+            result.paths.push(`Java源文件: ${javaFiles.length}个 (策略: ${strategy.name})`);
+            
+            // 显示前10个Java文件
+            console.log(`☕ [Java] Java文件样例 (前10个):`, javaFiles.slice(0, 10));
+            
+                         // 特别检查用户提到的file_service
+             const fileServiceFiles = javaFiles.filter((f: string) => f.includes('file_service'));
+             if (fileServiceFiles.length > 0) {
+               console.log(`☕ [Java] 在file_service中找到 ${fileServiceFiles.length} 个Java文件:`, fileServiceFiles);
+               result.paths.push(`file_service Java文件: ${fileServiceFiles.length}个`);
+             }
+             
+             // 分析微服务目录结构
+             const servicePatterns = ['*_service', 'service_*', '*-service', 'service-*'];
+             for (const pattern of servicePatterns) {
+               const serviceFiles = javaFiles.filter((f: string) => new RegExp(pattern.replace('*', '\\w+')).test(f));
+               if (serviceFiles.length > 0) {
+                 console.log(`☕ [Java] 微服务模式 "${pattern}" 匹配到 ${serviceFiles.length} 个文件`);
+               }
+             }
+            
+            detectionSuccess = true;
+            break; // 找到结果就退出
+          }
+        } catch (strategyError: any) {
+          console.warn(`☕ [Java] ${strategy.name}策略失败:`, strategyError.message);
+          continue;
+        }
       }
 
-      // 特别检查用户提到的路径模式
-      const specificJavaCheck = globSync('**/file_service/**/*.java', {
-        cwd: repoPath,
-        nodir: true,
-        maxDepth: maxDepth
-      });
-      console.log(`🔍 特别检查file_service目录下的Java文件: ${specificJavaCheck.length} 个`);
-      if (specificJavaCheck.length > 0) {
-        console.log(`📄 file_service Java文件:`, specificJavaCheck);
+      // 如果Java源文件搜索失败，尝试搜索构建文件
+      if (!detectionSuccess) {
+        console.log(`☕ [Java] Java源文件搜索失败，尝试搜索构建配置文件...`);
+        
+        try {
+          // 搜索Maven文件
+          const pomFiles = globSync('**/pom.xml', {
+            cwd: repoPath,
+            ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/build/**'],
+            maxDepth: 50
+          });
+          console.log(`☕ [Java] 找到 ${pomFiles.length} 个Maven文件:`, pomFiles);
+
+          // 搜索Gradle文件
+          const gradleFiles = globSync('**/build.gradle*', {
+            cwd: repoPath,
+            ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/build/**'],
+            maxDepth: 50
+          });
+          console.log(`☕ [Java] 找到 ${gradleFiles.length} 个Gradle文件:`, gradleFiles);
+
+          if (pomFiles.length > 0) {
+            result.detected = true;
+            result.paths.push(...pomFiles.map((p: string) => `Maven: ${p}`));
+          }
+
+          if (gradleFiles.length > 0) {
+            result.detected = true;
+            result.paths.push(...gradleFiles.map((p: string) => `Gradle: ${p}`));
+          }
+        } catch (buildError: any) {
+          console.warn(`☕ [Java] 构建文件搜索也失败:`, buildError.message);
+        }
       }
 
-      if (pomFiles.length > 0) {
-        result.detected = true;
-        result.paths.push(...pomFiles.map((p: string) => `Maven: ${p}`));
-      }
+      console.log(`☕ [Java] 最终检测结果: ${result.detected ? '✅ 检测到Java项目' : '❌ 未检测到Java项目'}`);
+      console.log(`☕ [Java] 检测到的特征:`, result.paths);
 
-      if (gradleFiles.length > 0) {
-        result.detected = true;
-        result.paths.push(...gradleFiles.map((p: string) => `Gradle: ${p}`));
+      // 如果仍然检测失败，提供Linux特有的故障排除建议
+      if (!result.detected) {
+        console.log(`☕ [Java] Linux远程环境故障排除建议:`);
+        console.log(`   1. 检查文件权限: ls -la "${repoPath}"`);
+        console.log(`   2. 手动搜索: find "${repoPath}" -name "*.java" -type f | head -10`);
+        console.log(`   3. 检查符号链接: find "${repoPath}" -type l`);
+        console.log(`   4. 检查磁盘空间: df -h`);
+        console.log(`   5. 检查进程限制: ulimit -a`);
       }
-
-      if (javaFiles.length > 0) {
-        result.detected = true;
-        result.paths.push(`Java源文件: ${javaFiles.length}个文件 (如: ${javaFiles[0]})`);
-      }
-
-      console.log(`🎯 Java特征检测结果: ${result.detected ? '✅ 检测到Java项目' : '❌ 未检测到Java项目'}`);
-      console.log(`🎯 检测到的路径:`, result.paths);
 
       return result;
-    } catch (error) {
-      console.error('Java特征检测失败:', error);
+    } catch (error: any) {
+      console.error('☕ [Java] 检测发生严重错误:', error);
+      console.error('☕ [Java] 错误堆栈:', error.stack);
       return { detected: false, paths: [] };
     }
   }
@@ -413,20 +532,28 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       const { globSync } = require('glob');
       const result = { detected: false, paths: [] as string[] };
 
-      // 搜索 Go module 文件 - 增加深度限制配置
-      const goModFiles = globSync('**/go.mod', {
-        cwd: repoPath,
-        ignore: ['**/node_modules/**', '**/vendor/**', '**/target/**', '**/dist/**'],
-        maxDepth: 15  // 增加递归深度以支持微服务项目
-      });
+      console.log(`🐹 [Go] 开始增强Go特征检测，项目路径: ${repoPath}`);
 
-      // 搜索 Go 源文件 - 增加深度限制配置
-      const goFiles = globSync('**/*.go', {
+      // Linux远程环境优化的搜索配置
+      const searchOptions = {
         cwd: repoPath,
-        ignore: ['**/node_modules/**', '**/vendor/**', '**/target/**', '**/dist/**'],
-        nodir: true,
-        maxDepth: 15  // 增加递归深度以支持微服务项目
-      }).slice(0, 5); // 只取前5个作为示例
+        ignore: ['**/node_modules/**', '**/vendor/**', '**/target/**', '**/dist/**', '**/.git/**'],
+        maxDepth: 50, // 增加深度支持微服务
+        silent: true,
+        follow: false
+      };
+
+      // 搜索 Go module 文件
+      const goModFiles = globSync('**/go.mod', searchOptions);
+      console.log(`🐹 [Go] 找到 ${goModFiles.length} 个go.mod文件:`, goModFiles);
+
+      // 搜索 Go 源文件
+      const goFiles = globSync('**/*.go', { ...searchOptions, nodir: true });
+      console.log(`🐹 [Go] 找到 ${goFiles.length} 个Go源文件`);
+      
+      if (goFiles.length > 0) {
+        console.log(`🐹 [Go] Go文件样例 (前10个):`, goFiles.slice(0, 10));
+      }
 
       if (goModFiles.length > 0) {
         result.detected = true;
@@ -438,9 +565,10 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         result.paths.push(`Go源文件: ${goFiles.length}个文件 (如: ${goFiles[0]})`);
       }
 
+      console.log(`🐹 [Go] 检测结果: ${result.detected ? '✅ 检测到Go项目' : '❌ 未检测到Go项目'}`);
       return result;
-    } catch (error) {
-      console.warn('Go特征检测失败:', error);
+    } catch (error: any) {
+      console.error('🐹 [Go] 检测失败:', error);
       return { detected: false, paths: [] };
     }
   }
@@ -450,27 +578,36 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       const { globSync } = require('glob');
       const result = { detected: false, paths: [] as string[] };
 
-      // 搜索 package.json 文件 - 增加深度限制配置
-      const packageJsonFiles = globSync('**/package.json', {
-        cwd: repoPath,
-        ignore: ['**/node_modules/**', '**/target/**', '**/dist/**'],
-        maxDepth: 15  // 增加递归深度以支持微服务项目
-      });
+      console.log(`🌐 [Frontend] 开始增强前端特征检测，项目路径: ${repoPath}`);
 
-      // 搜索 TypeScript 配置文件 - 增加深度限制配置
-      const tsConfigFiles = globSync('**/tsconfig.json', {
+      // Linux远程环境优化的搜索配置
+      const searchOptions = {
         cwd: repoPath,
-        ignore: ['**/node_modules/**', '**/target/**', '**/dist/**'],
-        maxDepth: 15  // 增加递归深度以支持微服务项目
-      });
+        ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/.git/**'],
+        maxDepth: 50, // 增加深度支持微服务
+        silent: true,
+        follow: false
+      };
 
-      // 搜索常见前端文件 - 增加深度限制配置
+      // 搜索 package.json 文件
+      const packageJsonFiles = globSync('**/package.json', searchOptions);
+      console.log(`🌐 [Frontend] 找到 ${packageJsonFiles.length} 个package.json文件:`, packageJsonFiles);
+
+      // 搜索 TypeScript 配置文件
+      const tsConfigFiles = globSync('**/tsconfig.json', searchOptions);
+      console.log(`🌐 [Frontend] 找到 ${tsConfigFiles.length} 个tsconfig.json文件:`, tsConfigFiles);
+
+      // 搜索常见前端文件
       const frontendFiles = globSync('**/*.{ts,tsx,js,jsx,vue}', {
-        cwd: repoPath,
-        ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/build/**', '**/*.test.*', '**/*.spec.*'],
-        nodir: true,
-        maxDepth: 15  // 增加递归深度以支持微服务项目
-      }).slice(0, 5); // 只取前5个作为示例
+        ...searchOptions,
+        ignore: [...searchOptions.ignore, '**/*.test.*', '**/*.spec.*', '**/build/**'],
+        nodir: true
+      });
+      console.log(`🌐 [Frontend] 找到 ${frontendFiles.length} 个前端源文件`);
+
+      if (frontendFiles.length > 0) {
+        console.log(`🌐 [Frontend] 前端文件样例 (前10个):`, frontendFiles.slice(0, 10));
+      }
 
       // 分析 package.json 内容
       for (const packageFile of packageJsonFiles) {
@@ -491,9 +628,10 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
             result.detected = true;
             const frameworkInfo = frameworks.length > 0 ? ` (${frameworks.join(', ')})` : '';
             result.paths.push(`package.json: ${packageFile}${frameworkInfo}`);
+            console.log(`🌐 [Frontend] 检测到前端项目: ${packageFile} - ${frameworkInfo}`);
           }
-        } catch (parseError) {
-          console.warn(`解析package.json失败: ${packageFile}`, parseError);
+        } catch (parseError: any) {
+          console.warn(`🌐 [Frontend] 解析package.json失败: ${packageFile}`, parseError.message);
         }
       }
 
@@ -502,14 +640,15 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         result.paths.push(...tsConfigFiles.map((p: string) => `TypeScript: ${p}`));
       }
 
-      if (frontendFiles.length > 0) {
+      if (frontendFiles.length > 0 && frontendFiles.length > 10) { // 确保有足够的前端文件
         result.detected = true;
         result.paths.push(`前端源文件: ${frontendFiles.length}个文件 (如: ${frontendFiles[0]})`);
       }
 
+      console.log(`🌐 [Frontend] 检测结果: ${result.detected ? '✅ 检测到前端项目' : '❌ 未检测到前端项目'}`);
       return result;
-    } catch (error) {
-      console.warn('前端特征检测失败:', error);
+    } catch (error: any) {
+      console.error('🌐 [Frontend] 检测失败:', error);
       return { detected: false, paths: [] };
     }
   }
@@ -611,7 +750,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         console.log('🔍 混合项目检测到的后端语言:', backendLanguage);
 
         if (backendLanguage === 'java') {
-          const jarPath = path.resolve(__dirname, '../../target/gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar');
+          const jarPath = this.getJavaAnalyzerPath();
           if (fs.existsSync(jarPath)) {
             console.log('☕ 执行Java后端分析...');
             const backendResult = await this.executeJarAnalysis(jarPath, repoPath, analysisData);
@@ -2885,6 +3024,159 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     }
     
     return defaultPath;
+  }
+
+  private getJavaAnalyzerPath(): string {
+    console.log(`☕ 正在查找Java分析器JAR文件...`);
+    console.log(`扩展URI: ${this._extensionUri.fsPath}`);
+    console.log(`__dirname: ${__dirname}`);
+    console.log(`process.cwd(): ${process.cwd()}`);
+    console.log(`是否为远程环境: ${vscode.env.remoteName ? '是 (' + vscode.env.remoteName + ')' : '否'}`);
+
+    // 核心策略：优先使用相对于扩展安装位置的路径
+    // 这些路径在远程和本地环境中都应该工作
+    const possiblePaths = [
+      // 策略1: 直接使用扩展URI路径 (最标准的方法)
+      path.join(this._extensionUri.fsPath, 'analyzers', 'gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar'),
+      
+      // 策略2: 使用require.resolve来定位扩展根目录
+      (() => {
+        try {
+          // 尝试找到package.json的位置作为扩展根目录
+          const packagePath = require.resolve('../package.json');
+          const extensionRoot = path.dirname(packagePath);
+          return path.join(extensionRoot, 'analyzers', 'gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar');
+        } catch {
+          return null;
+        }
+      })(),
+      
+      // 策略3: 相对于当前编译文件(__dirname)的路径
+      path.join(__dirname, '../analyzers', 'gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar'),
+      
+      // 策略4: 通过模块路径推导
+      (() => {
+        try {
+          // 获取当前模块的文件名，然后推导扩展根目录
+          const currentFile = __filename || __dirname + '/extension.js';
+          const distDir = path.dirname(currentFile);
+          const extensionRoot = path.dirname(distDir);
+          return path.join(extensionRoot, 'analyzers', 'gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar');
+        } catch {
+          return null;
+        }
+      })(),
+      
+      // 策略5: 使用VSCode API获取扩展路径的替代方法
+      (() => {
+        try {
+          const extensions = vscode.extensions.all;
+          const thisExtension = extensions.find(ext => ext.id.includes('diffsense') || ext.id.includes('humphreyLi'));
+          if (thisExtension) {
+            return path.join(thisExtension.extensionPath, 'analyzers', 'gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar');
+          }
+          return null;
+        } catch {
+          return null;
+        }
+      })(),
+      
+      // 备用策略: 开发环境路径
+      path.join(__dirname, '../../target', 'gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar'),
+    ].filter(p => p !== null); // 移除null值
+
+    console.log(`☕ 尝试的JAR路径策略数量: ${possiblePaths.length}`);
+
+    for (let i = 0; i < possiblePaths.length; i++) {
+      const possiblePath = possiblePaths[i];
+      console.log(`检查JAR路径 ${i + 1}/${possiblePaths.length}: ${possiblePath}`);
+      
+      try {
+        if (fs.existsSync(possiblePath)) {
+          const stats = fs.statSync(possiblePath);
+          const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+          console.log(`✅ 找到Java分析器JAR: ${possiblePath} (大小: ${fileSizeMB}MB)`);
+          return possiblePath;
+        } else {
+          console.log(`❌ JAR路径不存在: ${possiblePath}`);
+        }
+      } catch (error) {
+        console.log(`❌ 检查JAR路径时出错: ${possiblePath}, 错误: ${error}`);
+      }
+    }
+
+    // 如果都找不到，返回默认路径并记录详细错误
+    const defaultPath = path.join(this._extensionUri.fsPath, 'analyzers', 'gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar');
+    console.error(`❌ 无法找到Java分析器JAR文件!`);
+    console.error(`尝试的所有JAR路径都不存在`);
+    console.error(`将使用默认路径 (可能不存在): ${defaultPath}`);
+    
+    // 详细的环境诊断
+    this.diagnoseJarEnvironment();
+    
+    return defaultPath;
+  }
+
+  private diagnoseJarEnvironment(): void {
+    console.log(`🔧 [诊断] 开始JAR环境诊断...`);
+    
+    try {
+      // 诊断扩展目录
+      const extensionDir = this._extensionUri.fsPath;
+      console.log(`📁 [诊断] 扩展目录: ${extensionDir}`);
+      
+      if (fs.existsSync(extensionDir)) {
+        const extensionContents = fs.readdirSync(extensionDir);
+        console.log(`📁 [诊断] 扩展目录内容:`, extensionContents);
+        
+        // 检查analyzers目录
+        const analyzersPath = path.join(extensionDir, 'analyzers');
+        if (fs.existsSync(analyzersPath)) {
+          const analyzersContents = fs.readdirSync(analyzersPath);
+          console.log(`📁 [诊断] Analyzers目录内容:`, analyzersContents);
+          
+          // 检查每个文件的详细信息
+          analyzersContents.forEach(file => {
+            try {
+              const filePath = path.join(analyzersPath, file);
+              const stats = fs.statSync(filePath);
+              const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+              console.log(`📄 [诊断] 文件: ${file}, 大小: ${fileSizeMB}MB, 修改时间: ${stats.mtime}`);
+            } catch (err) {
+              console.log(`❌ [诊断] 无法读取文件信息: ${file}, 错误: ${err}`);
+            }
+          });
+        } else {
+          console.error(`❌ [诊断] Analyzers目录不存在: ${analyzersPath}`);
+        }
+      } else {
+        console.error(`❌ [诊断] 扩展目录不存在: ${extensionDir}`);
+      }
+      
+      // 诊断VSCode扩展信息
+      try {
+        const extensions = vscode.extensions.all;
+        const thisExtension = extensions.find(ext => 
+          ext.id.includes('diffsense') || 
+          ext.id.includes('humphreyLi') ||
+          ext.packageJSON?.name === 'diffsense'
+        );
+        
+        if (thisExtension) {
+          console.log(`🔌 [诊断] 找到扩展: ${thisExtension.id}`);
+          console.log(`🔌 [诊断] 扩展路径: ${thisExtension.extensionPath}`);
+          console.log(`🔌 [诊断] 扩展版本: ${thisExtension.packageJSON?.version}`);
+          console.log(`🔌 [诊断] 扩展激活状态: ${thisExtension.isActive}`);
+        } else {
+          console.warn(`⚠️ [诊断] 未找到DiffSense扩展实例`);
+        }
+      } catch (err) {
+        console.error(`❌ [诊断] 获取扩展信息失败: ${err}`);
+      }
+      
+    } catch (error) {
+      console.error(`❌ [诊断] JAR环境诊断失败:`, error);
+    }
   }
 
   // Bug汇报相关的辅助方法
