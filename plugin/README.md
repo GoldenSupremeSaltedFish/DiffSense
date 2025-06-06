@@ -1,12 +1,12 @@
 # DiffSense - Git Code Impact Analysis
 
-[![Version](https://img.shields.io/badge/version-0.1.1-blue.svg)](https://marketplace.visualstudio.com/items?itemName=humphreyLi.diffsense)
+[![Version](https://img.shields.io/badge/version-0.1.7-blue.svg)](https://marketplace.visualstudio.com/items?itemName=humphreyLi.diffsense)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE.txt)
 [![VSCode](https://img.shields.io/badge/VSCode-1.74.0+-orange.svg)](https://code.visualstudio.com/)
 
 🚀 智能Git代码影响分析工具，支持Java、Golang、前端代码的变更影响分析和可视化
 
-[English](README_EN.md) | 中文
+中文 | [English](README_EN.md)
 
 ## ✨ 主要功能
 
@@ -50,12 +50,13 @@
 
 ## 📝 更新日志
 
-### 版本 0.1.1 (最新)
-- 🚀 **增强微服务支持**: 递归深度从5层增加到15层，支持复杂的微服务项目结构
-- 🔧 **远程开发修复**: 修复VSCode远程环境（SSH、WSL、容器）中的分析器路径问题
-- 📊 **提升分析精度**: 增强文件类型检测，支持更深层次的目录结构
-- 🐛 **问题修复**: 解决前端分析器在远程环境中的路径解析问题
-- 📈 **性能优化**: 优化文件扫描和依赖分析算法
+### 版本 0.1.7 (最新)
+- 🔧 **增强路径解析**: 5种策略自动适配各种环境，完美解决远程开发问题
+- 🌐 **远程环境修复**: 完全兼容SSH/WSL/容器/云端开发环境
+- 📦 **JAR文件捆绑**: Java分析器现已内置到扩展中，无需外部依赖
+- 🔍 **改进诊断**: 详细的环境检测和调试功能，快速定位问题
+- 🏗️ **微服务增强**: 支持最多100层目录递归，适配复杂企业级项目
+- 🐛 **依赖修复**: 完整的glob模块捆绑，解决"模块未找到"错误
 
 ### 版本 0.1.0
 - 🎉 首次发布，支持Java、Golang、前端项目分析
