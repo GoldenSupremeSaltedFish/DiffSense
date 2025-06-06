@@ -46,4 +46,8 @@ Thumbs.db
 !ui/diffsense-frontend/dist/**
 
 # Include Java analyzer JAR file in plugin directory
-!analyzers/** 
+!analyzers/**
+
+# Include frontend and backend analyzer scripts (now in plugin directory)
+!ui/node-analyzer/**
+!ui/golang-analyzer/** 
