@@ -1,0 +1,30 @@
+{
+  "name": "diffsense-golang-analyzer",
+  "version": "1.0.0",
+  "description": "DiffSense Golang代码分析器 - 分析Go代码的函数、结构体、接口和依赖关系",
+  "main": "analyze.js",
+  "bin": {
+    "diffsense-go-analyzer": "./analyze.js"
+  },
+  "scripts": {
+    "test": "node analyze.js . summary",
+    "analyze": "node analyze.js",
+    "demo": "node analyze.js . json > output.json"
+  },
+  "keywords": [
+    "golang",
+    "go",
+    "code-analysis",
+    "ast",
+    "function-analysis",
+    "type-analysis"
+  ],
+  "author": "DiffSense Team",
+  "license": "ISC",
+  "dependencies": {
+    "glob": "^11.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
