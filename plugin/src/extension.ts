@@ -2763,29 +2763,64 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
    * 处理远程开发环境和本地开发环境的路径差异
    */
   private getAnalyzerPath(analyzerType: string): string {
+    console.log(`🔍 正在查找${analyzerType}分析器...`);
+    console.log(`扩展URI: ${this._extensionUri.fsPath}`);
+    console.log(`__dirname: ${__dirname}`);
+    console.log(`process.cwd(): ${process.cwd()}`);
+
     // 尝试多个可能的路径
     const possiblePaths = [
-      // 标准插件安装路径
+      // 标准插件安装路径 (优先级最高)
       path.join(this._extensionUri.fsPath, 'ui', analyzerType, 'analyze.js'),
-      // 相对于扩展目录的路径
+      // 相对于编译后的out目录
       path.join(__dirname, '../../ui', analyzerType, 'analyze.js'),
+      // 相对于插件根目录
+      path.join(__dirname, '../../../ui', analyzerType, 'analyze.js'),
+      // 开发环境中的src目录
+      path.join(__dirname, '../../../../ui', analyzerType, 'analyze.js'),
       // 当前工作目录的相对路径
       path.join(process.cwd(), 'ui', analyzerType, 'analyze.js'),
-      // 尝试从node_modules查找
-      path.join(__dirname, '../../../ui', analyzerType, 'analyze.js')
+      // VSCode远程环境可能的路径
+      path.join(path.dirname(this._extensionUri.fsPath), 'ui', analyzerType, 'analyze.js')
     ];
 
-    for (const possiblePath of possiblePaths) {
+    console.log(`🔍 尝试的路径:`, possiblePaths);
+
+    for (let i = 0; i < possiblePaths.length; i++) {
+      const possiblePath = possiblePaths[i];
+      console.log(`检查路径 ${i + 1}/${possiblePaths.length}: ${possiblePath}`);
+      
       if (fs.existsSync(possiblePath)) {
-        console.log(`找到${analyzerType}分析器: ${possiblePath}`);
+        console.log(`✅ 找到${analyzerType}分析器: ${possiblePath}`);
         return possiblePath;
+      } else {
+        console.log(`❌ 路径不存在: ${possiblePath}`);
       }
     }
 
-    // 如果都找不到，返回默认路径并记录错误
+    // 如果都找不到，返回默认路径并记录详细错误
     const defaultPath = path.join(this._extensionUri.fsPath, 'ui', analyzerType, 'analyze.js');
-    console.error(`无法找到${analyzerType}分析器，尝试的路径:`, possiblePaths);
-    console.error(`使用默认路径: ${defaultPath}`);
+    console.error(`❌ 无法找到${analyzerType}分析器!`);
+    console.error(`尝试的所有路径都不存在:`, possiblePaths);
+    console.error(`将使用默认路径 (可能不存在): ${defaultPath}`);
+    
+    // 添加额外的调试信息
+    try {
+      const extensionDir = this._extensionUri.fsPath;
+      const extensionContents = fs.readdirSync(extensionDir);
+      console.error(`扩展目录内容:`, extensionContents);
+      
+      const uiPath = path.join(extensionDir, 'ui');
+      if (fs.existsSync(uiPath)) {
+        const uiContents = fs.readdirSync(uiPath);
+        console.error(`UI目录内容:`, uiContents);
+      } else {
+        console.error(`UI目录不存在: ${uiPath}`);
+      }
+    } catch (error) {
+      console.error(`无法读取目录内容:`, error);
+    }
+    
     return defaultPath;
   }
 
