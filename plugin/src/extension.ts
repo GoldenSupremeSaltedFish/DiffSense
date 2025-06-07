@@ -2553,6 +2553,91 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
             </div>
         </div>
 
+        <!-- Commit Details -->
+        <div class="commits-section">
+            <div class="stats-title">${text.analysisDetails}</div>
+            ${analysisResults.length === 0 ? `
+                <div class="no-data">
+                    ${text.noData}<br>
+                    <small>${text.runAnalysisFirst}</small>
+                </div>
+            ` : analysisResults.map((commit: any, index: number) => {
+                const commitRiskLevel = commit.riskScore >= 50 ? 'high' : commit.riskScore >= 20 ? 'medium' : 'low';
+                const callGraphData = this.generateCallGraphData(commit, commit.files || []);
+                
+                return `
+                <div class="commit-card">
+                    <div class="commit-header">
+                        <div>
+                            <span class="commit-id">${(commit.id || commit.commitId || 'unknown').substring(0, 8)}</span>
+                            <div class="commit-message">${commit.message || text.noDetailedData}</div>
+                        </div>
+                        <div class="commit-meta">
+                            <div>
+                                ${commit.author ? `<strong>${text.author}:</strong> ${commit.author.name || commit.author} | ` : ''}
+                                ${commit.timestamp ? `<strong>${text.date}:</strong> ${new Date(commit.timestamp).toLocaleString()}` : ''}
+                            </div>
+                            <span class="risk-score risk-${commitRiskLevel}">
+                                ${commit.riskScore || 0}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="commit-content">
+                        ${commit.impactedFiles && commit.impactedFiles.length > 0 ? `
+                            <div class="section">
+                                <div class="section-title">${text.impactedFiles}</div>
+                                <div class="file-list">
+                                    ${commit.impactedFiles.map((file: string) => `
+                                        <div class="file-item">${file}</div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : commit.files && commit.files.length > 0 ? `
+                            <div class="section">
+                                <div class="section-title">${text.impactedFiles}</div>
+                                <div class="file-list">
+                                    ${commit.files.map((file: any) => `
+                                        <div class="file-item">${file.path || file}</div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                        
+                        ${commit.impactedMethods && Array.isArray(commit.impactedMethods) && commit.impactedMethods.length > 0 ? `
+                            <div class="section">
+                                <div class="section-title">${text.impactedMethods}</div>
+                                <div class="method-list">
+                                    ${commit.impactedMethods.map((method: string) => `
+                                        <div class="method-item">${method}</div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                        
+                        <div class="section">
+                            <div class="section-title">
+                                ${text.callRelationships}
+                                <button class="toggle-details" onclick="toggleCallGraph('graph-${index}')">
+                                    ${text.toggleGraph}
+                                </button>
+                            </div>
+                            <div id="graph-${index}" class="details-content hidden">
+                                ${callGraphData.nodes.length > 0 ? `
+                                    <div style="margin-bottom: 10px; color: #718096; font-size: 0.9em;">
+                                        ${callGraphData.nodes.length} ${text.nodes}, ${callGraphData.edges.length} ${text.relationships}
+                                    </div>
+                                    <div class="call-graph-container" id="cy-${index}"></div>
+                                ` : `
+                                    <div class="no-data">${text.noCallGraphData}</div>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                `;
+            }).join('')}
+        </div>
+
         <!-- Test Coverage Section -->
         ${testCoverageStats.totalGaps > 0 ? `
         <div class="test-coverage-section">
@@ -2613,116 +2698,6 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
             </div>
         </div>
         ` : ''}
-
-        <!-- Commit Details -->
-        <div class="commits-section">
-            <div class="stats-title">${text.analysisDetails}</div>
-            ${analysisResults.length === 0 ? `
-                <div class="no-data">
-                    ${text.noData}<br>
-                    <small>${text.runAnalysisFirst}</small>
-                </div>
-            ` : analysisResults.map((commit: any, index: number) => {
-                const commitRiskLevel = commit.riskScore >= 50 ? 'high' : commit.riskScore >= 20 ? 'medium' : 'low';
-                const callGraphData = this.generateCallGraphData(commit, commit.files || []);
-                
-                return `
-                <div class="commit-card">
-                    <div class="commit-header">
-                        <div>
-                            <span class="commit-id">${(commit.id || commit.commitId || 'unknown').substring(0, 8)}</span>
-                            <div class="commit-message">${commit.message || text.noDetailedData}</div>
-                        </div>
-                        <div class="commit-meta">
-                            <div>
-                                ${commit.author ? `<strong>${text.author}:</strong> ${commit.author.name || commit.author} | ` : ''}
-                                ${commit.timestamp ? `<strong>${text.date}:</strong> ${new Date(commit.timestamp).toLocaleString()}` : ''}
-                            </div>
-                            <span class="risk-score risk-${commitRiskLevel}">
-                                ${commit.riskScore || 0}
-                            </span>
-                        </div>
-                    </div>
-                    <div class="commit-content">
-                        ${commit.impactedFiles && commit.impactedFiles.length > 0 ? `
-                            <div class="section">
-                                <div class="section-title">${text.impactedFiles} (${commit.impactedFiles.length} ${text.filesUnit})</div>
-                                <div class="file-list">
-                                    ${commit.impactedFiles.slice(0, 10).map((file: string) => `
-                                        <div class="file-item">${file}</div>
-                                    `).join('')}
-                                    ${commit.impactedFiles.length > 10 ? `<div class="file-item">... ${text.andMore} ${commit.impactedFiles.length - 10} ${text.moreFiles}</div>` : ''}
-                                </div>
-                            </div>
-                        ` : commit.files && commit.files.length > 0 ? `
-                            <div class="section">
-                                <div class="section-title">${text.impactedFiles} (${commit.files.length} ${text.filesUnit})</div>
-                                <div class="file-list">
-                                    ${commit.files.slice(0, 10).map((file: any) => `
-                                        <div class="file-item">${file.path || file}</div>
-                                    `).join('')}
-                                    ${commit.files.length > 10 ? `<div class="file-item">... ${text.andMore} ${commit.files.length - 10} ${text.moreFiles}</div>` : ''}
-                                </div>
-                            </div>
-                        ` : ''}
-                        
-                        ${commit.impactedMethods && Array.isArray(commit.impactedMethods) && commit.impactedMethods.length > 0 ? `
-                            <div class="section">
-                                <div class="section-title">${text.impactedMethods} (${commit.impactedMethods.length} ${text.methodsUnit})</div>
-                                <div class="method-list">
-                                    ${commit.impactedMethods.slice(0, 15).map((method: string) => `
-                                        <div class="method-item">${method}</div>
-                                    `).join('')}
-                                    ${commit.impactedMethods.length > 15 ? `<div class="method-item">... ${text.andMore} ${commit.impactedMethods.length - 15} ${text.moreMethods}</div>` : ''}
-                                </div>
-                            </div>
-                        ` : ''}
-
-                        ${commit.testCoverageGaps && commit.testCoverageGaps.length > 0 ? `
-                            <div class="section">
-                                <div class="section-title">${text.testCoverageGaps} (${commit.testCoverageGaps.length})</div>
-                                ${commit.testCoverageGaps.slice(0, 5).map((gap: any) => `
-                                    <div class="test-gap-card" style="margin-bottom: 10px;">
-                                        <div class="test-gap-header">
-                                            <span class="risk-badge risk-${gap.riskLevel.toLowerCase()}">${gap.riskDisplayName}</span>
-                                            <span style="margin-left: 10px; font-family: 'Courier New', monospace; font-size: 0.9em;">${gap.methodName}</span>
-                                        </div>
-                                        <div class="test-gap-content">
-                                            <div style="color: #718096; font-size: 0.9em;">${gap.reason}</div>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                                ${commit.testCoverageGaps.length > 5 ? `
-                                    <div style="color: #718096; font-size: 0.9em; margin-top: 10px;">
-                                        ... ${text.andMore} ${commit.testCoverageGaps.length - 5} ${text.moreTestGaps}
-                                    </div>
-                                ` : ''}
-                            </div>
-                        ` : ''}
-                        
-                        <div class="section">
-                            <div class="section-title">
-                                ${text.callRelationships}
-                                <button class="toggle-details" onclick="toggleCallGraph('graph-${index}')">
-                                    ${text.toggleGraph}
-                                </button>
-                            </div>
-                            <div id="graph-${index}" class="details-content hidden">
-                                ${callGraphData.nodes.length > 0 ? `
-                                    <div style="margin-bottom: 10px; color: #718096; font-size: 0.9em;">
-                                        ${callGraphData.nodes.length} ${text.nodes}, ${callGraphData.edges.length} ${text.relationships}
-                                    </div>
-                                    <div class="call-graph-container" id="cy-${index}"></div>
-                                ` : `
-                                    <div class="no-data">${text.noCallGraphData}</div>
-                                `}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                `;
-            }).join('')}
-        </div>
 
         <div class="footer">
             ${text.reportGenerated}
@@ -2941,21 +2916,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       });
     });
 
-    // 如果没有实际的调用关系数据，创建模拟数据以便演示
-    if (nodes.length > 0 && edges.length === 0) {
-      // 为前几个方法创建一些模拟的调用关系
-      const nodesList = nodes.slice(0, Math.min(5, nodes.length));
-      for (let i = 0; i < nodesList.length - 1; i++) {
-        edges.push({
-          data: {
-            id: `${nodesList[i].data.id}->${nodesList[i + 1].data.id}`,
-            source: nodesList[i].data.id,
-            target: nodesList[i + 1].data.id,
-            type: 'calls'
-          }
-        });
-      }
-    }
+
 
     return { nodes, edges };
   }

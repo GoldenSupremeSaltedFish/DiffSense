@@ -50,4 +50,18 @@ Thumbs.db
 
 # Include frontend and backend analyzer scripts (now in plugin directory)
 !ui/node-analyzer/**
-!ui/golang-analyzer/** 
+!ui/golang-analyzer/**
+
+# Exclude test files from analyzers to reduce package size
+ui/node-analyzer/**/test/**
+ui/node-analyzer/**/tests/**
+ui/node-analyzer/**/__tests__/**
+ui/node-analyzer/**/*.test.js
+ui/node-analyzer/**/*.spec.js
+ui/node-analyzer/**/*.test.ts
+ui/node-analyzer/**/*.spec.ts
+ui/golang-analyzer/**/test/**
+ui/golang-analyzer/**/tests/**
+ui/golang-analyzer/**/__tests__/**
+ui/golang-analyzer/**/*.test.js
+ui/golang-analyzer/**/*.spec.js 
