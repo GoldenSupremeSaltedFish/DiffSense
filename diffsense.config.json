@@ -1,0 +1,207 @@
+{
+  "version": "1.0",
+  "description": "DiffSense 统一跨语言代码分析配置",
+  
+  "languages": {
+    "java": {
+      "enabled": true,
+      "sourcePatterns": [
+        "src/main/java/**/*.java",
+        "src/main/kotlin/**/*.kt"
+      ],
+      "testPatterns": [
+        "src/test/java/**/*.java",
+        "src/test/kotlin/**/*.kt"
+      ],
+      "excludePatterns": [
+        "**/target/**",
+        "**/generated/**",
+        "**/*.class"
+      ],
+      "analyzer": "java",
+      "options": {
+        "useSpoon": true,
+        "enableCallGraph": true,
+        "maxDepth": 15
+      }
+    },
+    
+    "go": {
+      "enabled": true,
+      "sourcePatterns": [
+        "**/*.go"
+      ],
+      "testPatterns": [
+        "**/*_test.go"
+      ],
+      "excludePatterns": [
+        "vendor/**",
+        "**/testdata/**"
+      ],
+      "analyzer": "node",
+      "options": {
+        "includeVendor": false,
+        "analyzeTestCoverage": true,
+        "analyzeGoroutines": true,
+        "analyzeChannels": true
+      }
+    },
+    
+    "typescript": {
+      "enabled": true,
+      "sourcePatterns": [
+        "src/**/*.ts",
+        "src/**/*.tsx"
+      ],
+      "testPatterns": [
+        "src/**/*.test.ts",
+        "src/**/*.test.tsx",
+        "src/**/*.spec.ts",
+        "src/**/*.spec.tsx"
+      ],
+      "excludePatterns": [
+        "node_modules/**",
+        "dist/**",
+        "build/**",
+        "coverage/**"
+      ],
+      "analyzer": "node",
+      "options": {
+        "includeNodeModules": false,
+        "useMadge": true,
+        "enableDependencyGraph": true
+      }
+    },
+    
+    "javascript": {
+      "enabled": true,
+      "sourcePatterns": [
+        "src/**/*.js",
+        "src/**/*.jsx"
+      ],
+      "testPatterns": [
+        "src/**/*.test.js",
+        "src/**/*.test.jsx",
+        "src/**/*.spec.js",
+        "src/**/*.spec.jsx"
+      ],
+      "excludePatterns": [
+        "node_modules/**",
+        "dist/**",
+        "build/**"
+      ],
+      "analyzer": "node",
+      "options": {
+        "useBabel": true,
+        "enableBasicAnalysis": true
+      }
+    },
+    
+    "cpp": {
+      "enabled": false,
+      "sourcePatterns": [
+        "src/**/*.cpp",
+        "src/**/*.cxx",
+        "src/**/*.cc",
+        "include/**/*.h",
+        "include/**/*.hpp"
+      ],
+      "testPatterns": [
+        "test/**/*.cpp",
+        "tests/**/*.cpp"
+      ],
+      "excludePatterns": [
+        "build/**",
+        "cmake-build-*/**"
+      ],
+      "analyzer": "ctags",
+      "options": {
+        "useClang": false,
+        "basicAnalysisOnly": true
+      }
+    }
+  },
+  
+  "analysis": {
+    "defaultMode": "diff",
+    "maxDepth": 15,
+    "maxFiles": 1000,
+    "enableCaching": true,
+    "cacheDir": ".diffsense-cache",
+    "cacheExpiry": "7d",
+    "parallelAnalysis": true,
+    "threads": 4
+  },
+  
+  "output": {
+    "defaultFormat": "json",
+    "includeCallGraph": true,
+    "includeTestRecommendations": true,
+    "includeRiskAssessment": true,
+    "verboseOutput": false,
+    "colorOutput": true
+  },
+  
+  "git": {
+    "defaultBranch": "main",
+    "maxCommits": 100,
+    "excludeBranches": [
+      "feature/*temp*",
+      "experimental/*"
+    ],
+    "includeMergeCommits": false
+  },
+  
+  "testing": {
+    "enableTestRecommendations": true,
+    "testDiscoveryPatterns": {
+      "java": ["**/*Test.java", "**/*Tests.java"],
+      "go": ["**/*_test.go"],
+      "ts": ["**/*.test.ts", "**/*.spec.ts"],
+      "js": ["**/*.test.js", "**/*.spec.js"]
+    },
+    "priorityLevels": ["high", "medium", "low"],
+    "maxRecommendations": 50
+  },
+  
+  "security": {
+    "enableSecurityScanning": false,
+    "dangerousPatterns": [
+      "eval\\(",
+      "exec\\(",
+      "system\\(",
+      "Runtime\\.getRuntime\\(\\)\\.exec"
+    ],
+    "sensitiveFiles": [
+      "**/*password*",
+      "**/*secret*",
+      "**/*.key",
+      "**/*.pem"
+    ]
+  },
+  
+  "performance": {
+    "timeoutSeconds": 300,
+    "memoryLimitMB": 2048,
+    "enableProfiling": false,
+    "optimizeForLargeRepos": true
+  },
+  
+  "integrations": {
+    "vscode": {
+      "enabled": true,
+      "autoAnalyzeOnSave": false,
+      "showInlineHints": true
+    },
+    "cicd": {
+      "enabled": false,
+      "failOnHighRisk": false,
+      "generateReports": true
+    },
+    "webhook": {
+      "enabled": false,
+      "url": "",
+      "events": ["analysis_complete", "high_risk_detected"]
+    }
+  }
+} 
