@@ -19,6 +19,7 @@ import picocli.CommandLine.HelpCommand;
         ImpactedCommand.class,
         CallGraphCommand.class,
         RecommendTestsCommand.class,
+        SpringAnalyzeCommand.class,
         CacheCommand.class,
         LangSupportCommand.class
     }
