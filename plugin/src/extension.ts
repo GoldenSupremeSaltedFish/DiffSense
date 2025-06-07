@@ -854,36 +854,18 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
   private convertFrontendResult(frontendResult: any, targetDir: string): any[] {
     // 将前端分析结果转换为与后端分析结果兼容的格式
+    // 不再人为分组，而是生成一个统一的分析结果
     const commits = [];
     
-    if (frontendResult && frontendResult.files) {
-      // 按文件组织数据，模拟提交结构
-      const fileGroups = new Map();
+    if (frontendResult && frontendResult.files && frontendResult.files.length > 0) {
+      // 创建单一的前端分析结果，包含所有文件
+      const allMethods: string[] = [];
+      const allFiles: any[] = [];
+      let totalRiskScore = 0;
       
-      frontendResult.files.forEach((file: any, index: number) => {
-        const groupKey = Math.floor(index / 5); // 每5个文件一组，模拟提交
-        
-        if (!fileGroups.has(groupKey)) {
-          fileGroups.set(groupKey, {
-            commitId: `frontend_analysis_${groupKey + 1}`,
-            message: `前端代码分析 - 组 ${groupKey + 1}`,
-            author: { name: '前端分析器', email: 'frontend@diffsense.com' },
-            timestamp: frontendResult.timestamp,
-            changedFilesCount: 0,
-            changedMethodsCount: 0,
-            impactedMethods: [],
-            impactedTests: {},
-            riskScore: 0,
-            impactedFiles: []
-          });
-        }
-        
-        const group = fileGroups.get(groupKey);
-        group.changedFilesCount++;
-        group.changedMethodsCount += file.methods ? file.methods.length : 0;
-        
-        // 添加文件信息
-        group.impactedFiles.push({
+      frontendResult.files.forEach((file: any) => {
+        // 收集所有文件信息
+        allFiles.push({
           path: file.relativePath,
           filePath: file.relativePath,
           methods: file.methods || [],
@@ -896,33 +878,49 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
           })) : []
         });
         
-        // 累加方法名
+        // 收集所有方法名
         if (file.methods) {
           file.methods.forEach((method: any) => {
-            group.impactedMethods.push(method.name);
+            allMethods.push(`${file.relativePath}:${method.name}`);
           });
         }
         
-        // 简单的风险评分计算
-        group.riskScore += Math.min(file.methods ? file.methods.length * 2 : 0, 20);
+        // 累计风险评分
+        totalRiskScore += Math.min(file.methods ? file.methods.length * 2 : 0, 20);
       });
       
-      commits.push(...Array.from(fileGroups.values()));
-    }
-    
-    // 如果没有文件数据，创建一个摘要提交
-    if (commits.length === 0) {
+      // 创建单一的前端分析提交记录
       commits.push({
-        commitId: 'frontend_summary',
-        message: '前端代码分析摘要',
+        commitId: 'frontend_analysis',
+        message: '前端代码分析结果',
         author: { name: '前端分析器', email: 'frontend@diffsense.com' },
-        timestamp: frontendResult.timestamp,
-        changedFilesCount: frontendResult.summary?.totalFiles || 0,
-        changedMethodsCount: frontendResult.summary?.totalMethods || 0,
-        impactedMethods: [],
+        timestamp: frontendResult.timestamp || new Date().toISOString(),
+        changedFilesCount: frontendResult.files.length,
+        changedMethodsCount: allMethods.length,
+        impactedMethods: allMethods,
+        impactedFiles: allFiles,
         impactedTests: {},
-        riskScore: frontendResult.summary?.totalFiles || 0,
+        riskScore: Math.min(totalRiskScore, 100), // 限制最大风险评分为100
+        language: 'frontend',
+        analysisSource: 'frontend',
+        frontendSummary: frontendResult.summary,
+        frontendDependencies: frontendResult.dependencies
+      });
+    } else {
+      // 如果没有文件数据，创建一个说明性的提交
+      commits.push({
+        commitId: 'frontend_no_data',
+        message: '前端代码分析 - 未检测到代码文件',
+        author: { name: '前端分析器', email: 'frontend@diffsense.com' },
+        timestamp: frontendResult.timestamp || new Date().toISOString(),
+        changedFilesCount: 0,
+        changedMethodsCount: 0,
+        impactedMethods: [],
         impactedFiles: [],
+        impactedTests: {},
+        riskScore: 0,
+        language: 'frontend',
+        analysisSource: 'frontend',
         frontendSummary: frontendResult.summary,
         frontendDependencies: frontendResult.dependencies
       });
@@ -984,38 +982,24 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
   private convertGolangResult(golangResult: any, targetDir: string): any[] {
     // 将Golang分析结果转换为与后端分析结果兼容的格式
+    // 不再按包分组，而是生成一个统一的分析结果
     const commits = [];
     
-    if (golangResult && golangResult.files) {
-      // 按包组织数据，模拟提交结构
-      const packageGroups = new Map();
+    if (golangResult && golangResult.files && golangResult.files.length > 0) {
+      // 创建单一的Golang分析结果，包含所有文件和包
+      const allMethods: string[] = [];
+      const allFiles: any[] = [];
+      let totalRiskScore = 0;
+      const packages = new Set<string>();
       
-      golangResult.files.forEach((file: any, index: number) => {
-        const packageName = file.packageName || 'main';
-        
-        if (!packageGroups.has(packageName)) {
-          packageGroups.set(packageName, {
-            commitId: `golang_${packageName}_analysis`,
-            message: `Golang包分析 - ${packageName}`,
-            author: { name: 'Golang分析器', email: 'golang@diffsense.com' },
-            timestamp: golangResult.timestamp,
-            changedFilesCount: 0,
-            changedMethodsCount: 0,
-            impactedMethods: [],
-            impactedTests: {},
-            riskScore: 0,
-            impactedFiles: [],
-            language: 'golang',
-            packageName: packageName
-          });
+      golangResult.files.forEach((file: any) => {
+        // 收集包信息
+        if (file.packageName) {
+          packages.add(file.packageName);
         }
         
-        const group = packageGroups.get(packageName);
-        group.changedFilesCount++;
-        group.changedMethodsCount += file.functions ? file.functions.length : 0;
-        
-        // 添加文件信息
-        group.impactedFiles.push({
+        // 收集所有文件信息
+        allFiles.push({
           path: file.relativePath,
           filePath: file.relativePath,
           packageName: file.packageName,
@@ -1034,36 +1018,53 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
           })) : []
         });
         
-        // 累加函数名
+        // 收集所有函数名
         if (file.functions) {
           file.functions.forEach((func: any) => {
-            group.impactedMethods.push(func.name);
+            allMethods.push(`${file.packageName || 'main'}.${func.name}`);
           });
         }
         
-        // 基于函数复杂度的风险评分计算
+        // 累计风险评分
         const exportedFunctions = file.functions ? file.functions.filter((f: any) => f.isExported).length : 0;
         const totalFunctions = file.functions ? file.functions.length : 0;
-        group.riskScore += Math.min(exportedFunctions * 3 + totalFunctions * 1, 30);
+        totalRiskScore += Math.min(exportedFunctions * 3 + totalFunctions * 1, 30);
       });
       
-      commits.push(...Array.from(packageGroups.values()));
-    }
-    
-    // 如果没有文件数据，创建一个摘要提交
-    if (commits.length === 0) {
+      // 创建单一的Golang分析提交记录
       commits.push({
-        commitId: 'golang_summary',
-        message: 'Golang代码分析摘要',
+        commitId: 'golang_analysis',
+        message: `Golang代码分析结果 (包含${packages.size}个包: ${Array.from(packages).join(', ')})`,
         author: { name: 'Golang分析器', email: 'golang@diffsense.com' },
-        timestamp: golangResult.timestamp,
-        changedFilesCount: golangResult.summary?.totalFiles || 0,
-        changedMethodsCount: golangResult.summary?.totalFunctions || 0,
-        impactedMethods: [],
+        timestamp: golangResult.timestamp || new Date().toISOString(),
+        changedFilesCount: golangResult.files.length,
+        changedMethodsCount: allMethods.length,
+        impactedMethods: allMethods,
+        impactedFiles: allFiles,
         impactedTests: {},
-        riskScore: golangResult.summary?.totalFiles || 0,
-        impactedFiles: [],
+        riskScore: Math.min(totalRiskScore, 100), // 限制最大风险评分为100
         language: 'golang',
+        analysisSource: 'golang',
+        packages: Array.from(packages),
+        golangSummary: golangResult.summary,
+        golangModules: golangResult.modules
+      });
+    } else {
+      // 如果没有文件数据，创建一个说明性的提交
+      commits.push({
+        commitId: 'golang_no_data',
+        message: 'Golang代码分析 - 未检测到代码文件',
+        author: { name: 'Golang分析器', email: 'golang@diffsense.com' },
+        timestamp: golangResult.timestamp || new Date().toISOString(),
+        changedFilesCount: 0,
+        changedMethodsCount: 0,
+        impactedMethods: [],
+        impactedFiles: [],
+        impactedTests: {},
+        riskScore: 0,
+        language: 'golang',
+        analysisSource: 'golang',
+        packages: [],
         golangSummary: golangResult.summary,
         golangModules: golangResult.modules
       });
