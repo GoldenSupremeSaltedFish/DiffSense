@@ -151,7 +151,8 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         console.log('分析选项:', analysisOptions);
         
         // 检测后端语言
-        const backendLanguage = await this.detectBackendLanguage(repoPath);
+        const repoUri = vscode.Uri.file(repoPath);
+        const backendLanguage = await this.detectBackendLanguage(repoUri);
         console.log('🔍 检测到的后端语言:', backendLanguage);
 
         if (backendLanguage === 'java') {
@@ -219,20 +220,20 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
   private async handleDetectProjectType() {
     try {
-      // 获取工作区路径
+      // 获取工作区文件夹
       const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
       if (!workspaceFolder) {
         throw new Error('未找到工作区文件夹');
       }
 
-      const repoPath = workspaceFolder.uri.fsPath;
-      const projectType = await this.detectProjectType(repoPath);
-      const frontendPaths = await this.findFrontendPaths(repoPath);
+      const repoUri = workspaceFolder.uri;
+      const projectType = await this.detectProjectType(repoUri);
+      const frontendPaths = await this.findFrontendPaths(repoUri);
       
       // 获取具体的后端语言信息
       let backendLanguage = 'unknown';
       if (projectType === 'backend' || projectType === 'mixed') {
-        backendLanguage = await this.detectBackendLanguage(repoPath);
+        backendLanguage = await this.detectBackendLanguage(repoUri);
       }
 
       console.log('🔍 项目类型检测结果:', projectType);
@@ -260,11 +261,12 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  private async detectProjectType(repoPath: string): Promise<'backend' | 'frontend' | 'mixed' | 'unknown'> {
+  private async detectProjectType(repoUri: vscode.Uri): Promise<'backend' | 'frontend' | 'mixed' | 'unknown'> {
     try {
       // === 第一步：环境诊断 ===
-      console.log(`🚀 [DiffSense] 开始深度项目类型检测 (远程Linux适配版)`);
-      console.log(`📍 [环境] 工作区路径: ${repoPath}`);
+      console.log(`🚀 [DiffSense] 开始深度项目类型检测 (VSCode文件API版)`);
+      console.log(`📍 [环境] 工作区URI: ${repoUri.toString()}`);
+      console.log(`📍 [环境] URI方案: ${repoUri.scheme}`);
       console.log(`📍 [环境] Node.js版本: ${process.version}`);
       console.log(`📍 [环境] 平台: ${process.platform}`);
       console.log(`📍 [环境] 架构: ${process.arch}`);
@@ -272,85 +274,65 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       console.log(`📍 [环境] 是否为远程环境: ${vscode.env.remoteName ? '是 (' + vscode.env.remoteName + ')' : '否'}`);
       
       // === 第二步：路径和权限检查 ===
-      const fs = require('fs');
-      const os = require('os');
-      
-      // 规范化路径以适配Linux
-      const normalizedPath = path.resolve(repoPath).replace(/\\/g, '/');
-      console.log(`📍 [路径] 规范化后路径: ${normalizedPath}`);
-      
-      // 检查路径是否存在
-      if (!fs.existsSync(normalizedPath)) {
-        console.error(`❌ [路径] 项目路径不存在: ${normalizedPath}`);
-        console.log(`💡 [建议] 请检查VSCode工作区设置，确保指向正确的项目根目录`);
+      try {
+        // 使用VSCode文件系统API检查目录是否存在
+        const stat = await vscode.workspace.fs.stat(repoUri);
+        if (stat.type !== vscode.FileType.Directory) {
+          console.error(`❌ [路径] 项目路径不是目录: ${repoUri.toString()}`);
+          return 'unknown';
+        }
+        console.log(`✅ [权限] 工作区目录访问正常`);
+      } catch (error: any) {
+        console.error(`❌ [权限] 无法访问工作区目录:`, error.message);
+        console.log(`💡 [建议] 请检查工作区设置和权限`);
         return 'unknown';
       }
 
-      // 检查路径权限 (Linux特有)
-      try {
-        fs.accessSync(normalizedPath, fs.constants.R_OK);
-        console.log(`✅ [权限] 路径可读权限正常`);
-        
-        // 检查是否有写权限
-        try {
-          fs.accessSync(normalizedPath, fs.constants.W_OK);
-          console.log(`✅ [权限] 路径可写权限正常`);
-        } catch (writeError) {
-          console.warn(`⚠️ [权限] 路径无写权限，可能影响某些功能`);
-        }
-             } catch (permError: any) {
-         console.error(`❌ [权限] 路径权限不足:`, permError.message);
-         console.log(`💡 [建议] 请检查用户对项目目录的读取权限`);
-         return 'unknown';
-       }
-
       // === 第三步：目录内容分析 ===
       try {
-        const dirContents = fs.readdirSync(normalizedPath);
+        const dirContents = await vscode.workspace.fs.readDirectory(repoUri);
+        const fileNames = dirContents.map(([name, type]) => name);
         console.log(`📁 [目录] 根目录包含 ${dirContents.length} 个项目`);
-        console.log(`📁 [目录] 内容预览 (前20个):`, dirContents.slice(0, 20));
+        console.log(`📁 [目录] 内容预览 (前20个):`, fileNames.slice(0, 20));
         
         // 检查是否有常见的项目结构指示器
         const commonIndicators = {
-          maven: dirContents.includes('pom.xml'),
-                     gradle: dirContents.some((f: string) => f.startsWith('build.gradle')),
-          npm: dirContents.includes('package.json'),
-          go: dirContents.includes('go.mod'),
-          git: dirContents.includes('.git'),
-          src: dirContents.includes('src'),
-          'file_service': dirContents.includes('file_service'),
-          'user_service': dirContents.includes('user_service'),
-          'common': dirContents.includes('common')
+          maven: fileNames.includes('pom.xml'),
+          gradle: fileNames.some((f: string) => f.startsWith('build.gradle')),
+          npm: fileNames.includes('package.json'),
+          go: fileNames.includes('go.mod'),
+          git: fileNames.includes('.git'),
+          src: fileNames.includes('src'),
+          'file_service': fileNames.includes('file_service'),
+          'user_service': fileNames.includes('user_service'),
+          'common': fileNames.includes('common')
         };
         console.log(`📋 [指示器] 项目结构指示器:`, commonIndicators);
         
-             } catch (dirError: any) {
-         console.warn(`⚠️ [目录] 无法读取目录内容:`, dirError.message);
-       }
+      } catch (dirError: any) {
+        console.warn(`⚠️ [目录] 无法读取目录内容:`, dirError.message);
+      }
 
-      // === 第四步：模块依赖检查 ===
+      // === 第四步：VSCode文件搜索API检查 ===
       try {
-        console.log(`🔧 [依赖] 检查glob模块...`);
-        const globModule = require('glob');
-        console.log(`✅ [依赖] glob模块加载成功`);
+        console.log(`🔧 [依赖] 检查VSCode文件搜索API...`);
         
-        // 测试glob基础功能
-        const testPattern = normalizedPath + '/*';
-        const testFiles = globModule.globSync(testPattern);
-        console.log(`🧪 [测试] glob基础测试找到 ${testFiles.length} 个项目`);
+        // 测试文件搜索功能
+        const testFiles = await vscode.workspace.findFiles('*', '**/node_modules/**', 10);
+        console.log(`🧪 [测试] VSCode文件搜索找到 ${testFiles.length} 个文件`);
         
-             } catch (globError: any) {
-         console.error(`❌ [依赖] glob模块加载失败:`, globError.message);
-         console.log(`💡 [建议] 尝试重新安装插件或检查Node.js环境`);
-         return 'unknown';
-       }
+      } catch (searchError: any) {
+        console.error(`❌ [依赖] VSCode文件搜索失败:`, searchError.message);
+        console.log(`💡 [建议] 检查VSCode工作区设置`);
+        return 'unknown';
+      }
 
-       // === 第五步：增强的语言特征检测 ===
-       console.log(`🔍 [检测] 开始多层次语言特征检测...`);
-       
-       const javaFeatures = await this.findJavaFeatures(normalizedPath);
-       const goFeatures = await this.findGoFeatures(normalizedPath);
-       const frontendFeatures = await this.findFrontendFeatures(normalizedPath);
+      // === 第五步：增强的语言特征检测 ===
+      console.log(`🔍 [检测] 开始多层次语言特征检测...`);
+      
+      const javaFeatures = await this.findJavaFeatures(repoUri);
+      const goFeatures = await this.findGoFeatures(repoUri);
+      const frontendFeatures = await this.findFrontendFeatures(repoUri);
 
       // === 第六步：结果分析和推荐 ===
       const detectedLanguages = [];
@@ -391,7 +373,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         console.log(`   4. 远程文件系统延迟或不稳定`);
         console.log(`   5. 项目使用了不支持的语言或框架`);
         console.log(`💡 [建议] 请在VSCode开发者控制台查看详细日志`);
-        console.log(`💡 [建议] 手动验证命令: find "${normalizedPath}" -name "*.java" -o -name "pom.xml" | head -10`);
+        console.log(`💡 [建议] 检查工作区URI: ${repoUri.toString()}`);
       }
 
       console.log(`🎯 [最终] 项目类型判定: ${projectType}`);
@@ -404,119 +386,89 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  private async findJavaFeatures(repoPath: string): Promise<{detected: boolean, paths: string[]}> {
+  private async findJavaFeatures(repoUri: vscode.Uri): Promise<{detected: boolean, paths: string[]}> {
     try {
-      const { globSync } = require('glob');
       const result = { detected: false, paths: [] as string[] };
 
-      console.log(`☕ [Java] 开始增强Java特征检测，项目路径: ${repoPath}`);
+      console.log(`☕ [Java] 开始增强Java特征检测，项目URI: ${repoUri.toString()}`);
 
-      // 使用多种深度和策略适配远程Linux环境
-      const searchStrategies = [
-        { name: '标准深度', maxDepth: 25 },
-        { name: '超深度', maxDepth: 50 },
-        { name: '极深度', maxDepth: 100 }
-      ];
-
-      let detectionSuccess = false;
-
-      for (const strategy of searchStrategies) {
-        console.log(`☕ [Java] 尝试${strategy.name}搜索策略 (深度: ${strategy.maxDepth})`);
+      // 使用VSCode文件搜索API进行Java特征检测
+      try {
+        // 搜索Java文件
+        const javaFiles = await vscode.workspace.findFiles(
+          '**/*.java',
+          '**/node_modules/**,**/target/**,**/dist/**,**/build/**,**/.git/**'
+        );
+        console.log(`☕ [Java] 找到 ${javaFiles.length} 个Java文件`);
         
-        const searchOptions = {
-          cwd: repoPath,
-          ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/build/**', '**/.git/**'],
-          nodir: true,
-          dot: false, // 不搜索隐藏文件
-          maxDepth: strategy.maxDepth,
-          // Linux远程环境优化
-          silent: true, // 减少不必要的警告
-          follow: false // 不跟随符号链接避免循环
-        };
-
-        try {
-          // 搜索Java文件
-          const javaFiles = globSync('**/*.java', searchOptions);
-          console.log(`☕ [Java] ${strategy.name}策略找到 ${javaFiles.length} 个Java文件`);
+        if (javaFiles.length > 0) {
+          result.detected = true;
+          result.paths.push(`Java源文件: ${javaFiles.length}个`);
           
-          if (javaFiles.length > 0) {
-            result.detected = true;
-            result.paths.push(`Java源文件: ${javaFiles.length}个 (策略: ${strategy.name})`);
-            
-            // 显示前10个Java文件
-            console.log(`☕ [Java] Java文件样例 (前10个):`, javaFiles.slice(0, 10));
-            
-                         // 特别检查用户提到的file_service
-             const fileServiceFiles = javaFiles.filter((f: string) => f.includes('file_service'));
-             if (fileServiceFiles.length > 0) {
-               console.log(`☕ [Java] 在file_service中找到 ${fileServiceFiles.length} 个Java文件:`, fileServiceFiles);
-               result.paths.push(`file_service Java文件: ${fileServiceFiles.length}个`);
-             }
-             
-             // 分析微服务目录结构
-             const servicePatterns = ['*_service', 'service_*', '*-service', 'service-*'];
-             for (const pattern of servicePatterns) {
-               const serviceFiles = javaFiles.filter((f: string) => new RegExp(pattern.replace('*', '\\w+')).test(f));
-               if (serviceFiles.length > 0) {
-                 console.log(`☕ [Java] 微服务模式 "${pattern}" 匹配到 ${serviceFiles.length} 个文件`);
-               }
-             }
-            
-            detectionSuccess = true;
-            break; // 找到结果就退出
+          // 显示前10个Java文件
+          const filePathStrings = javaFiles.slice(0, 10).map(uri => vscode.workspace.asRelativePath(uri));
+          console.log(`☕ [Java] Java文件样例 (前10个):`, filePathStrings);
+          
+          // 特别检查用户提到的file_service
+          const fileServiceFiles = javaFiles.filter(uri => vscode.workspace.asRelativePath(uri).includes('file_service'));
+          if (fileServiceFiles.length > 0) {
+            console.log(`☕ [Java] 在file_service中找到 ${fileServiceFiles.length} 个Java文件`);
+            result.paths.push(`file_service Java文件: ${fileServiceFiles.length}个`);
           }
-        } catch (strategyError: any) {
-          console.warn(`☕ [Java] ${strategy.name}策略失败:`, strategyError.message);
-          continue;
+          
+          // 分析微服务目录结构
+          const servicePatterns = ['*_service', 'service_*', '*-service', 'service-*'];
+          for (const pattern of servicePatterns) {
+            const serviceFiles = javaFiles.filter(uri => {
+              const relativePath = vscode.workspace.asRelativePath(uri);
+              return new RegExp(pattern.replace('*', '\\w+')).test(relativePath);
+            });
+            if (serviceFiles.length > 0) {
+              console.log(`☕ [Java] 微服务模式 "${pattern}" 匹配到 ${serviceFiles.length} 个文件`);
+            }
+          }
         }
-      }
 
-      // 如果Java源文件搜索失败，尝试搜索构建文件
-      if (!detectionSuccess) {
-        console.log(`☕ [Java] Java源文件搜索失败，尝试搜索构建配置文件...`);
-        
-        try {
-          // 搜索Maven文件
-          const pomFiles = globSync('**/pom.xml', {
-            cwd: repoPath,
-            ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/build/**'],
-            maxDepth: 50
-          });
-          console.log(`☕ [Java] 找到 ${pomFiles.length} 个Maven文件:`, pomFiles);
+        // 搜索Maven文件
+        const pomFiles = await vscode.workspace.findFiles(
+          '**/pom.xml',
+          '**/node_modules/**,**/target/**,**/dist/**,**/build/**'
+        );
+        console.log(`☕ [Java] 找到 ${pomFiles.length} 个Maven文件`);
 
-          // 搜索Gradle文件
-          const gradleFiles = globSync('**/build.gradle*', {
-            cwd: repoPath,
-            ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/build/**'],
-            maxDepth: 50
-          });
-          console.log(`☕ [Java] 找到 ${gradleFiles.length} 个Gradle文件:`, gradleFiles);
-
-          if (pomFiles.length > 0) {
-            result.detected = true;
-            result.paths.push(...pomFiles.map((p: string) => `Maven: ${p}`));
-          }
-
-          if (gradleFiles.length > 0) {
-            result.detected = true;
-            result.paths.push(...gradleFiles.map((p: string) => `Gradle: ${p}`));
-          }
-        } catch (buildError: any) {
-          console.warn(`☕ [Java] 构建文件搜索也失败:`, buildError.message);
+        if (pomFiles.length > 0) {
+          result.detected = true;
+          const pomPaths = pomFiles.map(uri => vscode.workspace.asRelativePath(uri));
+          result.paths.push(...pomPaths.map(p => `Maven: ${p}`));
         }
+
+        // 搜索Gradle文件
+        const gradleFiles = await vscode.workspace.findFiles(
+          '**/build.gradle*',
+          '**/node_modules/**,**/target/**,**/dist/**,**/build/**'
+        );
+        console.log(`☕ [Java] 找到 ${gradleFiles.length} 个Gradle文件`);
+
+        if (gradleFiles.length > 0) {
+          result.detected = true;
+          const gradlePaths = gradleFiles.map(uri => vscode.workspace.asRelativePath(uri));
+          result.paths.push(...gradlePaths.map(p => `Gradle: ${p}`));
+        }
+
+      } catch (searchError: any) {
+        console.warn(`☕ [Java] VSCode文件搜索失败:`, searchError.message);
       }
 
       console.log(`☕ [Java] 最终检测结果: ${result.detected ? '✅ 检测到Java项目' : '❌ 未检测到Java项目'}`);
       console.log(`☕ [Java] 检测到的特征:`, result.paths);
 
-      // 如果仍然检测失败，提供Linux特有的故障排除建议
+      // 如果仍然检测失败，提供VSCode环境的故障排除建议
       if (!result.detected) {
-        console.log(`☕ [Java] Linux远程环境故障排除建议:`);
-        console.log(`   1. 检查文件权限: ls -la "${repoPath}"`);
-        console.log(`   2. 手动搜索: find "${repoPath}" -name "*.java" -type f | head -10`);
-        console.log(`   3. 检查符号链接: find "${repoPath}" -type l`);
-        console.log(`   4. 检查磁盘空间: df -h`);
-        console.log(`   5. 检查进程限制: ulimit -a`);
+        console.log(`☕ [Java] VSCode环境故障排除建议:`);
+        console.log(`   1. 检查工作区设置和文件权限`);
+        console.log(`   2. 确认项目已在VSCode中正确打开`);
+        console.log(`   3. 检查文件搜索排除模式是否过于严格`);
+        console.log(`   4. 工作区URI: ${repoUri.toString()}`);
       }
 
       return result;
@@ -527,42 +479,46 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  private async findGoFeatures(repoPath: string): Promise<{detected: boolean, paths: string[]}> {
+  private async findGoFeatures(repoUri: vscode.Uri): Promise<{detected: boolean, paths: string[]}> {
     try {
-      const { globSync } = require('glob');
       const result = { detected: false, paths: [] as string[] };
 
-      console.log(`🐹 [Go] 开始增强Go特征检测，项目路径: ${repoPath}`);
+      console.log(`🐹 [Go] 开始增强Go特征检测，项目URI: ${repoUri.toString()}`);
 
-      // Linux远程环境优化的搜索配置
-      const searchOptions = {
-        cwd: repoPath,
-        ignore: ['**/node_modules/**', '**/vendor/**', '**/target/**', '**/dist/**', '**/.git/**'],
-        maxDepth: 50, // 增加深度支持微服务
-        silent: true,
-        follow: false
-      };
+      try {
+        // 搜索 Go module 文件
+        const goModFiles = await vscode.workspace.findFiles(
+          '**/go.mod',
+          '**/node_modules/**,**/vendor/**,**/target/**,**/dist/**,**/.git/**'
+        );
+        console.log(`🐹 [Go] 找到 ${goModFiles.length} 个go.mod文件`);
 
-      // 搜索 Go module 文件
-      const goModFiles = globSync('**/go.mod', searchOptions);
-      console.log(`🐹 [Go] 找到 ${goModFiles.length} 个go.mod文件:`, goModFiles);
+        // 搜索 Go 源文件
+        const goFiles = await vscode.workspace.findFiles(
+          '**/*.go',
+          '**/node_modules/**,**/vendor/**,**/target/**,**/dist/**,**/.git/**'
+        );
+        console.log(`🐹 [Go] 找到 ${goFiles.length} 个Go源文件`);
+        
+        if (goFiles.length > 0) {
+          const filePathStrings = goFiles.slice(0, 10).map(uri => vscode.workspace.asRelativePath(uri));
+          console.log(`🐹 [Go] Go文件样例 (前10个):`, filePathStrings);
+        }
 
-      // 搜索 Go 源文件
-      const goFiles = globSync('**/*.go', { ...searchOptions, nodir: true });
-      console.log(`🐹 [Go] 找到 ${goFiles.length} 个Go源文件`);
-      
-      if (goFiles.length > 0) {
-        console.log(`🐹 [Go] Go文件样例 (前10个):`, goFiles.slice(0, 10));
-      }
+        if (goModFiles.length > 0) {
+          result.detected = true;
+          const modPaths = goModFiles.map(uri => vscode.workspace.asRelativePath(uri));
+          result.paths.push(...modPaths.map(p => `Go Module: ${p}`));
+        }
 
-      if (goModFiles.length > 0) {
-        result.detected = true;
-        result.paths.push(...goModFiles.map((p: string) => `Go Module: ${p}`));
-      }
+        if (goFiles.length > 0) {
+          result.detected = true;
+          const firstFile = vscode.workspace.asRelativePath(goFiles[0]);
+          result.paths.push(`Go源文件: ${goFiles.length}个文件 (如: ${firstFile})`);
+        }
 
-      if (goFiles.length > 0) {
-        result.detected = true;
-        result.paths.push(`Go源文件: ${goFiles.length}个文件 (如: ${goFiles[0]})`);
+      } catch (searchError: any) {
+        console.warn(`🐹 [Go] VSCode文件搜索失败:`, searchError.message);
       }
 
       console.log(`🐹 [Go] 检测结果: ${result.detected ? '✅ 检测到Go项目' : '❌ 未检测到Go项目'}`);
@@ -573,76 +529,82 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  private async findFrontendFeatures(repoPath: string): Promise<{detected: boolean, paths: string[]}> {
+  private async findFrontendFeatures(repoUri: vscode.Uri): Promise<{detected: boolean, paths: string[]}> {
     try {
-      const { globSync } = require('glob');
       const result = { detected: false, paths: [] as string[] };
 
-      console.log(`🌐 [Frontend] 开始增强前端特征检测，项目路径: ${repoPath}`);
+      console.log(`🌐 [Frontend] 开始增强前端特征检测，项目URI: ${repoUri.toString()}`);
 
-      // Linux远程环境优化的搜索配置
-      const searchOptions = {
-        cwd: repoPath,
-        ignore: ['**/node_modules/**', '**/target/**', '**/dist/**', '**/.git/**'],
-        maxDepth: 50, // 增加深度支持微服务
-        silent: true,
-        follow: false
-      };
+      try {
+        // 搜索 package.json 文件
+        const packageJsonFiles = await vscode.workspace.findFiles(
+          '**/package.json',
+          '**/node_modules/**,**/target/**,**/dist/**,**/.git/**'
+        );
+        console.log(`🌐 [Frontend] 找到 ${packageJsonFiles.length} 个package.json文件`);
 
-      // 搜索 package.json 文件
-      const packageJsonFiles = globSync('**/package.json', searchOptions);
-      console.log(`🌐 [Frontend] 找到 ${packageJsonFiles.length} 个package.json文件:`, packageJsonFiles);
+        // 搜索 TypeScript 配置文件
+        const tsConfigFiles = await vscode.workspace.findFiles(
+          '**/tsconfig.json',
+          '**/node_modules/**,**/target/**,**/dist/**,**/.git/**'
+        );
+        console.log(`🌐 [Frontend] 找到 ${tsConfigFiles.length} 个tsconfig.json文件`);
 
-      // 搜索 TypeScript 配置文件
-      const tsConfigFiles = globSync('**/tsconfig.json', searchOptions);
-      console.log(`🌐 [Frontend] 找到 ${tsConfigFiles.length} 个tsconfig.json文件:`, tsConfigFiles);
+        // 搜索常见前端文件
+        const frontendFiles = await vscode.workspace.findFiles(
+          '**/*.{ts,tsx,js,jsx,vue}',
+          '**/node_modules/**,**/target/**,**/dist/**,**/.git/**,**/*.test.*,**/*.spec.*,**/build/**'
+        );
+        console.log(`🌐 [Frontend] 找到 ${frontendFiles.length} 个前端源文件`);
 
-      // 搜索常见前端文件
-      const frontendFiles = globSync('**/*.{ts,tsx,js,jsx,vue}', {
-        ...searchOptions,
-        ignore: [...searchOptions.ignore, '**/*.test.*', '**/*.spec.*', '**/build/**'],
-        nodir: true
-      });
-      console.log(`🌐 [Frontend] 找到 ${frontendFiles.length} 个前端源文件`);
-
-      if (frontendFiles.length > 0) {
-        console.log(`🌐 [Frontend] 前端文件样例 (前10个):`, frontendFiles.slice(0, 10));
-      }
-
-      // 分析 package.json 内容
-      for (const packageFile of packageJsonFiles) {
-        try {
-          const fullPath = path.join(repoPath, packageFile);
-          const packageContent = JSON.parse(fs.readFileSync(fullPath, 'utf-8'));
-          const dependencies = { ...packageContent.dependencies, ...packageContent.devDependencies };
-          
-          const frameworks = [];
-          if ('react' in dependencies) frameworks.push('React');
-          if ('vue' in dependencies) frameworks.push('Vue');
-          if ('@angular/core' in dependencies) frameworks.push('Angular');
-          if ('svelte' in dependencies) frameworks.push('Svelte');
-          if ('next' in dependencies) frameworks.push('Next.js');
-          if ('nuxt' in dependencies) frameworks.push('Nuxt.js');
-          
-          if (frameworks.length > 0 || 'typescript' in dependencies) {
-            result.detected = true;
-            const frameworkInfo = frameworks.length > 0 ? ` (${frameworks.join(', ')})` : '';
-            result.paths.push(`package.json: ${packageFile}${frameworkInfo}`);
-            console.log(`🌐 [Frontend] 检测到前端项目: ${packageFile} - ${frameworkInfo}`);
-          }
-        } catch (parseError: any) {
-          console.warn(`🌐 [Frontend] 解析package.json失败: ${packageFile}`, parseError.message);
+        if (frontendFiles.length > 0) {
+          const filePathStrings = frontendFiles.slice(0, 10).map(uri => vscode.workspace.asRelativePath(uri));
+          console.log(`🌐 [Frontend] 前端文件样例 (前10个):`, filePathStrings);
         }
-      }
 
-      if (tsConfigFiles.length > 0) {
-        result.detected = true;
-        result.paths.push(...tsConfigFiles.map((p: string) => `TypeScript: ${p}`));
-      }
+        // 分析 package.json 内容
+        for (const packageFileUri of packageJsonFiles) {
+          try {
+            const packageContent = await vscode.workspace.fs.readFile(packageFileUri);
+            const packageText = new TextDecoder().decode(packageContent);
+            const packageData = JSON.parse(packageText);
+            const dependencies = { ...packageData.dependencies, ...packageData.devDependencies };
+            
+            const frameworks = [];
+            if ('react' in dependencies) frameworks.push('React');
+            if ('vue' in dependencies) frameworks.push('Vue');
+            if ('@angular/core' in dependencies) frameworks.push('Angular');
+            if ('svelte' in dependencies) frameworks.push('Svelte');
+            if ('next' in dependencies) frameworks.push('Next.js');
+            if ('nuxt' in dependencies) frameworks.push('Nuxt.js');
+            
+            if (frameworks.length > 0 || 'typescript' in dependencies) {
+              result.detected = true;
+              const frameworkInfo = frameworks.length > 0 ? ` (${frameworks.join(', ')})` : '';
+              const relativePath = vscode.workspace.asRelativePath(packageFileUri);
+              result.paths.push(`package.json: ${relativePath}${frameworkInfo}`);
+              console.log(`🌐 [Frontend] 检测到前端项目: ${relativePath} - ${frameworkInfo}`);
+            }
+          } catch (parseError: any) {
+            const relativePath = vscode.workspace.asRelativePath(packageFileUri);
+            console.warn(`🌐 [Frontend] 解析package.json失败: ${relativePath}`, parseError.message);
+          }
+        }
 
-      if (frontendFiles.length > 0 && frontendFiles.length > 10) { // 确保有足够的前端文件
-        result.detected = true;
-        result.paths.push(`前端源文件: ${frontendFiles.length}个文件 (如: ${frontendFiles[0]})`);
+        if (tsConfigFiles.length > 0) {
+          result.detected = true;
+          const tsPaths = tsConfigFiles.map(uri => vscode.workspace.asRelativePath(uri));
+          result.paths.push(...tsPaths.map(p => `TypeScript: ${p}`));
+        }
+
+        if (frontendFiles.length > 0 && frontendFiles.length > 10) { // 确保有足够的前端文件
+          result.detected = true;
+          const firstFile = vscode.workspace.asRelativePath(frontendFiles[0]);
+          result.paths.push(`前端源文件: ${frontendFiles.length}个文件 (如: ${firstFile})`);
+        }
+
+      } catch (searchError: any) {
+        console.warn(`🌐 [Frontend] VSCode文件搜索失败:`, searchError.message);
       }
 
       console.log(`🌐 [Frontend] 检测结果: ${result.detected ? '✅ 检测到前端项目' : '❌ 未检测到前端项目'}`);
@@ -669,12 +631,12 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  private async detectBackendLanguage(repoPath: string): Promise<'java' | 'golang' | 'unknown'> {
+  private async detectBackendLanguage(repoUri: vscode.Uri): Promise<'java' | 'golang' | 'unknown'> {
     try {
-      console.log(`🔍 开始后端语言检测，路径: ${repoPath}`);
+      console.log(`🔍 开始后端语言检测，URI: ${repoUri.toString()}`);
       
-      const javaFeatures = await this.findJavaFeatures(repoPath);
-      const goFeatures = await this.findGoFeatures(repoPath);
+      const javaFeatures = await this.findJavaFeatures(repoUri);
+      const goFeatures = await this.findGoFeatures(repoUri);
 
       console.log(`🔍 后端语言检测结果:`);
       console.log(`   Java: ${javaFeatures.detected ? '✅' : '❌'} (${javaFeatures.paths.length} 个特征)`);
@@ -698,36 +660,41 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  private async findFrontendPaths(repoPath: string): Promise<string[]> {
+  private async findFrontendPaths(repoUri: vscode.Uri): Promise<string[]> {
     try {
-      const frontendFeatures = await this.findFrontendFeatures(repoPath);
+      const frontendFeatures = await this.findFrontendFeatures(repoUri);
       const frontendPaths: string[] = [];
       
       if (frontendFeatures.detected) {
-        // 从检测到的特征文件中提取目录路径 - 增加深度限制配置
-        const { globSync } = require('glob');
-        const packageJsonFiles = globSync('**/package.json', {
-          cwd: repoPath,
-          ignore: ['**/node_modules/**', '**/target/**', '**/dist/**'],
-          maxDepth: 15  // 增加递归深度以支持微服务项目
-        });
+        try {
+          // 使用VSCode API搜索package.json文件
+          const packageJsonFiles = await vscode.workspace.findFiles(
+            '**/package.json',
+            '**/node_modules/**,**/target/**,**/dist/**'
+          );
 
-        for (const packageFile of packageJsonFiles) {
-          try {
-            const fullPath = path.join(repoPath, packageFile);
-            const packageContent = JSON.parse(fs.readFileSync(fullPath, 'utf-8'));
-            const dependencies = { ...packageContent.dependencies, ...packageContent.devDependencies };
-            
-            // 检查是否是前端项目
-            const hasFrontendDeps = ['react', 'vue', '@angular/core', 'svelte', 'next', 'nuxt', 'typescript'].some(dep => dep in dependencies);
-            
-            if (hasFrontendDeps) {
-              const dirPath = path.dirname(packageFile);
-              frontendPaths.push(dirPath === '.' ? '' : dirPath);
+          for (const packageFileUri of packageJsonFiles) {
+            try {
+              const packageContent = await vscode.workspace.fs.readFile(packageFileUri);
+              const packageText = new TextDecoder().decode(packageContent);
+              const packageData = JSON.parse(packageText);
+              const dependencies = { ...packageData.dependencies, ...packageData.devDependencies };
+              
+              // 检查是否是前端项目
+              const hasFrontendDeps = ['react', 'vue', '@angular/core', 'svelte', 'next', 'nuxt', 'typescript'].some(dep => dep in dependencies);
+              
+              if (hasFrontendDeps) {
+                const relativePath = vscode.workspace.asRelativePath(packageFileUri);
+                const dirPath = path.dirname(relativePath);
+                frontendPaths.push(dirPath === '.' ? '' : dirPath);
+              }
+            } catch (parseError) {
+              const relativePath = vscode.workspace.asRelativePath(packageFileUri);
+              console.warn(`解析package.json失败: ${relativePath}`, parseError);
             }
-          } catch (parseError) {
-            console.warn(`解析package.json失败: ${packageFile}`, parseError);
           }
+        } catch (searchError) {
+          console.warn('前端路径搜索失败:', searchError);
         }
       }
 
@@ -746,7 +713,8 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     try {
       // 执行后端分析（支持Java和Golang）
       try {
-        const backendLanguage = await this.detectBackendLanguage(repoPath);
+        const repoUri = vscode.Uri.file(repoPath);
+        const backendLanguage = await this.detectBackendLanguage(repoUri);
         console.log('🔍 混合项目检测到的后端语言:', backendLanguage);
 
         if (backendLanguage === 'java') {
