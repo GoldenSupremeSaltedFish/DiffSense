@@ -1,17 +1,24 @@
 package com.yourorg.gitimpact.spring;
 
-import com.yourorg.gitimpact.config.AnalysisConfig;
-import com.yourorg.gitimpact.impact.MethodRef;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import spoon.reflect.CtModel;
-import spoon.reflect.code.CtAnnotation;
-import spoon.reflect.declaration.*;
-import spoon.reflect.visitor.filter.TypeFilter;
 
-import java.nio.file.Path;
-import java.util.*;
-import java.util.stream.Collectors;
+import com.yourorg.gitimpact.config.AnalysisConfig;
+import com.yourorg.gitimpact.impact.MethodRef;
+
+import spoon.reflect.CtModel;
+import spoon.reflect.declaration.CtAnnotation;
+import spoon.reflect.declaration.CtField;
+import spoon.reflect.declaration.CtMethod;
+import spoon.reflect.declaration.CtParameter;
+import spoon.reflect.declaration.CtType;
+import spoon.reflect.visitor.filter.TypeFilter;
 
 /**
  * Spring注解分析器
