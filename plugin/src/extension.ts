@@ -775,16 +775,9 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         console.warn('前端分析失败:', error);
       }
 
-      // 如果没有任何结果，返回一个说明
+      // 如果没有任何结果，抛出错误而不是创建虚假提交
       if (results.length === 0) {
-        results.push({
-          commitId: 'mixed_analysis_empty',
-          message: '混合项目分析 - 未找到可分析的代码',
-          author: { name: '混合分析器', email: 'mixed@diffsense.com' },
-          timestamp: new Date().toISOString(),
-          analysisSource: 'mixed',
-          error: '未能成功分析前端或后端代码'
-        });
+        throw new Error('混合项目分析失败：未能成功分析前端或后端代码，请检查项目结构和分析器配置');
       }
 
       return results;
@@ -1308,45 +1301,13 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       
       return [jsonResult];
     } catch (jsonError) {
-      // 如果不是JSON，解析CLI文本输出
-      console.log('解析CLI输出:', rawOutput.substring(0, 300));
+      // 如果不是JSON，说明Java分析器输出格式不正确，应该返回错误而不是虚假数据
+      console.error('Java分析器输出不是有效的JSON格式:', jsonError);
+      console.log('原始输出:', rawOutput.substring(0, 500));
       
-      // 从CLI输出中提取有用信息
-      const lines = rawOutput.split('\n').filter(line => line.trim());
-      const commits = [];
-      
-      // 查找"分析完成"相关信息
-      const completionLine = lines.find(line => line.includes('分析完成') || line.includes('报告已生成'));
-      
-      if (completionLine) {
-        // 创建一个表示分析完成的commit项
-        commits.push({
-          id: 'analysis_' + Date.now(),
-          message: '✅ 分析已完成',
-          files: [{
-            path: '分析结果',
-            methods: ['GitImpact分析工具'],
-            tests: [
-              completionLine,
-              `分析时间: ${new Date().toLocaleString()}`,
-              '详细报告已生成为HTML文件'
-            ]
-          }]
-        });
-      } else {
-        // 如果没有找到完成信息，显示部分输出
-        commits.push({
-          id: 'analysis_output',
-          message: '📊 分析输出',
-          files: [{
-            path: 'CLI输出',
-            methods: ['系统信息'],
-            tests: lines.slice(0, 5).map(line => line.substring(0, 100)) // 取前5行，每行最多100字符
-          }]
-        });
-      }
-      
-      return commits;
+      // 抛出错误，让上层处理，而不是创建虚假的提交记录
+      const errorMessage = jsonError instanceof Error ? jsonError.message : String(jsonError);
+      throw new Error(`Java分析器输出格式错误: ${errorMessage}\n原始输出: ${rawOutput.substring(0, 200)}`);
     }
   }
 
