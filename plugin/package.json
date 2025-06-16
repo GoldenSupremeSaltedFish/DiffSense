@@ -91,6 +91,7 @@
     "package": "npm run prepare-package && vsce package",
     "publish": "npm run prepare-package && vsce publish",
     "dev": "npm run watch",
+    "build": "npm run clean && tsc && npm run prepare-package",
     "build-ui": "cd ../ui/diffsense-frontend && npm run build",
     "dev-ui": "cd ../ui/diffsense-frontend && npm run dev",
     "clean": "rimraf dist out *.vsix",
@@ -104,6 +105,7 @@
     "@types/glob": "^8.1.0",
     "@types/node": "18.x",
     "@types/vscode": "^1.74.0",
+    "@vscode/vsce": "^2.24.0",
     "typescript": "^5.2.2",
     "rimraf": "^5.0.1"
   }

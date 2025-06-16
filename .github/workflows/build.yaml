@@ -35,13 +35,20 @@ jobs:
             ui/diffsense-frontend/package-lock.json
             plugin/package-lock.json
 
-      # 构建前端
+      # 安装前端依赖并构建
       - name: Build Frontend
         working-directory: ui/diffsense-frontend
         run: |
           npm ci
           npm run build
         
+      # 安装插件依赖并构建
+      - name: Build VSCode Extension
+        working-directory: plugin
+        run: |
+          npm ci
+          npm run build
+          
       # 准备插件目录结构
       - name: Prepare Plugin Structure
         run: |
@@ -70,13 +77,10 @@ jobs:
           echo "=== Plugin directory structure ==="
           ls -R plugin/
           
-      # 构建VSCode插件
-      - name: Build VSCode Extension
+      # 打包VSCode插件
+      - name: Package VSCode Extension
         working-directory: plugin
-        run: |
-          npm ci
-          npm run build
-          npm run package
+        run: npm run package
           
       # 获取版本号
       - name: Get Version
