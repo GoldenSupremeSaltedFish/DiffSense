@@ -1,100 +1,107 @@
 # DiffSense
 
-DiffSense 是专业的代码变更影响分析工具，通过静态代码分析和版本差异比对，帮助开发者：
+DiffSense 是一款强大的代码变更影响分析工具，以 VSCode 插件形式提供。它通过静态代码分析和版本差异比对，帮助开发者快速理解代码变更的影响范围。
 
-- 🚀 精准定位受代码修改影响的模块和方法
-- 🔍 追踪方法调用链，识别潜在级联影响
-- ✅ 智能推荐关联测试用例，提升测试覆盖率
-- 📊 生成多格式分析报告，支持持续集成流程
+## ✨ 主要特性
 
-DiffSense 是一个用于分析 Git 代码变更影响范围的工具。它可以帮助你：
+- 🔍 **多语言支持**
+  - Java 后端代码分析
+  - Golang 后端代码分析
+  - TypeScript/JavaScript 前端代码分析
+  - 支持全栈项目分析
 
-- 分析两个 commit/tag 之间的代码变更
-- 识别受影响的方法和类
-- 分析方法调用关系，找出潜在的影响范围
-- 推荐需要运行的测试用例
+- 🎯 **精准分析**
+  - 方法级别的影响分析
+  - 类级别的变更追踪
+  - 调用链路可视化
+  - 前端组件依赖分析
 
-## 功能特点
+- 🌈 **智能界面**
+  - 自动适配 VSCode 主题
+  - 直观的分析结果展示
+  - 交互式调用关系图
+  - 多语言界面（中文/英文）
 
-- 基于 JGit 的 Git 差异分析
-- 使用 JavaParser 进行源码解析
-- 支持方法级别的影响分析
-- 自动推荐相关的单元测试
-- 支持 JSON 和 Markdown 格式的报告输出
+- 📊 **丰富报告**
+  - JSON 格式导出
+  - HTML 报告生成
+  - 支持持续集成
+  - 风险等级评估
 
-## 快速入门
+## 🚀 快速开始
 
-### 构建项目
-```bash
-# 下载依赖并打包
-mvn clean package -DskipTests
+1. **安装插件**
+   - 在 VSCode 扩展商店搜索 "DiffSense"
+   - 点击安装即可
 
-# 生成可执行文件（位于target目录）
-ls -l target/gitimpact-*.jar
+2. **使用方法**
+   - 打开任意 Git 仓库
+   - 在 VSCode 侧边栏找到 DiffSense 图标
+   - 选择要分析的分支和提交范围
+   - 点击"开始分析"按钮
 
-```bash
-mvn clean package
-```
+3. **查看结果**
+   - 分析完成后自动显示结果
+   - 可以查看变更影响的方法和类
+   - 可以浏览调用关系图
+   - 可以导出分析报告
 
-运行工具：
+## 💡 分析模式
 
-```bash
-java -jar target/gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar \
-  --repo /path/to/git/repo \
-  --base HEAD~1 \
-  --target HEAD \
-  --format markdown \
-  --output report.md
-```
+### 后端分析
+- **方法影响分析**：识别受变更影响的方法
+- **调用链分析**：追踪方法调用关系
+- **类级别分析**：了解类的变更影响
 
-### 命令行参数
+### 前端分析
+- **组件依赖分析**：识别组件间的依赖关系
+- **入口点分析**：找出功能入口
+- **UI 影响分析**：评估界面变更影响
 
-- `-r, --repo`: Git 仓库路径（必需）
-- `-b, --base`: 基准 commit/tag（必需）
-- `-t, --target`: 目标 commit/tag（必需）
-- `-f, --format`: 输出格式，支持 json 或 markdown（默认：markdown）
-- `-o, --output`: 输出文件路径（必需）
-- `-h, --help`: 显示帮助信息
-- `-V, --version`: 显示版本信息
+### 全栈分析
+- **API 变更影响**：分析接口变更对前端的影响
+- **数据流分析**：追踪数据传递链路
+- **全栈影响评估**：综合评估系统影响
 
-## 报告示例
+## 📝 配置说明
 
-Markdown 格式的报告包含以下部分：
+### 分析范围选项
+- 最近 3/5/10 次提交
+- 今天的变更
+- 本周的变更
+- 自定义日期范围
+- 指定 Commit ID 范围
 
-```markdown
-# 代码变更影响分析报告
+### 分析类型选项
+- 方法级影响
+- 类级影响
+- 调用链分析
+- 依赖关系
+- UI 影响
+- 全栈分析
 
-## 直接修改的方法
-- `UserService.createUser` (src/main/java/com/example/service/UserService.java)
+## 🛠️ 系统要求
 
-## 间接影响的方法
-- `AuthService.authenticate`
-- `UserController.registerUser`
+- VSCode 1.60.0 或更高版本
+- Git 2.20.0 或更高版本
+- 对于后端分析：
+  - Java 项目需要 JDK 11+
+  - Golang 项目需要 Go 1.16+
+- 对于前端分析：
+  - Node.js 14+ (推荐)
 
-## 建议运行的测试
-### UserServiceTest
-- `testCreateUser`
-- `testUpdateUser`
+## 🤝 问题反馈
 
-### AuthServiceTest
-- `testAuthenticate`
-```
+如果你在使用过程中遇到任何问题，或者有功能建议，可以：
 
-## 系统要求
+1. 在插件中使用"报告问题"功能
+2. 访问我们的 [GitHub Issues](https://github.com/yourusername/diffsense/issues)
+3. 发送邮件到 support@diffsense.com
 
-- JDK 11+
-- Maven 3.6+
-- Git 2.20+
-
-## 依赖项
-
-- Java 11 或更高版本
-- Maven 3.6 或更高版本
-- JGit
-- JavaParser
-- picocli
-- Jackson（JSON 处理）
-
-## 许可证
+## 📄 许可证
 
 MIT License
+
+## 🌟 致谢
+
+感谢所有为 DiffSense 做出贡献的开发者！
