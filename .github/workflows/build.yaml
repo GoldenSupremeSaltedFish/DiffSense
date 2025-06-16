@@ -53,15 +53,22 @@ jobs:
           cp target/gitimpact-*-jar-with-dependencies.jar plugin/analyzers/
           cp target/gitimpact-*.jar plugin/analyzers/
           
-          # 复制前端构建产物
-          cp -r ui/diffsense-frontend/dist plugin/ui/diffsense-frontend/
+          # 复制前端构建产物（现在直接从plugin/dist复制）
+          if [ -d "plugin/dist" ]; then
+            cp -r plugin/dist/* plugin/ui/diffsense-frontend/
+          else
+            echo "Error: plugin/dist directory not found"
+            ls -la plugin/
+            exit 1
+          fi
           
           # 复制Node和Golang分析器
           cp -r ui/node-analyzer plugin/analyzers/
           cp -r ui/golang-analyzer plugin/analyzers/
           
-          # 确保analyzers目录结构正确
-          ls -la plugin/analyzers/
+          # 显示目录结构以便调试
+          echo "=== Plugin directory structure ==="
+          ls -R plugin/
           
       # 构建VSCode插件
       - name: Build VSCode Extension
