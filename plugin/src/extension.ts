@@ -31,6 +31,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
   private _view?: vscode.WebviewView;
   private _lastReportPath?: string; // 保存最后生成的报告路径
   private _lastAnalysisResult?: any[]; // 保存最后的分析结果
+  private _themeDisposable?: vscode.Disposable; // 主题变化监听器
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -55,6 +56,24 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     };
 
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+
+    // 监听主题变化
+    this._themeDisposable = vscode.window.onDidChangeActiveColorTheme(() => {
+      if (this._view) {
+        // 通知前端主题已变化
+        this._view.webview.postMessage({ type: 'vscode-theme-changed' });
+        // 重新生成HTML以应用新主题
+        this._view.webview.html = this._getHtmlForWebview(this._view.webview);
+      }
+    });
+
+    // 当webview被销毁时，清理主题监听器
+    webviewView.onDidDispose(() => {
+      if (this._themeDisposable) {
+        this._themeDisposable.dispose();
+        this._themeDisposable = undefined;
+      }
+    });
 
     // 处理来自webview的消息
     webviewView.webview.onDidReceiveMessage(async (data) => {
@@ -1280,23 +1299,11 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
   }
 
   private _getHtmlForWebview(webview: vscode.Webview) {
-    // 在VSIX包中，前端资源应该位于插件目录内部
-    // 首先检查是否在VSIX包中
-    const isVSIXPackage = !fs.existsSync(path.join(this._extensionUri.fsPath, '..', 'ui'));
-    
-    let htmlPath: string;
-    let resourceRoot: vscode.Uri;
-    
-    if (isVSIXPackage) {
-      // VSIX包环境：前端资源应该被复制到插件目录内
-      htmlPath = path.join(this._extensionUri.fsPath, 'ui', 'diffsense-frontend', 'dist', 'index.html');
-      resourceRoot = vscode.Uri.file(path.join(this._extensionUri.fsPath, 'ui', 'diffsense-frontend', 'dist'));
-    } else {
-      // 开发环境：使用原有的路径结构
-      htmlPath = path.join(this._extensionUri.fsPath, '..', 'ui', 'diffsense-frontend', 'dist', 'index.html');
-      resourceRoot = vscode.Uri.file(path.join(this._extensionUri.fsPath, '..', 'ui', 'diffsense-frontend', 'dist'));
-    }
-    
+    // 使用extensionUri作为基准点
+    const distPath = path.join(this._extensionUri.fsPath, 'dist');
+    const htmlPath = path.join(distPath, 'index.html');
+    const resourceRoot = vscode.Uri.file(distPath);
+
     try {
       // 检查文件是否存在
       if (!fs.existsSync(htmlPath)) {
@@ -1309,35 +1316,19 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       // 获取资源URI基础路径
       const resourceUri = webview.asWebviewUri(resourceRoot);
       
-      console.log('🔄 WebView 初始化');
-      console.log('📦 VSIX包模式:', isVSIXPackage);
-      console.log('📁 HTML路径:', htmlPath);
-      console.log('🌐 资源URI:', resourceUri.toString());
-      
-      // 检查资源文件是否存在
-      const assetsPath = path.join(resourceRoot.fsPath, 'assets');
-      if (!fs.existsSync(assetsPath)) {
-        console.warn('⚠️ Assets目录不存在:', assetsPath);
-      } else {
-        console.log('✅ Assets目录存在:', assetsPath);
-      }
-      
       // 替换所有的资源路径为VSCode webview URI
       htmlContent = htmlContent.replace(
-        /src="\/assets\//g, 
-        `src="${resourceUri}/assets/`
-      );
-      htmlContent = htmlContent.replace(
-        /href="\/assets\//g, 
-        `href="${resourceUri}/assets/`
-      );
-      htmlContent = htmlContent.replace(
-        /href="\/vite\.svg"/g,
-        `href="${resourceUri}/vite.svg"`
+        /(src|href)="[./]*assets\//g,
+        `$1="${resourceUri}/assets/`
       );
       
-      // 添加增强的调试和初始化脚本
-      const debugStyles = `
+      htmlContent = htmlContent.replace(
+        /href="[./]*vite\.svg"/g,
+        `href="${resourceUri}/vite.svg"`
+      );
+
+      // 添加VSCode主题支持
+      const vscodeStyles = `
         <style>
           /* VSCode 主题适配重置样式 */
           * {
@@ -1372,48 +1363,6 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
             color: var(--vscode-foreground) !important;
           }
           
-          /* 强制可见性和调试边框 */
-          .app-container,
-          .react-component,
-          .main-view {
-            visibility: visible !important;
-            opacity: 1 !important;
-            display: block !important;
-            color: var(--vscode-foreground) !important;
-          }
-          
-          /* 加载状态样式 */
-          .loading-indicator {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: var(--vscode-editor-background) !important;
-            color: var(--vscode-foreground) !important;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 9999;
-            font-size: 14px;
-            text-align: center;
-            border: 1px solid var(--vscode-panel-border, rgba(128,128,128,0.2));
-          }
-          
-          .loading-spinner {
-            width: 20px;
-            height: 20px;
-            border: 2px solid var(--vscode-progressBar-background, rgba(128,128,128,0.3));
-            border-top: 2px solid var(--vscode-progressBar-foreground, var(--vscode-foreground));
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 10px;
-          }
-          
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-
           /* 确保按钮和输入框也使用正确的颜色 */
           button {
             background-color: var(--vscode-button-background) !important;
@@ -1441,11 +1390,6 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
           }
         </style>
         <script>
-          // 增强的调试和初始化脚本
-          console.log('🚀 DiffSense WebView 开始加载');
-          console.log('📱 User Agent:', navigator.userAgent);
-          console.log('🔧 VSCode API可用性:', typeof acquireVsCodeApi);
-          
           // 检测并应用VSCode主题
           function detectAndApplyTheme() {
             const body = document.body;
@@ -1453,290 +1397,47 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
             const foregroundColor = computedStyle.getPropertyValue('--vscode-foreground');
             const backgroundColor = computedStyle.getPropertyValue('--vscode-editor-background');
             
-            console.log('🎨 检测到的主题颜色:');
-            console.log('  前景色:', foregroundColor);
-            console.log('  背景色:', backgroundColor);
-            
             // 如果VSCode变量不可用，尝试手动检测
             if (!foregroundColor && !backgroundColor) {
               console.warn('⚠️ VSCode主题变量不可用，使用fallback');
-              // 可以在这里添加其他检测逻辑
             }
           }
           
-          // 显示加载指示器
-          function showLoading() {
-            const existing = document.getElementById('loading-indicator');
-            if (existing) return;
-            
-            const loading = document.createElement('div');
-            loading.id = 'loading-indicator';
-            loading.className = 'loading-indicator';
-            loading.innerHTML = '<div class="loading-spinner"></div><div>正在加载 DiffSense...</div>';
-            document.body.appendChild(loading);
-          }
+          // 页面加载完成后检测主题
+          window.addEventListener('load', detectAndApplyTheme);
           
-          // 隐藏加载指示器
-          function hideLoading() {
-            const loading = document.getElementById('loading-indicator');
-            if (loading) {
-              loading.remove();
+          // 监听主题变化
+          window.addEventListener('message', (event) => {
+            if (event.data.type === 'vscode-theme-changed') {
+              detectAndApplyTheme();
             }
-          }
-          
-          // 立即显示加载指示器
-          showLoading();
-          
-          // 检测主题
-          detectAndApplyTheme();
-          
-          // 全局错误处理
-          window.addEventListener('error', (e) => {
-            console.error('❌ 全局错误:', {
-              message: e.message,
-              filename: e.filename,
-              lineno: e.lineno,
-              colno: e.colno,
-              error: e.error
-            });
-            hideLoading();
           });
-          
-          window.addEventListener('unhandledrejection', (e) => {
-            console.error('❌ 未处理的Promise拒绝:', e.reason);
-            hideLoading();
-          });
-          
-          // 资源加载检查
-          let resourcesLoaded = 0;
-          let totalResources = 0;
-          
-          function checkResourceLoading() {
-            const scripts = document.querySelectorAll('script[src]');
-            const stylesheets = document.querySelectorAll('link[rel="stylesheet"]');
-            totalResources = scripts.length + stylesheets.length;
-            
-            console.log('📦 总资源数: ' + totalResources + ' (脚本: ' + scripts.length + ', 样式: ' + stylesheets.length + ')');
-            
-            scripts.forEach((script, index) => {
-              script.onload = () => {
-                resourcesLoaded++;
-                console.log('✅ 脚本加载成功 (' + resourcesLoaded + '/' + totalResources + '): ' + script.src);
-                checkAllResourcesLoaded();
-              };
-              script.onerror = (e) => {
-                console.error('❌ 脚本加载失败: ' + script.src, e);
-                hideLoading();
-              };
-            });
-            
-            stylesheets.forEach((link, index) => {
-              link.onload = () => {
-                resourcesLoaded++;
-                console.log('✅ 样式加载成功 (' + resourcesLoaded + '/' + totalResources + '): ' + link.href);
-                checkAllResourcesLoaded();
-              };
-              link.onerror = (e) => {
-                console.error('❌ 样式加载失败: ' + link.href, e);
-                hideLoading();
-              };
-            });
-          }
-          
-          function checkAllResourcesLoaded() {
-            if (resourcesLoaded >= totalResources) {
-              console.log('🎉 所有资源加载完成');
-              setTimeout(() => {
-                hideLoading();
-                // 检查React应用是否已挂载
-                checkReactMount();
-              }, 500);
-            }
-          }
-          
-          function checkReactMount() {
-            const root = document.getElementById('root');
-            if (root && root.children.length > 0) {
-              console.log('⚛️ React应用已挂载');
-            } else {
-              console.warn('⚠️ React应用未挂载到#root');
-              setTimeout(checkReactMount, 1000);
-            }
-          }
-          
-          // DOM加载完成后开始检查
-          if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', checkResourceLoading);
-          } else {
-            checkResourceLoading();
-          }
-          
-          // VSCode API初始化
-          if (typeof acquireVsCodeApi !== 'undefined') {
-            console.log('🔗 VSCode API 可用，正在初始化...');
-            window.vscode = acquireVsCodeApi();
-            console.log('✅ VSCode API 已初始化');
-          } else {
-            console.warn('⚠️ VSCode API 不可用 (可能在开发模式下)');
-            // 提供模拟API用于开发
-            window.vscode = {
-              postMessage: (msg) => console.log('📤 模拟发送消息:', msg),
-              getState: () => ({}),
-              setState: (state) => console.log('💾 模拟保存状态:', state)
-            };
-          }
-          
-          // 10秒后如果还在加载，显示警告
-          setTimeout(() => {
-            const loading = document.getElementById('loading-indicator');
-            if (loading) {
-              loading.innerHTML = '<div class="loading-spinner"></div><div>加载时间较长，请检查网络连接...</div><div style="font-size: 12px; margin-top: 8px; opacity: 0.7;">如果持续无响应，请尝试刷新扩展</div>';
-            }
-          }, 10000);
         </script>
       `;
-      
-      // 插入调试样式到head中
-      htmlContent = htmlContent.replace('</head>', `${debugStyles}</head>`);
-      
-      console.log('✅ WebView HTML生成成功');
+
+      // 在</head>标签前插入VSCode主题支持
+      htmlContent = htmlContent.replace('</head>', `${vscodeStyles}</head>`);
+
       return htmlContent;
-      
-    } catch (error) {
-      console.error('❌ 读取HTML文件失败:', error);
-      
-      // 返回增强的fallback HTML，包含详细诊断信息
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const fileExists = fs.existsSync(htmlPath) ? '是' : '否';
-      const currentTime = new Date().toLocaleString();
-      
+    } catch (error: any) {
+      console.error('获取HTML内容失败:', error);
       return `
-        <!DOCTYPE html>
         <html>
-        <head>
-          <title>DiffSense - 诊断模式</title>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <style>
-            body { 
-              font-family: var(--vscode-font-family, 'Segoe UI', sans-serif); 
-              padding: 20px; 
-              color: var(--vscode-foreground, #333);
-              background-color: var(--vscode-editor-background, #fff);
-              margin: 0;
-              line-height: 1.5;
-            }
-            .error-container { 
-              background: var(--vscode-inputValidation-errorBackground, #ffe6e6); 
-              border: 1px solid var(--vscode-inputValidation-errorBorder, #ff6b6b);
-              padding: 16px; 
-              border-radius: 6px; 
-              margin-bottom: 16px;
-            }
-            .error-title {
-              color: var(--vscode-errorForeground, #d32f2f);
-              font-weight: 600;
-              font-size: 16px;
-              margin-bottom: 8px;
-            }
-            .debug-info {
-              background: var(--vscode-textBlockQuote-background, #f5f5f5);
-              border-left: 4px solid var(--vscode-textBlockQuote-border, #ccc);
-              padding: 12px;
-              margin: 12px 0;
-              font-family: 'Courier New', monospace;
-              font-size: 11px;
-              color: var(--vscode-descriptionForeground, #666);
-              border-radius: 0 4px 4px 0;
-            }
-            .debug-item {
-              margin: 4px 0;
-              word-break: break-all;
-            }
-            .retry-button {
-              background: var(--vscode-button-background, #007acc);
-              color: var(--vscode-button-foreground, #fff);
-              border: none;
-              padding: 8px 16px;
-              border-radius: 4px;
-              cursor: pointer;
-              font-size: 13px;
-              margin-top: 12px;
-            }
-            .retry-button:hover {
-              background: var(--vscode-button-hoverBackground, #005a9e);
-            }
-            .status {
-              padding: 8px 12px;
-              background: var(--vscode-inputValidation-infoBackground, #e3f2fd);
-              border-left: 4px solid var(--vscode-inputValidation-infoBorder, #2196f3);
-              margin: 12px 0;
-              border-radius: 0 4px 4px 0;
-              font-size: 13px;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="error-container">
-            <div class="error-title">⚠️ DiffSense 前端资源加载失败</div>
-            <p>无法加载前端构建文件。这通常是由于以下原因之一：</p>
-            <ul>
-              <li>前端项目尚未构建或构建失败</li>
-              <li>构建产物路径不正确</li>
-              <li>VSCode扩展权限限制</li>
-            </ul>
-          </div>
-          
-          <div class="debug-info">
-            <strong>🔍 诊断信息：</strong><br>
-            <div class="debug-item"><strong>目标HTML路径:</strong> ${htmlPath}</div>
-            <div class="debug-item"><strong>扩展根路径:</strong> ${this._extensionUri.fsPath}</div>
-            <div class="debug-item"><strong>错误详情:</strong> ${errorMessage}</div>
-            <div class="debug-item"><strong>文件是否存在:</strong> ${fileExists}</div>
-            <div class="debug-item"><strong>当前时间:</strong> ${currentTime}</div>
-          </div>
-          
-          <div class="status">
-            <strong>💡 解决方案：</strong><br>
-            1. 确保已在 ui/diffsense-frontend 目录运行 <code>npm run build</code><br>
-            2. 检查 dist/ 目录是否存在且包含 index.html<br>
-            3. 重新加载 VSCode 窗口 (Ctrl+Shift+P → "Developer: Reload Window")<br>
-            4. 如果问题持续，请查看 VSCode 开发者控制台获取更多信息
-          </div>
-          
-          <button class="retry-button" onclick="location.reload()">🔄 重新加载</button>
-          
-          <script>
-            console.log('🔧 DiffSense 诊断模式启动');
-            console.log('📊 诊断信息:', {
-              htmlPath: '${htmlPath}',
-              extensionPath: '${this._extensionUri.fsPath}',
-              error: '${errorMessage}',
-              timestamp: new Date().toISOString()
-            });
-            
-            // 检查VSCode API
-            if (typeof acquireVsCodeApi !== 'undefined') {
-              console.log('✅ VSCode API 可用');
-              window.vscode = acquireVsCodeApi();
-            } else {
-              console.warn('⚠️ VSCode API 不可用');
-            }
-            
-            // 定期发送心跳，确认webview正在运行
-            setInterval(() => {
-              console.log('💓 WebView 心跳:', new Date().toLocaleTimeString());
-            }, 30000);
-            
-            // 添加键盘快捷键支持
-            document.addEventListener('keydown', (e) => {
-              if (e.ctrlKey && e.key === 'r') {
-                e.preventDefault();
-                location.reload();
+          <head>
+            <style>
+              body { 
+                color: var(--vscode-foreground);
+                background-color: var(--vscode-editor-background);
+                padding: 1em;
+                font-family: var(--vscode-font-family);
               }
-            });
-          </script>
-        </body>
+            </style>
+          </head>
+          <body>
+            <h1>加载失败</h1>
+            <p>无法加载DiffSense界面。请检查插件安装是否完整。</p>
+            <pre>${error.message}</pre>
+          </body>
         </html>
       `;
     }
@@ -2856,187 +2557,33 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
    * 处理远程开发环境和本地开发环境的路径差异
    */
   private getAnalyzerPath(analyzerType: string): string {
-    console.log(`🔍 正在查找${analyzerType}分析器...`);
-    console.log(`扩展URI: ${this._extensionUri.fsPath}`);
-    console.log(`__dirname: ${__dirname}`);
-    console.log(`process.cwd(): ${process.cwd()}`);
-    console.log(`是否为远程环境: ${vscode.env.remoteName ? '是 (' + vscode.env.remoteName + ')' : '否'}`);
-
-    // 核心策略：优先使用相对于扩展安装位置的路径
-    // 这些路径在远程和本地环境中都应该工作
-    const possiblePaths = [
-      // 策略1: 直接使用扩展URI路径 (最标准的方法)
-      path.join(this._extensionUri.fsPath, 'ui', analyzerType, 'analyze.js'),
-      
-      // 策略2: 使用require.resolve来定位扩展根目录
-      (() => {
-        try {
-          // 尝试找到package.json的位置作为扩展根目录
-          const packagePath = require.resolve('../package.json');
-          const extensionRoot = path.dirname(packagePath);
-          return path.join(extensionRoot, 'ui', analyzerType, 'analyze.js');
-        } catch {
-          return null;
-        }
-      })(),
-      
-      // 策略3: 相对于当前编译文件(__dirname)的路径
-      path.join(__dirname, '../ui', analyzerType, 'analyze.js'),
-      
-      // 策略4: 通过模块路径推导
-      (() => {
-        try {
-          // 获取当前模块的文件名，然后推导扩展根目录
-          const currentFile = __filename || __dirname + '/extension.js';
-          const distDir = path.dirname(currentFile);
-          const extensionRoot = path.dirname(distDir);
-          return path.join(extensionRoot, 'ui', analyzerType, 'analyze.js');
-        } catch {
-          return null;
-        }
-      })(),
-      
-      // 策略5: 使用VSCode API获取扩展路径的替代方法
-      (() => {
-        try {
-          const extensions = vscode.extensions.all;
-          const thisExtension = extensions.find(ext => ext.id.includes('diffsense') || ext.id.includes('humphreyLi'));
-          if (thisExtension) {
-            return path.join(thisExtension.extensionPath, 'ui', analyzerType, 'analyze.js');
-          }
-          return null;
-        } catch {
-          return null;
-        }
-      })(),
-      
-      // 备用策略: 兼容旧版本路径（直接在扩展目录外的ui目录）
-      path.join(__dirname, '../../ui', analyzerType, 'analyze.js'),
-      path.join(__dirname, '../../../ui', analyzerType, 'analyze.js'),
-      path.join(__dirname, '../../../../ui', analyzerType, 'analyze.js'),
-    ].filter(p => p !== null); // 移除null值
-
-    console.log(`🔍 尝试的分析器路径策略数量: ${possiblePaths.length}`);
-
-    for (let i = 0; i < possiblePaths.length; i++) {
-      const possiblePath = possiblePaths[i];
-      console.log(`检查分析器路径 ${i + 1}/${possiblePaths.length}: ${possiblePath}`);
-      
-      try {
-        if (fs.existsSync(possiblePath)) {
-          const stats = fs.statSync(possiblePath);
-          const fileSizeKB = (stats.size / 1024).toFixed(2);
-          console.log(`✅ 找到${analyzerType}分析器: ${possiblePath} (大小: ${fileSizeKB}KB)`);
-          return possiblePath;
-        } else {
-          console.log(`❌ 分析器路径不存在: ${possiblePath}`);
-        }
-      } catch (error) {
-        console.log(`❌ 检查分析器路径时出错: ${possiblePath}, 错误: ${error}`);
+    // 使用相对于插件根目录的路径
+    const defaultPath = path.join(this._extensionUri.fsPath, 'analyzers', analyzerType);
+    
+    try {
+      // 检查文件是否存在
+      if (fs.existsSync(defaultPath)) {
+        return defaultPath;
       }
-    }
 
-    // 如果都找不到，返回默认路径并记录详细错误
-    const defaultPath = path.join(this._extensionUri.fsPath, 'ui', analyzerType, 'analyze.js');
-    console.error(`❌ 无法找到${analyzerType}分析器!`);
-    console.error(`尝试的所有分析器路径都不存在`);
-    console.error(`将使用默认路径 (可能不存在): ${defaultPath}`);
-    
-    // 详细的环境诊断
-    this.diagnoseAnalyzerEnvironment(analyzerType);
-    
-    return defaultPath;
+      // 如果不存在，返回默认路径
+      return defaultPath;
+    } catch (error: any) {
+      console.error('获取分析器路径失败:', error);
+      return defaultPath;
+    }
+  }
+
+  private getNodeAnalyzerPath(): string {
+    return this.getAnalyzerPath('node-analyzer/analyze.js');
+  }
+
+  private getGolangAnalyzerPath(): string {
+    return this.getAnalyzerPath('golang-analyzer/analyze.js');
   }
 
   private getJavaAnalyzerPath(): string {
-    console.log(`☕ 正在查找Java分析器JAR文件...`);
-    console.log(`扩展URI: ${this._extensionUri.fsPath}`);
-    console.log(`__dirname: ${__dirname}`);
-    console.log(`process.cwd(): ${process.cwd()}`);
-    console.log(`是否为远程环境: ${vscode.env.remoteName ? '是 (' + vscode.env.remoteName + ')' : '否'}`);
-
-    // 核心策略：优先使用相对于扩展安装位置的路径
-    // 这些路径在远程和本地环境中都应该工作
-    const possiblePaths = [
-      // 策略1: 直接使用扩展URI路径 (最标准的方法)
-      path.join(this._extensionUri.fsPath, 'analyzers', 'gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar'),
-      
-      // 策略2: 使用require.resolve来定位扩展根目录
-      (() => {
-        try {
-          // 尝试找到package.json的位置作为扩展根目录
-          const packagePath = require.resolve('../package.json');
-          const extensionRoot = path.dirname(packagePath);
-          return path.join(extensionRoot, 'analyzers', 'gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar');
-        } catch {
-          return null;
-        }
-      })(),
-      
-      // 策略3: 相对于当前编译文件(__dirname)的路径
-      path.join(__dirname, '../analyzers', 'gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar'),
-      
-      // 策略4: 通过模块路径推导
-      (() => {
-        try {
-          // 获取当前模块的文件名，然后推导扩展根目录
-          const currentFile = __filename || __dirname + '/extension.js';
-          const distDir = path.dirname(currentFile);
-          const extensionRoot = path.dirname(distDir);
-          return path.join(extensionRoot, 'analyzers', 'gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar');
-        } catch {
-          return null;
-        }
-      })(),
-      
-      // 策略5: 使用VSCode API获取扩展路径的替代方法
-      (() => {
-        try {
-          const extensions = vscode.extensions.all;
-          const thisExtension = extensions.find(ext => ext.id.includes('diffsense') || ext.id.includes('humphreyLi'));
-          if (thisExtension) {
-            return path.join(thisExtension.extensionPath, 'analyzers', 'gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar');
-          }
-          return null;
-        } catch {
-          return null;
-        }
-      })(),
-      
-      // 备用策略: 开发环境路径
-      path.join(__dirname, '../../target', 'gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar'),
-    ].filter(p => p !== null); // 移除null值
-
-    console.log(`☕ 尝试的JAR路径策略数量: ${possiblePaths.length}`);
-
-    for (let i = 0; i < possiblePaths.length; i++) {
-      const possiblePath = possiblePaths[i];
-      console.log(`检查JAR路径 ${i + 1}/${possiblePaths.length}: ${possiblePath}`);
-      
-      try {
-        if (fs.existsSync(possiblePath)) {
-          const stats = fs.statSync(possiblePath);
-          const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
-          console.log(`✅ 找到Java分析器JAR: ${possiblePath} (大小: ${fileSizeMB}MB)`);
-          return possiblePath;
-        } else {
-          console.log(`❌ JAR路径不存在: ${possiblePath}`);
-        }
-      } catch (error) {
-        console.log(`❌ 检查JAR路径时出错: ${possiblePath}, 错误: ${error}`);
-      }
-    }
-
-    // 如果都找不到，返回默认路径并记录详细错误
-    const defaultPath = path.join(this._extensionUri.fsPath, 'analyzers', 'gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar');
-    console.error(`❌ 无法找到Java分析器JAR文件!`);
-    console.error(`尝试的所有JAR路径都不存在`);
-    console.error(`将使用默认路径 (可能不存在): ${defaultPath}`);
-    
-    // 详细的环境诊断
-    this.diagnoseJarEnvironment();
-    
-    return defaultPath;
+    return this.getAnalyzerPath('gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar');
   }
 
   private diagnoseJarEnvironment(): void {
