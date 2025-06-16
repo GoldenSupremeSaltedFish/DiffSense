@@ -10,6 +10,10 @@ jobs:
   build:
     name: Build DiffSense
     runs-on: ubuntu-latest
+    env:
+      PLUGIN_DIR: ${{ github.workspace }}/plugin
+      UI_DIR: ${{ github.workspace }}/ui
+      
     steps:
       - uses: actions/checkout@v4.2.2
       
@@ -39,55 +43,68 @@ jobs:
       - name: Build Frontend
         working-directory: ui/diffsense-frontend
         run: |
-          npm ci
+          echo "Installing frontend dependencies in $(pwd)"
+          npm install
           npm run build
         
       # 安装插件依赖并构建
       - name: Build VSCode Extension
         working-directory: plugin
         run: |
-          npm ci
+          echo "Installing plugin dependencies in $(pwd)"
+          npm install
           npm run build
           
       # 准备插件目录结构
       - name: Prepare Plugin Structure
+        shell: bash
         run: |
+          echo "Setting up directory structure..."
+          
           # 创建必要的目录
-          mkdir -p plugin/analyzers
-          mkdir -p plugin/ui/diffsense-frontend
+          mkdir -p "${PLUGIN_DIR}/analyzers"
+          mkdir -p "${PLUGIN_DIR}/ui/diffsense-frontend"
           
           # 复制Java分析器
-          cp target/gitimpact-*-jar-with-dependencies.jar plugin/analyzers/
-          cp target/gitimpact-*.jar plugin/analyzers/
+          echo "Copying Java analyzers..."
+          cp target/gitimpact-*-jar-with-dependencies.jar "${PLUGIN_DIR}/analyzers/"
+          cp target/gitimpact-*.jar "${PLUGIN_DIR}/analyzers/"
           
-          # 复制前端构建产物（现在直接从plugin/dist复制）
-          if [ -d "plugin/dist" ]; then
-            cp -r plugin/dist/* plugin/ui/diffsense-frontend/
+          # 复制前端构建产物
+          echo "Copying frontend build artifacts..."
+          if [ -d "${PLUGIN_DIR}/dist" ]; then
+            cp -r "${PLUGIN_DIR}/dist/"* "${PLUGIN_DIR}/ui/diffsense-frontend/"
           else
-            echo "Error: plugin/dist directory not found"
-            ls -la plugin/
+            echo "Error: ${PLUGIN_DIR}/dist directory not found"
+            echo "Current directory structure:"
+            ls -la "${PLUGIN_DIR}"
             exit 1
           fi
           
           # 复制Node和Golang分析器
-          cp -r ui/node-analyzer plugin/analyzers/
-          cp -r ui/golang-analyzer plugin/analyzers/
+          echo "Copying Node and Golang analyzers..."
+          cp -r "${UI_DIR}/node-analyzer" "${PLUGIN_DIR}/analyzers/"
+          cp -r "${UI_DIR}/golang-analyzer" "${PLUGIN_DIR}/analyzers/"
           
-          # 显示目录结构以便调试
-          echo "=== Plugin directory structure ==="
-          ls -R plugin/
+          # 显示最终目录结构
+          echo "=== Final Plugin directory structure ==="
+          ls -R "${PLUGIN_DIR}"
           
       # 打包VSCode插件
       - name: Package VSCode Extension
         working-directory: plugin
-        run: npm run package
+        run: |
+          echo "Packaging VSCode extension in $(pwd)"
+          npm run package
           
       # 获取版本号
       - name: Get Version
         id: get_version
+        shell: bash
         run: |
-          VERSION=$(node -p "require('./plugin/package.json').version")
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          VERSION=$(node -p "require('${PLUGIN_DIR}/package.json').version")
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "Building version: ${VERSION}"
           
       # 创建GitHub Release
       - name: Create Release
@@ -110,7 +127,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./plugin/diffsense-${{ env.VERSION }}.vsix
+          asset_path: ${{ env.PLUGIN_DIR }}/diffsense-${{ env.VERSION }}.vsix
           asset_name: diffsense-${{ env.VERSION }}.vsix
           asset_content_type: application/octet-stream
           
@@ -120,7 +137,7 @@ jobs:
         with:
           name: DiffSense-${{ env.VERSION }}-Full
           path: |
-            plugin/analyzers/
-            plugin/ui/
-            plugin/*.vsix
+            ${{ env.PLUGIN_DIR }}/analyzers/
+            ${{ env.PLUGIN_DIR }}/ui/
+            ${{ env.PLUGIN_DIR }}/*.vsix
           retention-days: 14
