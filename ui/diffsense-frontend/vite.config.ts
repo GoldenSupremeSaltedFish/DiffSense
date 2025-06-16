@@ -1,5 +1,4 @@
 import { defineConfig } from 'vite'
-import type { ConfigEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { fileURLToPath } from 'url'
 import path from 'path'
@@ -7,7 +6,7 @@ import path from 'path'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // https://vite.dev/config/
-export default defineConfig((env: ConfigEnv) => {
+export default defineConfig(() => {
   // 获取环境变量，如果不存在则使用默认值
   const outDir = process.env.VITE_OUT_DIR || 'dist'
   console.log('Vite build output directory:', outDir)
