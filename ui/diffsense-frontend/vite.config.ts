@@ -10,7 +10,7 @@ export default defineConfig({
   plugins: [react()],
   base: './', // 使用相对路径
   build: {
-    outDir: path.resolve(__dirname, '../../plugin/dist'), // 使用绝对路径确保正确输出
+    outDir: process.env.VITE_OUT_DIR || path.resolve(__dirname, 'dist'), // 支持环境变量覆盖输出目录
     assetsDir: 'assets',
     emptyOutDir: true,
     sourcemap: true,
