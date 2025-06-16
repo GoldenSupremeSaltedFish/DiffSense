@@ -13,6 +13,7 @@ jobs:
     env:
       PLUGIN_DIR: ${{ github.workspace }}/plugin
       UI_DIR: ${{ github.workspace }}/ui
+      FRONTEND_DIST: ${{ github.workspace }}/ui/diffsense-frontend/dist
       
     steps:
       - uses: actions/checkout@v4.2.2
@@ -43,23 +44,35 @@ jobs:
       - name: Build Frontend
         working-directory: ui/diffsense-frontend
         run: |
-          echo "Installing frontend dependencies in $(pwd)"
+          echo "Building frontend in $(pwd)"
+          echo "Directory contents before build:"
+          ls -la
           npm install
           npm run build
-        
+          echo "Directory contents after build:"
+          ls -la dist/
+          
       # 安装插件依赖并构建
       - name: Build VSCode Extension
         working-directory: plugin
         run: |
-          echo "Installing plugin dependencies in $(pwd)"
+          echo "Building plugin in $(pwd)"
+          echo "Directory contents before build:"
+          ls -la
           npm install
           npm run build
+          echo "Directory contents after build:"
+          ls -la dist/
           
       # 准备插件目录结构
       - name: Prepare Plugin Structure
         shell: bash
         run: |
           echo "Setting up directory structure..."
+          echo "Current workspace: ${{ github.workspace }}"
+          echo "Plugin directory: $PLUGIN_DIR"
+          echo "UI directory: $UI_DIR"
+          echo "Frontend dist: $FRONTEND_DIST"
           
           # 创建必要的目录
           mkdir -p "${PLUGIN_DIR}/analyzers"
@@ -72,12 +85,15 @@ jobs:
           
           # 复制前端构建产物
           echo "Copying frontend build artifacts..."
-          if [ -d "${PLUGIN_DIR}/dist" ]; then
-            cp -r "${PLUGIN_DIR}/dist/"* "${PLUGIN_DIR}/ui/diffsense-frontend/"
+          if [ -d "$FRONTEND_DIST" ]; then
+            echo "Frontend dist directory exists, contents:"
+            ls -la "$FRONTEND_DIST"
+            cp -r "$FRONTEND_DIST/"* "${PLUGIN_DIR}/ui/diffsense-frontend/"
           else
-            echo "Error: ${PLUGIN_DIR}/dist directory not found"
+            echo "Error: Frontend dist directory not found at $FRONTEND_DIST"
             echo "Current directory structure:"
-            ls -la "${PLUGIN_DIR}"
+            ls -la "${{ github.workspace }}"
+            ls -la "$UI_DIR"
             exit 1
           fi
           
@@ -95,6 +111,10 @@ jobs:
         working-directory: plugin
         run: |
           echo "Packaging VSCode extension in $(pwd)"
+          echo "Directory contents before packaging:"
+          ls -la
+          echo "UI directory contents:"
+          ls -la ui/diffsense-frontend/
           npm run package
           
       # 获取版本号

@@ -40,11 +40,11 @@ function preparePackage() {
   const pluginDir = process.cwd();
   console.log('📁 插件目录:', pluginDir);
   
-  // 前端构建产物源路径
-  const frontendDistSrc = path.join(pluginDir, '..', 'ui', 'diffsense-frontend', 'dist');
+  // 前端构建产物源路径（优先使用环境变量）
+  const frontendDistSrc = process.env.FRONTEND_DIST || path.join(pluginDir, 'dist');
   
   // 前端资源目标路径（插件内）
-  const frontendDistDest = path.join(pluginDir, 'ui', 'diffsense-frontend', 'dist');
+  const frontendDistDest = path.join(pluginDir, 'ui', 'diffsense-frontend');
   
   console.log('📦 检查前端构建产物...');
   console.log('  源路径:', frontendDistSrc);
@@ -52,10 +52,12 @@ function preparePackage() {
   
   if (!fs.existsSync(frontendDistSrc)) {
     console.error('❌ 前端构建产物不存在！');
-    console.error('请先运行以下命令构建前端项目：');
-    console.error('  cd ../ui/diffsense-frontend');
-    console.error('  npm install');
-    console.error('  npm run build');
+    console.error('源目录内容:');
+    try {
+      console.error(fs.readdirSync(path.dirname(frontendDistSrc)));
+    } catch (err) {
+      console.error('无法读取源目录:', err.message);
+    }
     process.exit(1);
   }
   
@@ -78,6 +80,9 @@ function preparePackage() {
   if (fs.existsSync(frontendDistDest)) {
     fs.rmSync(frontendDistDest, { recursive: true, force: true });
   }
+  
+  // 创建目标目录
+  fs.mkdirSync(frontendDistDest, { recursive: true });
   
   // 复制前端构建产物
   copyDir(frontendDistSrc, frontendDistDest);
@@ -131,6 +136,7 @@ if (require.main === module) {
     preparePackage();
   } catch (error) {
     console.error('❌ 准备失败:', error.message);
+    console.error('错误堆栈:', error.stack);
     process.exit(1);
   }
 } 
