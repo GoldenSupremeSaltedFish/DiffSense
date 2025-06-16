@@ -1,8 +1,10 @@
 import { copyFileSync, mkdirSync, readdirSync, statSync } from 'fs';
 import { join, resolve } from 'path';
+import { fileURLToPath } from 'url';
 
-const sourceDir = resolve('./dist');
-const targetDir = resolve('../../plugin/diffsense-frontend');
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+const sourceDir = resolve(__dirname, '../../../plugin/dist');
+const targetDir = resolve(__dirname, '../../../plugin/diffsense-frontend');
 
 // 确保目标目录存在
 try {

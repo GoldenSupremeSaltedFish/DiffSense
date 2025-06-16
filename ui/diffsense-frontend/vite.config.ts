@@ -10,7 +10,7 @@ export default defineConfig({
   plugins: [react()],
   base: './', // 使用相对路径
   build: {
-    outDir: '../../plugin/dist', // 直接输出到plugin目录
+    outDir: path.resolve(__dirname, '../../plugin/dist'), // 使用绝对路径确保正确输出
     assetsDir: 'assets',
     emptyOutDir: true,
     sourcemap: true,
@@ -23,7 +23,8 @@ export default defineConfig({
       }
     },
     cssCodeSplit: false, // 禁用CSS代码分割
-    cssMinify: true // 启用CSS压缩
+    cssMinify: true, // 启用CSS压缩
+    chunkSizeWarningLimit: 1000 // 提高chunk大小警告限制
   },
   css: {
     modules: {
