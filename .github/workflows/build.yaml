@@ -10,12 +10,18 @@ jobs:
   build:
     name: Build DiffSense
     runs-on: ubuntu-latest
+    
+    # 添加权限配置
+    permissions:
+      contents: write
+      packages: write
+      
     env:
       PLUGIN_DIR: ${{ github.workspace }}/plugin
       UI_DIR: ${{ github.workspace }}/ui
       FRONTEND_DIST: ${{ github.workspace }}/ui/diffsense-frontend/dist
       FRONTEND_TARGET: ${{ github.workspace }}/plugin/ui/diffsense-frontend
-      VITE_OUT_DIR: ${{ github.workspace }}/ui/diffsense-frontend/dist
+      VITE_OUT_DIR: dist
       
     steps:
       - uses: actions/checkout@v4.2.2
@@ -49,26 +55,53 @@ jobs:
           echo "Building frontend in $(pwd)"
           echo "Frontend dist directory: $FRONTEND_DIST"
           echo "Frontend target directory: $FRONTEND_TARGET"
-          echo "Directory contents before build:"
+          echo "Vite output directory: $VITE_OUT_DIR"
+          
+          # 检查和创建目录
+          mkdir -p dist
+          chmod -R 755 .
+          
+          echo "Directory contents and permissions before build:"
           ls -la
+          
+          # 安装依赖和构建
           npm install
           npm run build
-          echo "Directory contents after build:"
+          
+          echo "Directory contents and permissions after build:"
+          ls -la
           ls -la dist/ || echo "dist/ directory not found"
-          ls -la "$FRONTEND_DIST" || echo "FRONTEND_DIST directory not found"
+          
+          # 如果dist目录存在，显示其内容和权限
+          if [ -d "dist" ]; then
+            echo "dist directory exists, contents and permissions:"
+            ls -la dist/
+            
+            # 确保dist目录有正确的权限
+            chmod -R 755 dist/
+          else
+            echo "dist directory was not created!"
+            exit 1
+          fi
           
       # 安装插件依赖并构建
       - name: Build VSCode Extension
         working-directory: plugin
         run: |
           echo "Building plugin in $(pwd)"
-          echo "Directory contents before build:"
+          echo "Directory contents and permissions before build:"
           ls -la
+          
+          # 创建必要的目录
+          mkdir -p ui/diffsense-frontend
+          chmod -R 755 .
+          
           npm install
           npm run build
-          echo "Directory contents after build:"
-          ls -la dist/ || echo "dist/ directory not found"
-          echo "UI directory contents:"
+          
+          echo "Directory contents and permissions after build:"
+          ls -la
+          echo "UI directory contents and permissions:"
           ls -la ui/diffsense-frontend/ || echo "UI directory not found"
           
       # 准备插件目录结构
@@ -82,9 +115,10 @@ jobs:
           echo "Frontend dist: $FRONTEND_DIST"
           echo "Frontend target: $FRONTEND_TARGET"
           
-          # 创建必要的目录
+          # 创建必要的目录并设置权限
           mkdir -p "${PLUGIN_DIR}/analyzers"
           mkdir -p "${PLUGIN_DIR}/ui/diffsense-frontend"
+          chmod -R 755 "${PLUGIN_DIR}"
           
           # 复制Java分析器
           echo "Copying Java analyzers..."
@@ -93,14 +127,18 @@ jobs:
           
           # 复制前端构建产物
           echo "Copying frontend build artifacts..."
-          if [ -d "$FRONTEND_DIST" ]; then
-            echo "Frontend dist directory exists, contents:"
-            ls -la "$FRONTEND_DIST"
-            cp -r "$FRONTEND_DIST/"* "${FRONTEND_TARGET}/"
-            echo "Frontend target directory contents after copy:"
-            ls -la "$FRONTEND_TARGET"
+          if [ -d "$UI_DIR/diffsense-frontend/dist" ]; then
+            echo "Frontend dist directory exists, contents and permissions:"
+            ls -la "$UI_DIR/diffsense-frontend/dist"
+            
+            # 复制并设置权限
+            cp -r "$UI_DIR/diffsense-frontend/dist/"* "${FRONTEND_TARGET}/"
+            chmod -R 755 "${FRONTEND_TARGET}"
+            
+            echo "Frontend target directory contents and permissions after copy:"
+            ls -la "${FRONTEND_TARGET}"
           else
-            echo "Error: Frontend dist directory not found at $FRONTEND_DIST"
+            echo "Error: Frontend dist directory not found at $UI_DIR/diffsense-frontend/dist"
             echo "Current directory structure:"
             ls -la "${{ github.workspace }}"
             ls -la "$UI_DIR"
@@ -112,20 +150,24 @@ jobs:
           echo "Copying Node and Golang analyzers..."
           cp -r "${UI_DIR}/node-analyzer" "${PLUGIN_DIR}/analyzers/"
           cp -r "${UI_DIR}/golang-analyzer" "${PLUGIN_DIR}/analyzers/"
+          chmod -R 755 "${PLUGIN_DIR}/analyzers"
           
-          # 显示最终目录结构
-          echo "=== Final Plugin directory structure ==="
-          ls -R "${PLUGIN_DIR}"
+          # 显示最终目录结构和权限
+          echo "=== Final Plugin directory structure and permissions ==="
+          ls -laR "${PLUGIN_DIR}"
           
       # 打包VSCode插件
       - name: Package VSCode Extension
         working-directory: plugin
         run: |
           echo "Packaging VSCode extension in $(pwd)"
-          echo "Directory contents before packaging:"
+          echo "Directory contents and permissions before packaging:"
           ls -la
-          echo "UI directory contents:"
+          echo "UI directory contents and permissions:"
           ls -la ui/diffsense-frontend/
+          
+          # 确保打包目录有正确的权限
+          chmod -R 755 .
           npm run package
           
       # 获取版本号
