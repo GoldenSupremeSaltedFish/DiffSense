@@ -1,4 +1,4 @@
-import React, { StrictMode } from 'react'
+import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App'
@@ -9,7 +9,6 @@ console.log('DOM ready state:', document.readyState);
 
 // 检测并应用VSCode主题
 function detectAndApplyTheme() {
-  const body = document.body;
   const computedStyle = getComputedStyle(document.documentElement);
   
   // 获取VSCode主题变量
