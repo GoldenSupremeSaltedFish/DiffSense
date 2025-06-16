@@ -1,4 +1,4 @@
-name: Java CI
+name: DiffSense CI
 
 on:
   push:
@@ -8,25 +8,108 @@ on:
 
 jobs:
   build:
+    name: Build DiffSense
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.2.2
+      
+      # 设置Java环境
       - name: Set up JDK
         uses: actions/setup-java@v4.7.1
         with:
           java-version: "17"
           distribution: "temurin"
           cache: maven
-      - name: Build with Maven
+          
+      # 构建Java分析器
+      - name: Build Java Analyzer
         run: mvn clean package -DskipTests
-      - name: Get version from pom.xml
+      
+      # 设置Node环境
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: |
+            ui/diffsense-frontend/package-lock.json
+            plugin/package-lock.json
+
+      # 构建前端
+      - name: Build Frontend
+        working-directory: ui/diffsense-frontend
+        run: |
+          npm ci
+          npm run build
+        
+      # 准备插件目录结构
+      - name: Prepare Plugin Structure
+        run: |
+          # 创建必要的目录
+          mkdir -p plugin/analyzers
+          mkdir -p plugin/ui/diffsense-frontend
+          
+          # 复制Java分析器
+          cp target/gitimpact-*-jar-with-dependencies.jar plugin/analyzers/
+          cp target/gitimpact-*.jar plugin/analyzers/
+          
+          # 复制前端构建产物
+          cp -r ui/diffsense-frontend/dist plugin/ui/diffsense-frontend/
+          
+          # 复制Node和Golang分析器
+          cp -r ui/node-analyzer plugin/analyzers/
+          cp -r ui/golang-analyzer plugin/analyzers/
+          
+          # 确保analyzers目录结构正确
+          ls -la plugin/analyzers/
+          
+      # 构建VSCode插件
+      - name: Build VSCode Extension
+        working-directory: plugin
+        run: |
+          npm ci
+          npm run build
+          npm run package
+          
+      # 获取版本号
+      - name: Get Version
         id: get_version
         run: |
-          VERSION=$(mvn help:evaluate -Dexpression="project.version" -q -DforceStdout)
+          VERSION=$(node -p "require('./plugin/package.json').version")
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-      - name: Upload a Build Artifact
+          
+      # 创建GitHub Release
+      - name: Create Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ env.VERSION }}
+          release_name: Release v${{ env.VERSION }}
+          draft: false
+          prerelease: false
+          
+      # 上传VSIX到Release
+      - name: Upload VSIX to Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./plugin/diffsense-${{ env.VERSION }}.vsix
+          asset_name: diffsense-${{ env.VERSION }}.vsix
+          asset_content_type: application/octet-stream
+          
+      # 上传构建产物（用于调试和验证）
+      - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4.6.2
         with:
-          name: DiffSense-${{ env.VERSION }}
-          path: target/gitimpact-*.jar
+          name: DiffSense-${{ env.VERSION }}-Full
+          path: |
+            plugin/analyzers/
+            plugin/ui/
+            plugin/*.vsix
           retention-days: 14
