@@ -104,72 +104,18 @@ jobs:
           echo "UI directory contents and permissions:"
           ls -la ui/diffsense-frontend/ || echo "UI directory not found"
           
-      # 准备插件目录结构
-      - name: Prepare Plugin Structure
-        shell: bash
-        run: |
-          echo "Setting up directory structure..."
-          echo "Current workspace: ${{ github.workspace }}"
-          echo "Plugin directory: $PLUGIN_DIR"
-          echo "UI directory: $UI_DIR"
-          echo "Frontend dist: $FRONTEND_DIST"
-          echo "Frontend target: $FRONTEND_TARGET"
-          
-          # 创建必要的目录并设置权限
-          mkdir -p "${PLUGIN_DIR}/analyzers"
-          mkdir -p "${PLUGIN_DIR}/ui/diffsense-frontend"
-          chmod -R 755 "${PLUGIN_DIR}"
-          
-          # 复制Java分析器
-          echo "Copying Java analyzers..."
-          cp target/gitimpact-*-jar-with-dependencies.jar "${PLUGIN_DIR}/analyzers/"
-          cp target/gitimpact-*.jar "${PLUGIN_DIR}/analyzers/"
-          
-          # 复制前端构建产物
-          echo "Copying frontend build artifacts..."
-          if [ -d "$UI_DIR/diffsense-frontend/dist" ]; then
-            echo "Frontend dist directory exists, contents and permissions:"
-            ls -la "$UI_DIR/diffsense-frontend/dist"
-            
-            # 复制并设置权限
-            cp -r "$UI_DIR/diffsense-frontend/dist/"* "${FRONTEND_TARGET}/"
-            chmod -R 755 "${FRONTEND_TARGET}"
-            
-            echo "Frontend target directory contents and permissions after copy:"
-            ls -la "${FRONTEND_TARGET}"
-          else
-            echo "Error: Frontend dist directory not found at $UI_DIR/diffsense-frontend/dist"
-            echo "Current directory structure:"
-            ls -la "${{ github.workspace }}"
-            ls -la "$UI_DIR"
-            ls -la "$UI_DIR/diffsense-frontend"
-            exit 1
-          fi
-          
-          # 复制Node和Golang分析器
-          echo "Copying Node and Golang analyzers..."
-          cp -r "${UI_DIR}/node-analyzer" "${PLUGIN_DIR}/analyzers/"
-          cp -r "${UI_DIR}/golang-analyzer" "${PLUGIN_DIR}/analyzers/"
-          chmod -R 755 "${PLUGIN_DIR}/analyzers"
-          
-          # 显示最终目录结构和权限
-          echo "=== Final Plugin directory structure and permissions ==="
-          ls -laR "${PLUGIN_DIR}"
-          
-      # 打包VSCode插件
-      - name: Package VSCode Extension
+      # 使用与本地一致的 prepare-release 流程
+      - name: Prepare Release Folder
         working-directory: plugin
+        run: npm run prepare-release
+
+      # 在 release 目录打包 VSIX
+      - name: Package VSIX from Release
+        working-directory: plugin/release
         run: |
-          echo "Packaging VSCode extension in $(pwd)"
-          echo "Directory contents and permissions before packaging:"
-          ls -la
-          echo "UI directory contents and permissions:"
-          ls -la ui/diffsense-frontend/
-          
-          # 确保打包目录有正确的权限
-          chmod -R 755 .
-          npm run package
-          
+          echo "Packaging VSIX in $(pwd)"
+          npx vsce package --no-yarn
+
       # 获取版本号
       - name: Get Version
         id: get_version
@@ -200,7 +146,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.PLUGIN_DIR }}/diffsense-${{ env.VERSION }}.vsix
+          asset_path: ${{ env.PLUGIN_DIR }}/release/diffsense-${{ env.VERSION }}.vsix
           asset_name: diffsense-${{ env.VERSION }}.vsix
           asset_content_type: application/octet-stream
           
@@ -210,7 +156,7 @@ jobs:
         with:
           name: DiffSense-${{ env.VERSION }}-Full
           path: |
-            ${{ env.PLUGIN_DIR }}/analyzers/
-            ${{ env.PLUGIN_DIR }}/ui/
-            ${{ env.PLUGIN_DIR }}/*.vsix
+            ${{ env.PLUGIN_DIR }}/release/analyzers/
+            ${{ env.PLUGIN_DIR }}/release/ui/
+            ${{ env.PLUGIN_DIR }}/release/*.vsix
           retention-days: 14
