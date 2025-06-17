@@ -34,6 +34,9 @@ const Toolbar = () => {
   const [customDateFrom, setCustomDateFrom] = useState<string>('');
   const [customDateTo, setCustomDateTo] = useState<string>('');
 
+  // 基准分支/提交（用于组件回退检测）
+  const [baseCommitForRevert, setBaseCommitForRevert] = useState<string>('origin/main');
+
   const ranges = [
     'Last 3 commits',
     'Last 5 commits', 
@@ -101,6 +104,9 @@ const Toolbar = () => {
     if (savedState.branches) {
       setBranches(savedState.branches);
     }
+    if (savedState.baseCommitForRevert) {
+      setBaseCommitForRevert(savedState.baseCommitForRevert);
+    }
 
     // 请求最新的分支列表、分析结果和项目类型检测
     postMessage({ command: 'getBranches' });
@@ -121,12 +127,13 @@ const Toolbar = () => {
       endCommitId,
       customDateFrom,
       customDateTo,
-      branches
+      branches,
+      baseCommitForRevert
     };
     
     saveState(currentState);
     console.log('💾 保存状态:', currentState);
-  }, [selectedBranch, selectedRange, analysisScope, analysisTypes, frontendPath, backendLanguage, startCommitId, endCommitId, customDateFrom, customDateTo, branches]);
+  }, [selectedBranch, selectedRange, analysisScope, analysisTypes, frontendPath, backendLanguage, startCommitId, endCommitId, customDateFrom, customDateTo, branches, baseCommitForRevert]);
 
   // 当分析范围改变时，重置分析类型并设置默认值
   useEffect(() => {
@@ -329,6 +336,20 @@ const Toolbar = () => {
     postMessage({ 
       command: 'reportBug',
       data: reportData
+    });
+  };
+
+  const handleDetectRevert = () => {
+    if (!baseCommitForRevert) {
+      alert('请输入基准分支或提交');
+      return;
+    }
+    postMessage({
+      command: 'detectRevert',
+      data: {
+        baseCommit: baseCommitForRevert.trim(),
+        headCommit: 'HEAD'
+      }
     });
   };
 
@@ -637,6 +658,26 @@ const Toolbar = () => {
         </div>
       )}
 
+      {/* 回退检测输入 */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
+        <label style={{ fontSize: '10px', fontWeight: '600' }}>基准分支/提交</label>
+        <input
+          type="text"
+          placeholder="origin/main"
+          value={baseCommitForRevert}
+          onChange={(e) => setBaseCommitForRevert(e.target.value)}
+          disabled={isAnalyzing}
+          style={{
+            padding: '4px',
+            fontSize: '10px',
+            border: '1px solid var(--vscode-input-border)',
+            backgroundColor: 'var(--vscode-input-background)',
+            color: 'var(--vscode-input-foreground)',
+            borderRadius: '2px'
+          }}
+        />
+      </div>
+
       {/* 分析按钮和导出按钮 */}
       <div style={{ 
         display: 'flex', 
@@ -662,6 +703,23 @@ const Toolbar = () => {
           }}
         >
           {isAnalyzing ? t('toolbar.analyzing') : t('toolbar.startAnalysis')}
+        </button>
+        
+        {/* 检测回退按钮 */}
+        <button
+          onClick={handleDetectRevert}
+          style={{
+            fontSize: '10px',
+            padding: '4px 8px',
+            backgroundColor: 'var(--vscode-button-secondaryBackground)',
+            color: 'var(--vscode-button-secondaryForeground)',
+            border: 'none',
+            borderRadius: '3px',
+            cursor: 'pointer'
+          }}
+          title="检测组件回退风险"
+        >
+          检测回退
         </button>
         
         {/* 导出按钮组 */}

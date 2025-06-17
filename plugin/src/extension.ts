@@ -105,6 +105,9 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         case 'reportBug':
           await this.handleReportBug(data.data);
           break;
+        case 'detectRevert':
+          await this.handleDetectRevert(data.data);
+          break;
       }
     });
 
@@ -2920,6 +2923,65 @@ ${err.context ? `上下文: ${err.context}` : ''}
     }
     
     return issueUrl;
+  }
+
+  private async handleDetectRevert(params: { baseCommit: string, headCommit?: string }) {
+    try {
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      if (!workspaceFolder) {
+        throw new Error('未找到工作区文件夹');
+      }
+      const repoPath = workspaceFolder.uri.fsPath;
+
+      const analyzerPath = this.getAnalyzerPath('node-analyzer');
+      const mergeImpactPath = path.join(path.dirname(analyzerPath), 'mergeImpact.js');
+      if (!fs.existsSync(mergeImpactPath)) {
+        throw new Error(`mergeImpact.js 不存在: ${mergeImpactPath}`);
+      }
+
+      const baseCommit = params.baseCommit || 'origin/main';
+      const headCommit = params.headCommit || 'WORKTREE';
+
+      console.log('🔍 检测组件回退:', baseCommit, headCommit);
+
+      const execPromise = new Promise<{ stdout: string }>((resolve, reject) => {
+        execFile('node', [mergeImpactPath, baseCommit, headCommit], {
+          cwd: repoPath,
+          timeout: 60000,
+          maxBuffer: 1024 * 1024 * 5
+        }, (error, stdout, stderr) => {
+          if (error) {
+            console.error('mergeImpact 执行错误:', error);
+            console.error('stderr:', stderr);
+            reject(error);
+          } else {
+            resolve({ stdout });
+          }
+        });
+      });
+
+      const { stdout } = await execPromise;
+      let result: any;
+      try {
+        result = JSON.parse(stdout);
+      } catch (err) {
+        console.error('mergeImpact 输出解析失败:', err);
+        result = { changes: [], parseError: String(err) };
+      }
+
+      // 发送到前端
+      this._view?.webview.postMessage({
+        command: 'snapshotDiffResult',
+        data: result
+      });
+
+    } catch (error) {
+      console.error('检测组件回退失败:', error);
+      this._view?.webview.postMessage({
+        command: 'analysisError',
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
   }
 }
 
