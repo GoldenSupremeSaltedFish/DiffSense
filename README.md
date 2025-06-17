@@ -96,7 +96,7 @@ DiffSense 是一款强大的代码变更影响分析工具，以 VSCode 插件�
 
 1. 在插件中使用"报告问题"功能
 2. 访问我们的 [GitHub Issues](https://github.com/yourusername/diffsense/issues)
-3. 发送邮件到 support@diffsense.com
+
 
 ## 📄 许可证
 
