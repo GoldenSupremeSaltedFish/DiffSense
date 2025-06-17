@@ -86,6 +86,12 @@ async function main() {
       copyRecursive(path.join(workspaceRoot, 'ui', 'golang-analyzer'), path.join(analyzersDir, 'golang-analyzer'));
     }
 
+    // 额外合并 repo 根目录的 Node/Golang 分析器（包含完整 node_modules）
+    const repoNodeAnalyzer = path.join(rootDir, '..', 'ui', 'node-analyzer');
+    const repoGoAnalyzer = path.join(rootDir, '..', 'ui', 'golang-analyzer');
+    copyRecursive(repoNodeAnalyzer, path.join(analyzersDir, 'node-analyzer'), { clearDest: false });
+    copyRecursive(repoGoAnalyzer, path.join(analyzersDir, 'golang-analyzer'), { clearDest: false });
+
     // ---------------- 前端 UI 构建产物 ----------------
     const frontendDistSrcRoot = path.join(rootDir, 'ui', 'diffsense-frontend', 'dist');
     const workspaceFrontendDist = path.join(rootDir, '..', 'ui', 'diffsense-frontend', 'dist');
