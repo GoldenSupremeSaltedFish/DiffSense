@@ -13,18 +13,24 @@ function cleanAndCreateDir(dir) {
 }
 
 // 复制文件或目录的函数
-function copyRecursive(src, dest) {
+function copyRecursive(src, dest, {clearDest = true} = {}) {
   if (!fs.existsSync(src)) {
     console.warn(`警告: 源路径不存在: ${src}`);
     return;
   }
 
   if (fs.statSync(src).isDirectory()) {
-    cleanAndCreateDir(dest);
+    if (clearDest) {
+      cleanAndCreateDir(dest);
+    } else {
+      if (!fs.existsSync(dest)) {
+        fs.mkdirSync(dest, { recursive: true });
+      }
+    }
     for (const file of fs.readdirSync(src)) {
       const srcFile = path.join(src, file);
       const destFile = path.join(dest, file);
-      copyRecursive(srcFile, destFile);
+      copyRecursive(srcFile, destFile, { clearDest: false });
     }
   } else {
     fs.copyFileSync(src, dest);
@@ -84,7 +90,7 @@ async function main() {
     const frontendDistSrcRoot = path.join(rootDir, 'ui', 'diffsense-frontend', 'dist');
     const workspaceFrontendDist = path.join(rootDir, '..', 'ui', 'diffsense-frontend', 'dist');
     const distSourceToCopy = fs.existsSync(frontendDistSrcRoot) ? frontendDistSrcRoot : workspaceFrontendDist;
-    copyRecursive(distSourceToCopy, distDir);
+    copyRecursive(distSourceToCopy, distDir, { clearDest: false });
 
     // 同时复制完整 UI 文件夹，供 webview 加载静态资源
     const uiFullSrc = path.join(rootDir, '..', 'ui');
