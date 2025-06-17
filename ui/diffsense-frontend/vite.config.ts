@@ -12,7 +12,7 @@ export default defineConfig(() => {
   console.log('Vite build output directory:', outDir)
   
   return {
-    plugins: [react()],
+  plugins: [react()],
     base: './', // 使用相对路径
     build: {
       outDir, // 直接使用环境变量或默认值

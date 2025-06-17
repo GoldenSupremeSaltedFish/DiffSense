@@ -59,15 +59,36 @@ async function main() {
     // 复制编译后的JavaScript文件
     copyRecursive(path.join(rootDir, 'dist'), distDir);
     
-    // 复制分析器
-    copyRecursive(path.join(rootDir, 'analyzers'), analyzersDir);
-    
-    // 复制前端分析器到analyzers目录
-    copyRecursive(path.join(rootDir, 'ui', 'node-analyzer'), path.join(analyzersDir, 'node-analyzer'));
-    copyRecursive(path.join(rootDir, 'ui', 'golang-analyzer'), path.join(analyzersDir, 'golang-analyzer'));
-    
-    // 复制前端构建产物
-    copyRecursive(path.join(rootDir, 'dist'), path.join(releaseDir, 'dist'));
+    // ---------------- 分析器复制 ----------------
+    const localAnalyzersSrc = path.join(rootDir, 'analyzers');
+    if (fs.existsSync(localAnalyzersSrc)) {
+      copyRecursive(localAnalyzersSrc, analyzersDir);
+    } else {
+      // 尝试从工作区根目录查找构建产物
+      const workspaceRoot = path.resolve(rootDir, '..');
+      // Java JAR
+      const targetDir = path.join(workspaceRoot, 'target');
+      if (fs.existsSync(targetDir)) {
+        for (const file of fs.readdirSync(targetDir)) {
+          if (file.endsWith('.jar')) {
+            copyRecursive(path.join(targetDir, file), path.join(analyzersDir, file));
+          }
+        }
+      }
+      // Node/Golang 分析器
+      copyRecursive(path.join(workspaceRoot, 'ui', 'node-analyzer'), path.join(analyzersDir, 'node-analyzer'));
+      copyRecursive(path.join(workspaceRoot, 'ui', 'golang-analyzer'), path.join(analyzersDir, 'golang-analyzer'));
+    }
+
+    // ---------------- 前端 UI 构建产物 ----------------
+    const frontendDistSrcRoot = path.join(rootDir, 'ui', 'diffsense-frontend', 'dist');
+    const workspaceFrontendDist = path.join(rootDir, '..', 'ui', 'diffsense-frontend', 'dist');
+    const distSourceToCopy = fs.existsSync(frontendDistSrcRoot) ? frontendDistSrcRoot : workspaceFrontendDist;
+    copyRecursive(distSourceToCopy, distDir);
+
+    // 同时复制完整 UI 文件夹，供 webview 加载静态资源
+    const uiFullSrc = path.join(rootDir, '..', 'ui');
+    copyRecursive(uiFullSrc, uiDir);
 
     // 复制基础文件
     const baseFiles = ['package.json', 'package-lock.json', 'README.md', 'LICENSE.txt', 'icon.png'];
