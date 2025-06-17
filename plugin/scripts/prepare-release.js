@@ -92,9 +92,7 @@ async function main() {
     const distSourceToCopy = fs.existsSync(frontendDistSrcRoot) ? frontendDistSrcRoot : workspaceFrontendDist;
     copyRecursive(distSourceToCopy, distDir, { clearDest: false });
 
-    // 同时复制完整 UI 文件夹，供 webview 加载静态资源
-    const uiFullSrc = path.join(rootDir, '..', 'ui');
-    copyRecursive(uiFullSrc, uiDir);
+    // 不再复制完整 UI 文件夹，减少 VSIX 体积（已包含 dist 所需资源）
 
     // 复制基础文件
     const baseFiles = ['package.json', 'package-lock.json', 'README.md', 'LICENSE.txt', 'icon.png'];
