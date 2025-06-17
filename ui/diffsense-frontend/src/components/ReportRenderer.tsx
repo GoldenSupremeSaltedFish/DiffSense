@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import CallGraphView from './CallGraphView';
+import SnapshotDiffList from './SnapshotDiffList';
 
 interface CommitImpact {
   commitId: string;
@@ -18,10 +19,11 @@ interface CommitImpact {
 
 interface ReportRendererProps {
   impacts: CommitImpact[];
+  snapshotDiffs?: any[];
 }
 
-const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'risks' | 'commits' | 'callgraph'>('overview');
+const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs = [] }) => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'risks' | 'commits' | 'callgraph' | 'snapshot'>('overview');
 
   if (!impacts || impacts.length === 0) {
     return (
@@ -223,6 +225,12 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts }) => {
     </div>
   );
 
+  const renderSnapshot = () => (
+    <div style={{ padding: '0', height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <SnapshotDiffList changes={snapshotDiffs} />
+    </div>
+  );
+
   return (
     <div className="report-renderer react-component" style={{
       display: "flex",
@@ -240,7 +248,8 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts }) => {
           { key: 'overview', label: '概览', icon: '📊' },
           { key: 'risks', label: '风险', icon: '⚠️' },
           { key: 'commits', label: '提交', icon: '📝' },
-          { key: 'callgraph', label: '调用关系', icon: '🔗' }
+          { key: 'callgraph', label: '调用关系', icon: '🔗' },
+          { key: 'snapshot', label: '组件变动', icon: '🧩' }
         ].map((tab) => (
           <button
             key={tab.key}
@@ -271,6 +280,7 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts }) => {
         {activeTab === 'risks' && renderRisks()}
         {activeTab === 'commits' && renderCommits()}
         {activeTab === 'callgraph' && <CallGraphView analysisResults={impacts} />}
+        {activeTab === 'snapshot' && renderSnapshot()}
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ const MainView = () => {
   const [analysisResults, setAnalysisResults] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [snapshotDiffs, setSnapshotDiffs] = useState<any[]>([]);
 
   // 组件挂载时恢复分析结果
   useEffect(() => {
@@ -14,6 +15,10 @@ const MainView = () => {
     if (savedState.analysisResults) {
       console.log('🔄 恢复分析结果:', savedState.analysisResults);
       setAnalysisResults(savedState.analysisResults);
+    }
+    if (savedState.snapshotDiffs) {
+      console.log('🔄 恢复快照对比结果:', savedState.snapshotDiffs);
+      setSnapshotDiffs(savedState.snapshotDiffs);
     }
   }, []);
 
@@ -23,12 +28,13 @@ const MainView = () => {
       const currentState = getState();
       const newState = {
         ...currentState,
-        analysisResults
+        analysisResults,
+        snapshotDiffs
       };
       saveState(newState);
       console.log('💾 保存分析结果:', analysisResults);
     }
-  }, [analysisResults]);
+  }, [analysisResults, snapshotDiffs]);
 
   useEffect(() => {
     console.log('MainView mounted');
@@ -41,6 +47,11 @@ const MainView = () => {
         case 'analysisStarted':
           setIsLoading(true);
           setError(null);
+          break;
+        case 'snapshotDiffResult':
+          if (message.data) {
+            setSnapshotDiffs(message.data.changes || message.data);
+          }
           break;
         case 'analysisResult':
           setIsLoading(false);
@@ -84,7 +95,7 @@ const MainView = () => {
         {isLoading ? '正在分析...' : error ? error : '分析完成'}
       </div>
       <Toolbar />
-      <CommitList analysisResults={analysisResults} />
+      <CommitList analysisResults={analysisResults} snapshotDiffs={snapshotDiffs} />
     </div>
   );
 };

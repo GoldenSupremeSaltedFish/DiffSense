@@ -2,9 +2,10 @@ import ReportRenderer from "./ReportRenderer";
 
 interface CommitListProps {
   analysisResults: any[];
+  snapshotDiffs?: any[];
 }
 
-const CommitList = ({ analysisResults }: CommitListProps) => {
+const CommitList = ({ analysisResults, snapshotDiffs = [] }: CommitListProps) => {
   console.log('CommitList渲染，结果数量:', analysisResults?.length || 0);
 
   return (
@@ -16,7 +17,7 @@ const CommitList = ({ analysisResults }: CommitListProps) => {
       padding: "8px"
     }}>
       {analysisResults && analysisResults.length > 0 ? (
-        <ReportRenderer impacts={analysisResults} />
+        <ReportRenderer impacts={analysisResults} snapshotDiffs={snapshotDiffs} />
       ) : (
         <div style={{
           textAlign: "center",
