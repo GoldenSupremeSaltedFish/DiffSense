@@ -129,6 +129,7 @@ webpack.config.js
 # Dependencies
 node_modules/**
 !node_modules/glob/**
+!analyzers/**/node_modules/**
 
 # Build intermediate files
 .nyc_output
