@@ -149,7 +149,6 @@ Thanks to all developers and users who have contributed to DiffSense!
 
 - 🐛 [Report Issues](https://github.com/GoldenSupremeSaltedFish/DiffSense/issues)
 - 💡 [Feature Requests](https://github.com/GoldenSupremeSaltedFish/DiffSense/discussions)
-- 📧 Technical Support: support@diffsense.com
 - 📚 [Technical Documentation](./technical_documentation/)
 
 ---
