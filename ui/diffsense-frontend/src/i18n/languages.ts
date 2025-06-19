@@ -134,6 +134,65 @@ export interface LanguageConfig {
   };
 }
 
+export interface LanguageText {
+  // 基础信息
+  commits: string;
+  files: string;
+  methods: string;
+  
+  // 影响分析相关
+  impactAnalysis: string;
+  impactedFiles: string;
+  impactedMethods: string;
+  callRelationships: string;
+  
+  // 变更分类相关 (替代风险分)
+  changeClassification: string;
+  classificationSummary: string;
+  categoryA1: string;
+  categoryA2: string;
+  categoryA3: string;
+  categoryA4: string;
+  categoryA5: string;
+  confidence: string;
+  importantChanges: string;
+  
+  // 统计相关
+  totalCommits: string;
+  totalFiles: string;
+  totalMethods: string;
+  totalClassifiedFiles: string;
+  averageConfidence: string;
+  
+  // 详细信息相关
+  commitDetails: string;
+  fileClassification: string;
+  changedMethods: string;
+  
+  // 其他现有字段
+  filesChanged: string;
+  methodsChanged: string;
+  noDetailedData: string;
+  
+  // 导出相关
+  exportTitle: string;
+  exportSubtitle: string;
+  generatedTime: string;
+  
+  // 导航相关
+  overview: string;
+  classifications: string;
+  commits_tab: string;
+  callgraph: string;
+  snapshot: string;
+  
+  // 状态信息
+  noChanges: string;
+  loading: string;
+  analyzing: string;
+  completed: string;
+}
+
 // 中文配置
 export const zhCN: LanguageConfig = {
   language: '中文',

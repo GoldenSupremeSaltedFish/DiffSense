@@ -4,6 +4,325 @@ import { execFile, spawn } from 'child_process';
 import * as fs from 'fs';
 import * as glob from 'glob';
 
+// 新增：变更分类接口定义
+interface FileClassification {
+  filePath: string;
+  classification: {
+    category: string;
+    categoryName: string;
+    description: string;
+    reason: string;
+    confidence: number;
+    indicators: string[];
+  };
+  changedMethods: string[];
+}
+
+interface ClassificationSummary {
+  totalFiles: number;
+  categoryStats: Record<string, number>;
+  averageConfidence: number;
+  detailedClassifications: Record<string, any[]>;
+}
+
+// 新增：前端变更分类器
+class FrontendChangeClassifier {
+  private static classifyFile(filePath: string, methods: any[]): FileClassification {
+    const indicators: string[] = [];
+    let category = 'A5'; // 默认为非功能性修改
+    let categoryName = '非功能性修改';
+    let description = '注释、日志优化、格式整理、性能提升（无行为变化）';
+    let confidence = 20.0;
+    
+    // A2: 接口变更检测 (前端API相关)
+    if (filePath.includes('/api/') || filePath.includes('/service/') || 
+        filePath.includes('/request/') || filePath.includes('/http/')) {
+      category = 'A2';
+      categoryName = '接口变更';
+      description = '修改 API 方法签名 / 参数 / 返回结构';
+      confidence += 35.0;
+      indicators.push('位于API相关目录');
+    }
+    
+    // A1: 业务逻辑变更检测
+    if (filePath.includes('/pages/') || filePath.includes('/views/') || 
+        filePath.includes('/components/') && !filePath.includes('/ui/')) {
+      category = 'A1';
+      categoryName = '业务逻辑变更';
+      description = '修改前端组件业务逻辑';
+      confidence += 30.0;
+      indicators.push('位于业务页面/组件目录');
+    }
+    
+    // A3: 数据结构变更检测
+    if (filePath.includes('/types/') || filePath.includes('/models/') || 
+        filePath.includes('/interfaces/') || filePath.includes('/dto/')) {
+      category = 'A3';
+      categoryName = '数据结构变更';
+      description = 'TypeScript接口/类型定义变化';
+      confidence += 40.0;
+      indicators.push('位于类型定义目录');
+    }
+    
+    // A4: 中间件/框架调整检测
+    if (filePath.includes('/config/') || filePath.includes('webpack') || 
+        filePath.includes('vite') || filePath.includes('.config.') ||
+        filePath.includes('/router/') || filePath.includes('/store/')) {
+      category = 'A4';
+      categoryName = '中间件/框架调整';
+      description = '构建配置、路由、状态管理等框架层面调整';
+      confidence += 45.0;
+      indicators.push('框架配置文件');
+    }
+    
+    // A5: 非功能性修改检测
+    if (filePath.includes('/utils/') || filePath.includes('/helpers/') ||
+        filePath.endsWith('.css') || filePath.endsWith('.scss') ||
+        filePath.endsWith('.less') || filePath.includes('/assets/')) {
+      category = 'A5';
+      categoryName = '非功能性修改';
+      description = '工具函数、样式、静态资源等非功能性变更';
+      confidence += 25.0;
+      indicators.push('非功能性文件');
+    }
+    
+    // 方法名称模式检测
+    methods.forEach(method => {
+      if (method.name && typeof method.name === 'string') {
+        if (method.name.includes('api') || method.name.includes('request') || 
+            method.name.includes('fetch')) {
+          if (category === 'A5') {
+            category = 'A2';
+            categoryName = '接口变更';
+            confidence += 20.0;
+            indicators.push(`API相关方法: ${method.name}`);
+          }
+        }
+        
+        if (method.name.includes('handle') || method.name.includes('process') ||
+            method.name.includes('submit') || method.name.includes('validate')) {
+          if (category === 'A5' || category === 'A2') {
+            category = 'A1';
+            categoryName = '业务逻辑变更';
+            confidence += 15.0;
+            indicators.push(`业务处理方法: ${method.name}`);
+          }
+        }
+      }
+    });
+    
+    const reason = `分类为 ${categoryName}：${indicators.join('、') || '基于默认规则判断'}`;
+    
+    return {
+      filePath,
+      classification: {
+        category,
+        categoryName,
+        description,
+        reason,
+        confidence: Math.min(confidence, 100.0),
+        indicators
+      },
+      changedMethods: methods.map(m => m.name || 'unknown')
+    };
+  }
+  
+  public static classifyChanges(files: any[]): { classifications: FileClassification[], summary: ClassificationSummary } {
+    const classifications = files.map(file => 
+      this.classifyFile(file.relativePath || file.path, file.methods || [])
+    );
+    
+    const summary = this.generateSummary(classifications);
+    return { classifications, summary };
+  }
+  
+  private static generateSummary(classifications: FileClassification[]): ClassificationSummary {
+    const categoryStats: Record<string, number> = {};
+    let totalConfidence = 0;
+    
+    classifications.forEach(fc => {
+      const category = fc.classification.category;
+      categoryStats[category] = (categoryStats[category] || 0) + 1;
+      totalConfidence += fc.classification.confidence;
+    });
+    
+    const averageConfidence = classifications.length > 0 ? totalConfidence / classifications.length : 0;
+    
+    const detailedClassifications: Record<string, any[]> = {};
+    ['A1', 'A2', 'A3', 'A4', 'A5'].forEach(category => {
+      detailedClassifications[category] = classifications
+        .filter(fc => fc.classification.category === category)
+        .map(fc => fc);
+    });
+    
+    return {
+      totalFiles: classifications.length,
+      categoryStats,
+      averageConfidence,
+      detailedClassifications
+    };
+  }
+}
+
+// 新增：Golang变更分类器
+class GolangChangeClassifier {
+  private static classifyFile(filePath: string, functions: any[]): FileClassification {
+    const indicators: string[] = [];
+    let category = 'A5'; // 默认为非功能性修改
+    let categoryName = '非功能性修改';
+    let description = '注释、日志优化、格式整理、性能提升（无行为变化）';
+    let confidence = 20.0;
+    
+    // A2: 接口变更检测
+    if (filePath.includes('/api/') || filePath.includes('/handler/') || 
+        filePath.includes('/controller/') || filePath.includes('/router/') ||
+        filePath.includes('/server/') || filePath.includes('/http/')) {
+      category = 'A2';
+      categoryName = '接口变更';
+      description = 'HTTP API、路由处理器等接口层变更';
+      confidence += 35.0;
+      indicators.push('位于API接口目录');
+    }
+    
+    // A1: 业务逻辑变更检测
+    if (filePath.includes('/service/') || filePath.includes('/business/') || 
+        filePath.includes('/logic/') || filePath.includes('/core/')) {
+      category = 'A1';
+      categoryName = '业务逻辑变更';
+      description = '核心业务逻辑处理变更';
+      confidence += 30.0;
+      indicators.push('位于业务逻辑目录');
+    }
+    
+    // A3: 数据结构变更检测
+    if (filePath.includes('/model/') || filePath.includes('/entity/') || 
+        filePath.includes('/struct/') || filePath.includes('/types/') ||
+        filePath.includes('/schema/') || filePath.includes('/proto/')) {
+      category = 'A3';
+      categoryName = '数据结构变更';
+      description = 'Go结构体、接口定义等数据模型变更';
+      confidence += 40.0;
+      indicators.push('位于数据模型目录');
+    }
+    
+    // A4: 中间件/框架调整检测
+    if (filePath.includes('/config/') || filePath.includes('/middleware/') || 
+        filePath.includes('/plugin/') || filePath.includes('/framework/') ||
+        filePath.includes('main.go') || filePath.includes('/cmd/') ||
+        filePath.endsWith('.mod') || filePath.endsWith('.sum')) {
+      category = 'A4';
+      categoryName = '中间件/框架调整';
+      description = 'Go模块、配置、中间件等框架层面调整';
+      confidence += 45.0;
+      indicators.push('框架配置相关');
+    }
+    
+    // A5: 非功能性修改检测
+    if (filePath.includes('/util/') || filePath.includes('/utils/') ||
+        filePath.includes('/helper/') || filePath.includes('/tools/') ||
+        filePath.includes('_test.go') || filePath.includes('/test/')) {
+      category = 'A5';
+      categoryName = '非功能性修改';
+      description = '工具函数、测试文件等非功能性变更';
+      confidence += 25.0;
+      indicators.push('工具/测试文件');
+    }
+    
+    // 函数名称模式检测
+    functions.forEach(func => {
+      if (func.name && typeof func.name === 'string') {
+        if (func.name.includes('Handler') || func.name.includes('Router') || 
+            func.name.includes('Controller') || func.name.includes('Api')) {
+          if (category === 'A5') {
+            category = 'A2';
+            categoryName = '接口变更';
+            confidence += 20.0;
+            indicators.push(`API处理函数: ${func.name}`);
+          }
+        }
+        
+        if (func.name.includes('Process') || func.name.includes('Handle') ||
+            func.name.includes('Execute') || func.name.includes('Calculate') ||
+            func.name.includes('Validate') || func.name.includes('Transform')) {
+          if (category === 'A5' || category === 'A2') {
+            category = 'A1';
+            categoryName = '业务逻辑变更';
+            confidence += 15.0;
+            indicators.push(`业务处理函数: ${func.name}`);
+          }
+        }
+        
+        if (func.name.startsWith('New') || func.name.includes('Create') ||
+            func.name.includes('Build') || func.name.includes('Make')) {
+          if (category === 'A5') {
+            category = 'A3';
+            categoryName = '数据结构变更';
+            confidence += 15.0;
+            indicators.push(`构造函数: ${func.name}`);
+          }
+        }
+      }
+      
+      // 检查导出状态
+      if (func.isExported) {
+        confidence += 10.0;
+        indicators.push('包含导出函数');
+      }
+    });
+    
+    const reason = `分类为 ${categoryName}：${indicators.join('、') || '基于默认规则判断'}`;
+    
+    return {
+      filePath,
+      classification: {
+        category,
+        categoryName,
+        description,
+        reason,
+        confidence: Math.min(confidence, 100.0),
+        indicators
+      },
+      changedMethods: functions.map(f => f.name || 'unknown')
+    };
+  }
+  
+  public static classifyChanges(files: any[]): { classifications: FileClassification[], summary: ClassificationSummary } {
+    const classifications = files.map(file => 
+      this.classifyFile(file.relativePath || file.path, file.functions || [])
+    );
+    
+    const summary = this.generateSummary(classifications);
+    return { classifications, summary };
+  }
+  
+  private static generateSummary(classifications: FileClassification[]): ClassificationSummary {
+    const categoryStats: Record<string, number> = {};
+    let totalConfidence = 0;
+    
+    classifications.forEach(fc => {
+      const category = fc.classification.category;
+      categoryStats[category] = (categoryStats[category] || 0) + 1;
+      totalConfidence += fc.classification.confidence;
+    });
+    
+    const averageConfidence = classifications.length > 0 ? totalConfidence / classifications.length : 0;
+    
+    const detailedClassifications: Record<string, any[]> = {};
+    ['A1', 'A2', 'A3', 'A4', 'A5'].forEach(category => {
+      detailedClassifications[category] = classifications
+        .filter(fc => fc.classification.category === category)
+        .map(fc => fc);
+    });
+    
+    return {
+      totalFiles: classifications.length,
+      categoryStats,
+      averageConfidence,
+      detailedClassifications
+    };
+  }
+}
+
 export function activate(context: vscode.ExtensionContext) {
   // 注册侧栏Webview Provider
   const provider = new DiffSenseViewProvider(context.extensionUri);
@@ -841,10 +1160,12 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     const commits = [];
     
     if (frontendResult && frontendResult.files && frontendResult.files.length > 0) {
+      // 使用前端变更分类器
+      const { classifications, summary } = FrontendChangeClassifier.classifyChanges(frontendResult.files);
+      
       // 创建单一的前端分析结果，包含所有文件
       const allMethods: string[] = [];
       const allFiles: any[] = [];
-      let totalRiskScore = 0;
       
       frontendResult.files.forEach((file: any) => {
         // 收集所有文件信息
@@ -867,9 +1188,6 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
             allMethods.push(`${file.relativePath}:${method.name}`);
           });
         }
-        
-        // 累计风险评分
-        totalRiskScore += Math.min(file.methods ? file.methods.length * 2 : 0, 20);
       });
       
       // 创建单一的前端分析提交记录
@@ -883,7 +1201,8 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         impactedMethods: allMethods,
         impactedFiles: allFiles,
         impactedTests: {},
-        riskScore: Math.min(totalRiskScore, 100), // 限制最大风险评分为100
+        changeClassifications: classifications,
+        classificationSummary: summary,
         language: 'frontend',
         analysisSource: 'frontend',
         frontendSummary: frontendResult.summary,
@@ -901,7 +1220,13 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         impactedMethods: [],
         impactedFiles: [],
         impactedTests: {},
-        riskScore: 0,
+        changeClassifications: [],
+        classificationSummary: {
+          totalFiles: 0,
+          categoryStats: {},
+          averageConfidence: 0,
+          detailedClassifications: {}
+        },
         language: 'frontend',
         analysisSource: 'frontend',
         frontendSummary: frontendResult.summary,
@@ -969,10 +1294,12 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     const commits = [];
     
     if (golangResult && golangResult.files && golangResult.files.length > 0) {
+      // 使用Golang变更分类器
+      const { classifications, summary } = GolangChangeClassifier.classifyChanges(golangResult.files);
+      
       // 创建单一的Golang分析结果，包含所有文件和包
       const allMethods: string[] = [];
       const allFiles: any[] = [];
-      let totalRiskScore = 0;
       const packages = new Set<string>();
       
       golangResult.files.forEach((file: any) => {
@@ -1007,11 +1334,6 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
             allMethods.push(`${file.packageName || 'main'}.${func.name}`);
           });
         }
-        
-        // 累计风险评分
-        const exportedFunctions = file.functions ? file.functions.filter((f: any) => f.isExported).length : 0;
-        const totalFunctions = file.functions ? file.functions.length : 0;
-        totalRiskScore += Math.min(exportedFunctions * 3 + totalFunctions * 1, 30);
       });
       
       // 创建单一的Golang分析提交记录
@@ -1025,7 +1347,8 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         impactedMethods: allMethods,
         impactedFiles: allFiles,
         impactedTests: {},
-        riskScore: Math.min(totalRiskScore, 100), // 限制最大风险评分为100
+        changeClassifications: classifications,
+        classificationSummary: summary,
         language: 'golang',
         analysisSource: 'golang',
         packages: Array.from(packages),
@@ -1044,7 +1367,13 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         impactedMethods: [],
         impactedFiles: [],
         impactedTests: {},
-        riskScore: 0,
+        changeClassifications: [],
+        classificationSummary: {
+          totalFiles: 0,
+          categoryStats: {},
+          averageConfidence: 0,
+          detailedClassifications: {}
+        },
         language: 'golang',
         analysisSource: 'golang',
         packages: [],
@@ -1742,8 +2071,8 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       totalCommits: isEnglish ? 'Total Commits' : '总提交数',
       totalFiles: isEnglish ? 'Total Files' : '总文件数',
       totalMethods: isEnglish ? 'Total Methods' : '总方法数',
-      totalRiskScore: isEnglish ? 'Total Risk Score' : '总风险评分',
-      averageRisk: isEnglish ? 'Average Risk Score' : '平均风险评分',
+      totalClassifiedFiles: isEnglish ? 'Total Classified Files' : '分类文件总数',
+      averageConfidence: isEnglish ? 'Average Confidence' : '平均置信度',
       testCoverage: isEnglish ? 'Test Coverage Analysis' : '测试覆盖分析',
       testGaps: isEnglish ? 'Test Coverage Gaps' : '测试覆盖漏洞',
       totalGaps: isEnglish ? 'Total Gaps' : '总漏洞数',
@@ -1793,8 +2122,13 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       sum + (commit.impactedMethods?.length || 
            (commit.files?.reduce((fileSum: number, file: any) => 
              fileSum + (file.methods?.length || 0), 0)) || 0), 0);
-    const totalRiskScore = analysisResults.reduce((sum: number, commit: any) => 
-      sum + (commit.riskScore || 0), 0);
+    
+    // 计算分类统计信息
+    const totalClassifiedFiles = analysisResults.reduce((sum: number, commit: any) => 
+      sum + (commit.classificationSummary?.totalFiles || 0), 0);
+    const averageConfidence = totalClassifiedFiles > 0 ? 
+      analysisResults.reduce((sum: number, commit: any) => 
+        sum + (commit.classificationSummary?.averageConfidence || 0), 0) / analysisResults.length : 0;
 
     // 计算测试覆盖统计信息
     const allTestCoverageGaps = analysisResults.reduce((gaps: any[], commit: any) => {
@@ -1974,6 +2308,46 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         
         .risk-low {
             background: #38a169;
+        }
+        
+        .classification-info {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .category-tag {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+            color: white;
+        }
+        
+        .category-A1 {
+            background: #e53e3e;
+        }
+        
+        .category-A2 {
+            background: #dd6b20;
+        }
+        
+        .category-A3 {
+            background: #3182ce;
+        }
+        
+        .category-A4 {
+            background: #805ad5;
+        }
+        
+        .category-A5 {
+            background: #38a169;
+        }
+        
+        .confidence-score {
+            font-size: 0.9em;
+            color: #718096;
+            font-weight: 600;
         }
         
         .test-gap-content {
@@ -2181,8 +2555,12 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
                     <div class="stat-label">${text.totalMethods}</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number">${totalRiskScore}</div>
-                    <div class="stat-label">${text.totalRiskScore}</div>
+                    <div class="stat-number">${totalClassifiedFiles}</div>
+                    <div class="stat-label">${text.totalClassifiedFiles}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${Math.round(averageConfidence)}%</div>
+                    <div class="stat-label">${text.averageConfidence}</div>
                 </div>
             </div>
         </div>
@@ -2196,8 +2574,10 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
                     <small>${text.runAnalysisFirst}</small>
                 </div>
             ` : analysisResults.map((commit: any, index: number) => {
-                const commitRiskLevel = commit.riskScore >= 50 ? 'high' : commit.riskScore >= 20 ? 'medium' : 'low';
                 const callGraphData = this.generateCallGraphData(commit, commit.files || []);
+                const classificationStats = commit.classificationSummary || { categoryStats: {}, averageConfidence: 0 };
+                const topCategory = Object.entries(classificationStats.categoryStats).reduce((max: any, curr: any) => 
+                  curr[1] > (max[1] || 0) ? curr : max, ['A5', 0]);
                 
                 return `
                 <div class="commit-card">
@@ -2211,9 +2591,10 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
                                 ${commit.author ? `<strong>${text.author}:</strong> ${commit.author.name || commit.author} | ` : ''}
                                 ${commit.timestamp ? `<strong>${text.date}:</strong> ${new Date(commit.timestamp).toLocaleString()}` : ''}
                             </div>
-                            <span class="risk-score risk-${commitRiskLevel}">
-                                ${commit.riskScore || 0}
-                            </span>
+                            <div class="classification-info">
+                                <span class="category-tag category-${topCategory[0]}">${topCategory[0]}</span>
+                                <span class="confidence-score">${Math.round(classificationStats.averageConfidence || 0)}%</span>
+                            </div>
                         </div>
                     </div>
                     <div class="commit-content">
