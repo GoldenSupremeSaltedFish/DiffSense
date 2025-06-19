@@ -149,11 +149,18 @@ export interface LanguageText {
   // 变更分类相关 (替代风险分)
   changeClassification: string;
   classificationSummary: string;
+  // 后端分类
   categoryA1: string;
   categoryA2: string;
   categoryA3: string;
   categoryA4: string;
   categoryA5: string;
+  // 前端分类
+  categoryF1: string;
+  categoryF2: string;
+  categoryF3: string;
+  categoryF4: string;
+  categoryF5: string;
   confidence: string;
   importantChanges: string;
   

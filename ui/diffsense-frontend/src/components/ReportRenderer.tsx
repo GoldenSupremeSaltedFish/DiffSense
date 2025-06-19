@@ -91,22 +91,36 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
 
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
+      // 后端分类 (A1-A5)
       'A1': '#ff9800',
       'A2': '#f44336', 
       'A3': '#9c27b0',
       'A4': '#3f51b5',
-      'A5': '#4caf50'
+      'A5': '#4caf50',
+      // 前端分类 (F1-F5)
+      'F1': '#e91e63',
+      'F2': '#2196f3',
+      'F3': '#ff5722',
+      'F4': '#795548',
+      'F5': '#607d8b'
     };
     return colors[category] || '#666';
   };
 
   const getCategoryName = (category: string) => {
     const names: Record<string, string> = {
+      // 后端分类
       'A1': '业务逻辑变更',
       'A2': '接口变更',
       'A3': '数据结构变更', 
       'A4': '中间件/框架调整',
-      'A5': '非功能性修改'
+      'A5': '非功能性修改',
+      // 前端分类
+      'F1': '组件行为变更',
+      'F2': 'UI结构调整',
+      'F3': '样式改动',
+      'F4': '交互事件修改',
+      'F5': '依赖/配置变动'
     };
     return names[category] || '未知类型';
   };
@@ -187,7 +201,7 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
             borderLeft: `3px solid ${getCategoryColor(category)}`
           }}>
             <span style={{ fontSize: "11px" }}>
-              {category} {getCategoryName(category)}
+              {getCategoryName(category)}
             </span>
             <span style={{ 
               fontSize: "11px", 
@@ -309,7 +323,7 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
                   padding: "2px 6px",
                   borderRadius: "3px"
                 }}>
-                  主要: {getCategoryName(mainCategory)}
+                  {getCategoryName(mainCategory)}
               </span>
             </div>
             <div style={{ fontSize: "11px", marginBottom: "6px", fontWeight: "500" }}>
@@ -357,7 +371,7 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
                         color: getCategoryColor(fc.classification.category),
                         fontWeight: "bold"
                       }}>
-                        {fc.classification.category}
+                        {getCategoryName(fc.classification.category)}
                       </span>
                     </div>
                   ))}
