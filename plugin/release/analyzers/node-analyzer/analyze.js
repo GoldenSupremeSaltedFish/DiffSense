@@ -10,6 +10,7 @@ const path = require('path');
 const fs = require('fs');
 const glob = require('glob');
 const { Project } = require('ts-morph');
+const { extractSnapshotsForFile } = require('./snapshotExtractors');
 
 /**
  * 前端代码修改分类器 - 适用于 React / Vue / JS/TS
@@ -389,12 +390,15 @@ class FrontendAnalyzer {
     this.targetDir = path.resolve(targetDir);
     this.options = {
       includeNodeModules: false,
+      // 支持 .vue 文件以便提取组件快照
       filePattern: '**/*.{js,jsx,ts,tsx,vue}',
       exclude: ['node_modules/**', 'dist/**', 'build/**', '**/*.test.*', '**/*.spec.*'],
-      maxDepth: 15,
+      maxDepth: 15, // 增加递归深度以支持微服务项目
       ...options
     };
     this.project = null;
+    // 初始化快照容器
+    this.componentSnapshots = [];
   }
 
   async analyze() {
@@ -409,6 +413,7 @@ class FrontendAnalyzer {
         methods: {},
         callGraph: { nodes: [], edges: [] },
         files: [],
+        componentSnapshots: [],
         // 添加前端分类结果
         changeClassifications: [],
         classificationSummary: {}
@@ -433,6 +438,7 @@ class FrontendAnalyzer {
 
       // 4. 生成摘要信息
       result.summary = this.generateSummary(result);
+      result.componentSnapshots = this.componentSnapshots;
 
       return result;
 
@@ -490,7 +496,7 @@ class FrontendAnalyzer {
       maxDepth: this.options.maxDepth // 使用配置的深度
     });
 
-    console.error(`📄 找到 ${files.length} 个文件`);
+    console.error(`�� 找到 ${files.length} 个文件`);
 
     const methods = {};
     const callGraphNodes = [];
@@ -507,6 +513,12 @@ class FrontendAnalyzer {
       try {
         const fileInfo = await this.analyzeFile(filePath);
         fileInfos.push(fileInfo);
+
+        // 组件功能快照提取
+        const snapshots = extractSnapshotsForFile(filePath, fileInfo.content);
+        if (snapshots && snapshots.length > 0) {
+          this.componentSnapshots.push(...snapshots);
+        }
 
         // 收集方法信息
         if (fileInfo.methods && fileInfo.methods.length > 0) {
@@ -567,7 +579,8 @@ class FrontendAnalyzer {
       lines: content.split('\n').length,
       methods: [],
       imports: [],
-      exports: []
+      exports: [],
+      content: content
     };
 
     try {
