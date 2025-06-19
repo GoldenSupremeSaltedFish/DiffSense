@@ -1,11 +1,13 @@
 package com.yourorg.gitimpact.inspect;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.yourorg.gitimpact.classification.BackendChangeClassifier;
 
 public class CommitImpact {
     @JsonProperty("commitId")
@@ -32,8 +34,11 @@ public class CommitImpact {
     @JsonProperty("impactedTests")
     private final Map<String, Set<String>> impactedTests;
     
-    @JsonProperty("riskScore")
-    private final int riskScore;
+    @JsonProperty("changeClassifications")
+    private final List<BackendChangeClassifier.FileClassification> changeClassifications;
+    
+    @JsonProperty("classificationSummary")
+    private final Map<String, Object> classificationSummary;
     
     @JsonProperty("testCoverageGaps")
     private final List<Map<String, Object>> testCoverageGaps;
@@ -51,7 +56,8 @@ public class CommitImpact {
         @JsonProperty("changedMethodsCount") int changedMethodsCount,
         @JsonProperty("impactedMethods") Set<String> impactedMethods,
         @JsonProperty("impactedTests") Map<String, Set<String>> impactedTests,
-        @JsonProperty("riskScore") int riskScore,
+        @JsonProperty("changeClassifications") List<BackendChangeClassifier.FileClassification> changeClassifications,
+        @JsonProperty("classificationSummary") Map<String, Object> classificationSummary,
         @JsonProperty("testCoverageGaps") List<Map<String, Object>> testCoverageGaps,
         @JsonProperty("testCoverageStats") Map<String, Object> testCoverageStats
     ) {
@@ -63,7 +69,8 @@ public class CommitImpact {
         this.changedMethodsCount = changedMethodsCount;
         this.impactedMethods = impactedMethods;
         this.impactedTests = impactedTests;
-        this.riskScore = riskScore;
+        this.changeClassifications = changeClassifications;
+        this.classificationSummary = classificationSummary;
         this.testCoverageGaps = testCoverageGaps;
         this.testCoverageStats = testCoverageStats;
     }
@@ -76,7 +83,8 @@ public class CommitImpact {
     public int getChangedMethodsCount() { return changedMethodsCount; }
     public Set<String> getImpactedMethods() { return impactedMethods; }
     public Map<String, Set<String>> getImpactedTests() { return impactedTests; }
-    public int getRiskScore() { return riskScore; }
+    public List<BackendChangeClassifier.FileClassification> getChangeClassifications() { return changeClassifications; }
+    public Map<String, Object> getClassificationSummary() { return classificationSummary; }
     public List<Map<String, Object>> getTestCoverageGaps() { return testCoverageGaps; }
     public Map<String, Object> getTestCoverageStats() { return testCoverageStats; }
 } 
