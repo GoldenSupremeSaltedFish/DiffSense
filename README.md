@@ -1,107 +1,157 @@
 # DiffSense
 
-DiffSense 是一款强大的代码变更影响分析工具，以 VSCode 插件形式提供。它通过静态代码分析和版本差异比对，帮助开发者快速理解代码变更的影响范围。
+**DiffSense** is a powerful code change impact analysis tool provided as a VSCode extension. It helps developers quickly understand the scope and risk of code changes through static code analysis and version difference comparison.
 
-## ✨ 主要特性
+[![Version](https://img.shields.io/badge/version-0.1.11-blue.svg)](https://github.com/GoldenSupremeSaltedFish/DiffSense)
+[![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](./LICENSE.txt)
+[![VSCode](https://img.shields.io/badge/VSCode-1.74.0+-blueviolet.svg)](https://code.visualstudio.com/)
 
-- 🔍 **多语言支持**
-  - Java 后端代码分析
-  - Golang 后端代码分析
-  - TypeScript/JavaScript 前端代码分析
-  - 支持全栈项目分析
+## ✨ Key Features
 
-- 🎯 **精准分析**
-  - 方法级别的影响分析
-  - 类级别的变更追踪
-  - 调用链路可视化
-  - 前端组件依赖分析
+- 🔍 **Multi-language Support**
+  - Java backend analysis (Spring Boot, Maven/Gradle projects)
+  - Golang backend analysis
+  - TypeScript/JavaScript frontend analysis (React, Vue)
+  - Full-stack project comprehensive analysis
 
-- 🌈 **智能界面**
-  - 自动适配 VSCode 主题
-  - 直观的分析结果展示
-  - 交互式调用关系图
-  - 多语言界面（中文/英文）
+- 🎯 **Precise Analysis**
+  - Method-level impact analysis
+  - Class-level change tracking
+  - Call chain visualization
+  - Frontend component dependency analysis
+  - API interface change impact assessment
 
-- 📊 **丰富报告**
-  - JSON 格式导出
-  - HTML 报告生成
-  - 支持持续集成
-  - 风险等级评估
+- 🌈 **Smart Interface**
+  - Automatic VSCode theme adaptation
+  - Intuitive analysis result display
+  - Interactive call relationship graph
+  - Multi-language interface (Chinese/English)
+  - Risk level color coding
 
-## 🚀 快速开始
+- 📊 **Rich Reports**
+  - JSON/HTML format export
+  - Detailed change classification reports
+  - CI/CD pipeline support
+  - Historical change trend analysis
 
-1. **安装插件**
-   - 在 VSCode 扩展商店搜索 "DiffSense"
-   - 点击安装即可
+## 🚀 Quick Start
 
-2. **使用方法**
-   - 打开任意 Git 仓库
-   - 在 VSCode 侧边栏找到 DiffSense 图标
-   - 选择要分析的分支和提交范围
-   - 点击"开始分析"按钮
+### Installation
+1. Open VSCode
+2. Search for "DiffSense" in the Extensions marketplace
+3. Click Install and reload
 
-3. **查看结果**
-   - 分析完成后自动显示结果
-   - 可以查看变更影响的方法和类
-   - 可以浏览调用关系图
-   - 可以导出分析报告
+### Usage
+1. Open any Git repository project
+2. Find the DiffSense icon in VSCode sidebar
+3. Select commit range or branch to analyze
+4. Choose analysis type (method/class/full-stack)
+5. Click "Start Analysis" button
+6. View analysis results and visualization charts
 
-## 💡 分析模式
+## 💡 Analysis Modes
 
-### 后端分析
-- **方法影响分析**：识别受变更影响的方法
-- **调用链分析**：追踪方法调用关系
-- **类级别分析**：了解类的变更影响
+### Backend Code Analysis
+- **A1-Business Logic Changes**: Controller/Service processing logic modifications
+- **A2-Interface Changes**: API method signatures, parameters, return value structure changes
+- **A3-Data Structure Changes**: Entity/DTO/Database schema changes
+- **A4-Middleware Adjustments**: Framework upgrades, configuration files, connection pool parameter adjustments
+- **A5-Non-functional Modifications**: Comments, logging, code formatting, performance optimizations
 
-### 前端分析
-- **组件依赖分析**：识别组件间的依赖关系
-- **入口点分析**：找出功能入口
-- **UI 影响分析**：评估界面变更影响
+### Frontend Code Analysis
+- **Component Dependency Analysis**: Identify dependencies between React/Vue components
+- **Props/State Changes**: Track component interface changes
+- **Hook Usage Analysis**: useEffect, useState and other Hook dependency changes
+- **Routing Impact**: Impact scope of page route changes
 
-### 全栈分析
-- **API 变更影响**：分析接口变更对前端的影响
-- **数据流分析**：追踪数据传递链路
-- **全栈影响评估**：综合评估系统影响
+### Full-stack Analysis
+- **API Contract Changes**: Frontend-backend interface contract consistency check
+- **Data Flow Tracking**: Complete data flow analysis from frontend to backend
+- **Microservice Dependencies**: Cross-service call impact analysis
 
-## 📝 配置说明
+## 📝 Supported Project Types
 
-### 分析范围选项
-- 最近 3/5/10 次提交
-- 今天的变更
-- 本周的变更
-- 自定义日期范围
-- 指定 Commit ID 范围
+### Java Projects
+- Spring Boot applications
+- Maven/Gradle build systems
+- JDK 8+ support
+- Microservice architecture support
 
-### 分析类型选项
-- 方法级影响
-- 类级影响
-- 调用链分析
-- 依赖关系
-- UI 影响
-- 全栈分析
+### Golang Projects
+- Go Module projects
+- Gin/Echo and other web frameworks
+- Go 1.16+ support
 
-## 🛠️ 系统要求
+### Frontend Projects
+- React 16+ projects
+- Vue 2/3 projects
+- TypeScript/JavaScript
+- Webpack/Vite build tools
 
-- VSCode 1.60.0 或更高版本
-- Git 2.20.0 或更高版本
-- 对于后端分析：
-  - Java 项目需要 JDK 11+
-  - Golang 项目需要 Go 1.16+
-- 对于前端分析：
-  - Node.js 14+ (推荐)
+## 🛠️ System Requirements
 
-## 🤝 问题反馈
+- **VSCode**: 1.74.0 or higher
+- **Git**: 2.20.0 or higher
+- **Java Projects**: JDK 8+, Maven 3.6+ or Gradle 6+
+- **Golang Projects**: Go 1.16+
+- **Frontend Projects**: Node.js 14+
 
-如果你在使用过程中遇到任何问题，或者有功能建议，可以：
+## 📁 Project Structure
 
-1. 在插件中使用"报告问题"功能
-2. 访问我们的 [GitHub Issues](https://github.com/yourusername/diffsense/issues)
+```
+DiffSense/
+├── plugin/                    # VSCode extension core
+├── ui/                       # Frontend UI components
+├── src/main/java/           # Java backend analyzer
+├── technical_documentation/ # Technical documentation
+└── build-tools/            # Build tools
+```
 
+## 🔧 Development & Building
 
-## 📄 许可证
+### Local Development
+```bash
+# Clone the project
+git clone https://github.com/GoldenSupremeSaltedFish/DiffSense.git
+cd DiffSense
 
-MIT License
+# Build all components
+./build-all.bat
 
-## 🌟 致谢
+# Check build results
+./check-build.bat
+```
 
-感谢所有为 DiffSense 做出贡献的开发者！
+### Package & Release
+```bash
+# Package VSCode extension
+cd plugin
+npm run package
+```
+
+## 🤝 Contributing
+
+1. Fork the project to your GitHub
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Create a Pull Request
+
+## 📄 License
+
+This project is licensed under the Apache-2.0 License - see the [LICENSE](LICENSE.txt) file for details.
+
+## 🌟 Acknowledgments
+
+Thanks to all developers and users who have contributed to DiffSense!
+
+## 📞 Support & Feedback
+
+- 🐛 [Report Issues](https://github.com/GoldenSupremeSaltedFish/DiffSense/issues)
+- 💡 [Feature Requests](https://github.com/GoldenSupremeSaltedFish/DiffSense/discussions)
+- 📧 Technical Support: support@diffsense.com
+- 📚 [Technical Documentation](./technical_documentation/)
+
+---
+
+**English** | [中文版](./cn_readme.md)

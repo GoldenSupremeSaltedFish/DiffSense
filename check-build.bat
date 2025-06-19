@@ -84,7 +84,7 @@ if %MISSING%==0 (
     echo ✅ 项目已准备好进行调试或发布
 ) else (
     echo ❌ 发现缺失文件，需要重新构建
-    echo 💡 请参考 PACKAGING_CHECKLIST.md 进行完整构建
+    echo 💡 请参考 technical_documentation\build-tools\VERIFICATION_CHECKLIST_CN.md 进行完整构建
 )
 
 echo.

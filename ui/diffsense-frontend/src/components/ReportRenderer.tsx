@@ -236,37 +236,37 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
             
             return importantFiles.map((fileClass, index) => (
               <div key={`${commit.commitId}-${index}`} style={{
-                padding: "8px",
-                backgroundColor: "var(--vscode-inputValidation-warningBackground)",
-                borderRadius: "4px",
-                border: "1px solid var(--vscode-inputValidation-warningBorder)"
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                  <span style={{ 
-                    fontFamily: "monospace", 
-                    fontSize: "10px",
-                    color: "var(--vscode-descriptionForeground)"
-                  }}>
-                    {commit.commitId ? commit.commitId.substring(0, 7) : 'Unknown'}
-                  </span>
-                  <span style={{ 
+              padding: "8px",
+              backgroundColor: "var(--vscode-inputValidation-warningBackground)",
+              borderRadius: "4px",
+              border: "1px solid var(--vscode-inputValidation-warningBorder)"
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                <span style={{ 
+                  fontFamily: "monospace", 
+                  fontSize: "10px",
+                  color: "var(--vscode-descriptionForeground)"
+                }}>
+                  {commit.commitId ? commit.commitId.substring(0, 7) : 'Unknown'}
+                </span>
+                <span style={{ 
                     fontSize: "10px", 
-                    fontWeight: "bold",
+                  fontWeight: "bold",
                     color: "white",
                     backgroundColor: getCategoryColor(fileClass.classification.category),
                     padding: "2px 6px",
                     borderRadius: "3px"
-                  }}>
+                }}>
                     {fileClass.classification.categoryName}
-                  </span>
-                </div>
+                </span>
+              </div>
                 <div style={{ fontSize: "11px", marginBottom: "4px", fontWeight: "500" }}>
                   {fileClass.filePath}
                 </div>
                 <div style={{ fontSize: "10px", color: "var(--vscode-descriptionForeground)", marginBottom: "4px" }}>
                   {fileClass.classification.reason}
-                </div>
-                <div style={{ fontSize: "9px", color: "var(--vscode-descriptionForeground)" }}>
+              </div>
+              <div style={{ fontSize: "9px", color: "var(--vscode-descriptionForeground)" }}>
                   {commit.author?.name || '未知作者'} • 置信度: {fileClass.classification.confidence.toFixed(1)}%
                 </div>
               </div>
@@ -287,20 +287,20 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
             .sort(([,a], [,b]) => b - a)[0]?.[0] || 'A5';
 
           return (
-            <div key={commit.commitId} style={{
-              padding: "8px",
-              borderBottom: "1px solid var(--vscode-panel-border)",
-              backgroundColor: "var(--vscode-textBlockQuote-background)",
-              borderRadius: "4px"
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                <span style={{ 
-                  fontFamily: "monospace", 
-                  fontSize: "10px",
-                  color: "var(--vscode-textLink-foreground)"
-                }}>
-                  {commit.commitId ? commit.commitId.substring(0, 7) : 'Unknown'}
-                </span>
+          <div key={commit.commitId} style={{
+            padding: "8px",
+            borderBottom: "1px solid var(--vscode-panel-border)",
+            backgroundColor: "var(--vscode-textBlockQuote-background)",
+            borderRadius: "4px"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+              <span style={{ 
+                fontFamily: "monospace", 
+                fontSize: "10px",
+                color: "var(--vscode-textLink-foreground)"
+              }}>
+                {commit.commitId ? commit.commitId.substring(0, 7) : 'Unknown'}
+              </span>
                 <span style={{ 
                   fontSize: "9px", 
                   fontWeight: "bold",
@@ -310,31 +310,31 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
                   borderRadius: "3px"
                 }}>
                   主要: {getCategoryName(mainCategory)}
-                </span>
-              </div>
-              <div style={{ fontSize: "11px", marginBottom: "6px", fontWeight: "500" }}>
-                {commit.message || '无提交信息'}
-              </div>
-              <div style={{ fontSize: "9px", color: "var(--vscode-descriptionForeground)", marginBottom: "4px" }}>
+              </span>
+            </div>
+            <div style={{ fontSize: "11px", marginBottom: "6px", fontWeight: "500" }}>
+              {commit.message || '无提交信息'}
+            </div>
+            <div style={{ fontSize: "9px", color: "var(--vscode-descriptionForeground)", marginBottom: "4px" }}>
                 作者: {commit.author?.name || '未知作者'} • {formatDate(commit.timestamp)}
-              </div>
-              <div style={{ 
-                display: "grid", 
-                gridTemplateColumns: "1fr 1fr", 
-                gap: "4px",
-                fontSize: "9px",
+            </div>
+            <div style={{ 
+              display: "grid", 
+              gridTemplateColumns: "1fr 1fr", 
+              gap: "4px",
+              fontSize: "9px",
                 color: "var(--vscode-descriptionForeground)",
                 marginBottom: "6px"
-              }}>
-                <div>变更文件: {commit.changedFilesCount || 0}</div>
-                <div>变更方法: {commit.changedMethodsCount || 0}</div>
-                <div>影响方法: {commit.impactedMethods?.length || 0}</div>
-                <div>影响测试: {Object.keys(commit.impactedTests || {}).length}</div>
-              </div>
+            }}>
+              <div>变更文件: {commit.changedFilesCount || 0}</div>
+              <div>变更方法: {commit.changedMethodsCount || 0}</div>
+              <div>影响方法: {commit.impactedMethods?.length || 0}</div>
+              <div>影响测试: {Object.keys(commit.impactedTests || {}).length}</div>
+            </div>
               
               {/* 分类详情 */}
               {commit.changeClassifications && commit.changeClassifications.length > 0 && (
-                <div style={{ 
+              <div style={{ 
                   marginTop: "6px",
                   padding: "6px",
                   backgroundColor: "var(--vscode-editorWidget-background)",
@@ -366,9 +366,9 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
                       ...还有 {commit.changeClassifications.length - 3} 个文件
                     </div>
                   )}
-                </div>
-              )}
-            </div>
+              </div>
+            )}
+          </div>
           );
         })}
       </div>
@@ -385,12 +385,12 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
   return (
     <div className="report-renderer react-component" style={{
       display: "flex",
-      flexDirection: "column", 
+      flexDirection: "column",
       height: "100%",
       backgroundColor: "var(--vscode-editor-background)"
     }}>
       {/* Tab navigation */}
-      <div style={{ 
+      <div style={{
         display: "flex",
         borderBottom: "1px solid var(--vscode-panel-border)",
         backgroundColor: "var(--vscode-tab-inactiveBackground)"
