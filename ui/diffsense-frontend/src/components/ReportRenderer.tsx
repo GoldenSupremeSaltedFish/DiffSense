@@ -43,6 +43,8 @@ interface ReportRendererProps {
 
 const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs = [] }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'classifications' | 'commits' | 'callgraph' | 'snapshot'>('overview');
+  // TODO: 待实现国际化
+  // const { currentLanguage, t } = useLanguage();
 
   if (!impacts || impacts.length === 0) {
     return (
@@ -296,9 +298,10 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
       <h3 style={{ margin: "0 0 12px 0", fontSize: "14px" }}>📝 提交详情</h3>
       <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
         {impacts.map((commit) => {
-          // 获取主要分类
-          const mainCategory = Object.entries(commit.classificationSummary?.categoryStats || {})
-            .sort(([,a], [,b]) => b - a)[0]?.[0] || 'A5';
+          // 获取所有分类及其数量
+          const categoryStats = commit.classificationSummary?.categoryStats || {};
+          const allCategories = Object.entries(categoryStats).filter(([_, count]) => count > 0);
+          const mainCategory = allCategories.sort(([,a], [,b]) => b - a)[0]?.[0] || 'A5';
 
           return (
           <div key={commit.commitId} style={{
@@ -307,79 +310,171 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
             backgroundColor: "var(--vscode-textBlockQuote-background)",
             borderRadius: "4px"
           }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-              <span style={{ 
-                fontFamily: "monospace", 
-                fontSize: "10px",
-                color: "var(--vscode-textLink-foreground)"
-              }}>
-                {commit.commitId ? commit.commitId.substring(0, 7) : 'Unknown'}
-              </span>
+            {/* 提交头部 */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "6px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <span style={{ 
-                  fontSize: "9px", 
-                  fontWeight: "bold",
-                  color: "white",
-                  backgroundColor: getCategoryColor(mainCategory),
-                  padding: "2px 6px",
-                  borderRadius: "3px"
+                  fontFamily: "monospace", 
+                  fontSize: "10px",
+                  color: "var(--vscode-textLink-foreground)"
                 }}>
-                  {getCategoryName(mainCategory)}
-              </span>
+                  {commit.commitId ? commit.commitId.substring(0, 7) : 'Unknown'}
+                </span>
+                
+                {/* 显示所有分类标签 */}
+                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                  {allCategories.map(([category, count]) => (
+                    <span key={category} style={{ 
+                      fontSize: "8px", 
+                      fontWeight: "bold",
+                      color: "white",
+                      backgroundColor: getCategoryColor(category),
+                      padding: "2px 4px",
+                      borderRadius: "2px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "2px"
+                    }}>
+                      {getCategoryName(category)}
+                      <span style={{ 
+                        fontSize: "7px", 
+                        backgroundColor: "rgba(255,255,255,0.3)",
+                        padding: "1px 3px",
+                        borderRadius: "2px"
+                      }}>
+                        {count}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+              
+              {/* 主要分类指示器 */}
+              <div style={{
+                fontSize: "8px",
+                color: getCategoryColor(mainCategory),
+                fontWeight: "bold",
+                padding: "2px 4px",
+                border: `1px solid ${getCategoryColor(mainCategory)}`,
+                borderRadius: "2px",
+                backgroundColor: `${getCategoryColor(mainCategory)}15`
+              }}>
+                主要: {getCategoryName(mainCategory)}
+              </div>
             </div>
+            
             <div style={{ fontSize: "11px", marginBottom: "6px", fontWeight: "500" }}>
               {commit.message || '无提交信息'}
             </div>
-            <div style={{ fontSize: "9px", color: "var(--vscode-descriptionForeground)", marginBottom: "4px" }}>
+            <div style={{ fontSize: "9px", color: "var(--vscode-descriptionForeground)", marginBottom: "6px" }}>
                 作者: {commit.author?.name || '未知作者'} • {formatDate(commit.timestamp)}
             </div>
+            
+            {/* 统计信息 */}
             <div style={{ 
               display: "grid", 
               gridTemplateColumns: "1fr 1fr", 
               gap: "4px",
               fontSize: "9px",
-                color: "var(--vscode-descriptionForeground)",
-                marginBottom: "6px"
+              color: "var(--vscode-descriptionForeground)",
+              marginBottom: "8px"
             }}>
               <div>变更文件: {commit.changedFilesCount || 0}</div>
               <div>变更方法: {commit.changedMethodsCount || 0}</div>
               <div>影响方法: {commit.impactedMethods?.length || 0}</div>
               <div>影响测试: {Object.keys(commit.impactedTests || {}).length}</div>
             </div>
-              
-              {/* 分类详情 */}
-              {commit.changeClassifications && commit.changeClassifications.length > 0 && (
+            
+            {/* 分类摘要 */}
+            {allCategories.length > 0 && (
               <div style={{ 
-                  marginTop: "6px",
-                  padding: "6px",
-                  backgroundColor: "var(--vscode-editorWidget-background)",
-                  borderRadius: "3px",
-                  fontSize: "9px"
-                }}>
-                  <div style={{ fontWeight: "bold", marginBottom: "4px" }}>文件分类:</div>
-                  {commit.changeClassifications.slice(0, 3).map((fc, index) => (
-                    <div key={index} style={{ 
-                      display: "flex", 
-                      justifyContent: "space-between", 
+                marginBottom: "6px",
+                padding: "6px",
+                backgroundColor: "var(--vscode-editorWidget-background)",
+                borderRadius: "3px",
+                fontSize: "9px"
+              }}>
+                <div style={{ fontWeight: "bold", marginBottom: "4px" }}>🏷️ 修改类型摘要:</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                  {allCategories.map(([category, count]) => (
+                    <div key={category} style={{
+                      display: "flex",
+                      justifyContent: "space-between",
                       alignItems: "center",
-                      marginBottom: "2px"
+                      padding: "2px 4px",
+                      borderRadius: "2px",
+                      backgroundColor: `${getCategoryColor(category)}10`
                     }}>
-                      <span style={{ fontSize: "8px", color: "var(--vscode-descriptionForeground)" }}>
-                        {fc.filePath.split('/').pop()}
+                      <span style={{ 
+                        color: getCategoryColor(category),
+                        fontWeight: "bold",
+                        fontSize: "8px"
+                      }}>
+                        {getCategoryName(category)}
                       </span>
                       <span style={{ 
                         fontSize: "8px",
-                        color: getCategoryColor(fc.classification.category),
-                        fontWeight: "bold"
+                        color: "var(--vscode-descriptionForeground)"
                       }}>
-                        {getCategoryName(fc.classification.category)}
+                        {count} 个文件
                       </span>
                     </div>
                   ))}
-                  {commit.changeClassifications.length > 3 && (
-                    <div style={{ fontSize: "8px", color: "var(--vscode-descriptionForeground)" }}>
-                      ...还有 {commit.changeClassifications.length - 3} 个文件
-                    </div>
-                  )}
+                </div>
+              </div>
+            )}
+              
+            {/* 分类详情 */}
+            {commit.changeClassifications && commit.changeClassifications.length > 0 && (
+              <div style={{ 
+                marginTop: "6px",
+                padding: "6px",
+                backgroundColor: "var(--vscode-editorWidget-background)",
+                borderRadius: "3px",
+                fontSize: "9px"
+              }}>
+                <div style={{ fontWeight: "bold", marginBottom: "4px" }}>📁 文件分类详情:</div>
+                {commit.changeClassifications.slice(0, 5).map((fc, index) => (
+                  <div key={index} style={{ 
+                    display: "flex", 
+                    justifyContent: "space-between", 
+                    alignItems: "center",
+                    marginBottom: "2px",
+                    padding: "2px 4px",
+                    borderRadius: "2px",
+                    backgroundColor: `${getCategoryColor(fc.classification.category)}10`
+                  }}>
+                    <span style={{ 
+                      fontSize: "8px", 
+                      color: "var(--vscode-descriptionForeground)",
+                      flex: 1,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap"
+                    }}>
+                      {fc.filePath.split('/').pop()}
+                    </span>
+                    <span style={{ 
+                      fontSize: "8px",
+                      color: getCategoryColor(fc.classification.category),
+                      fontWeight: "bold",
+                      marginLeft: "8px"
+                    }}>
+                      {getCategoryName(fc.classification.category)}
+                    </span>
+                  </div>
+                ))}
+                {commit.changeClassifications.length > 5 && (
+                  <div style={{ 
+                    fontSize: "8px", 
+                    color: "var(--vscode-descriptionForeground)",
+                    textAlign: "center",
+                    marginTop: "4px",
+                    fontStyle: "italic"
+                  }}>
+                    ...还有 {commit.changeClassifications.length - 5} 个文件
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -415,23 +510,71 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
           { key: 'commits', label: '📝 提交' },
           { key: 'callgraph', label: '🔗 调用图' },
           { key: 'snapshot', label: '📸 组件变动' }
-        ].map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key as any)}
-            style={{
-              padding: "8px 12px",
-              border: "none",
-              backgroundColor: activeTab === tab.key ? "var(--vscode-tab-activeBackground)" : "transparent",
-              color: activeTab === tab.key ? "var(--vscode-tab-activeForeground)" : "var(--vscode-tab-inactiveForeground)",
-              cursor: "pointer",
-              fontSize: "11px",
-              borderBottom: activeTab === tab.key ? "2px solid var(--vscode-focusBorder)" : "none"
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
+        ].map(tab => {
+          // 为提交tab计算修改类型统计
+          let tabLabel = tab.label;
+          if (tab.key === 'commits' && stats.categoryStats && Object.keys(stats.categoryStats).length > 0) {
+            const typeCount = Object.keys(stats.categoryStats).length;
+            const totalFiles = Object.values(stats.categoryStats).reduce((sum, count) => sum + count, 0);
+            tabLabel = `${tab.label} (${typeCount}类型 ${totalFiles}文件)`;
+          }
+          
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key as any)}
+              style={{
+                padding: "8px 12px",
+                border: "none",
+                backgroundColor: activeTab === tab.key ? "var(--vscode-tab-activeBackground)" : "transparent",
+                color: activeTab === tab.key ? "var(--vscode-tab-activeForeground)" : "var(--vscode-tab-inactiveForeground)",
+                cursor: "pointer",
+                fontSize: "11px",
+                borderBottom: activeTab === tab.key ? "2px solid var(--vscode-focusBorder)" : "none",
+                position: "relative"
+              }}
+            >
+              {tabLabel}
+              {/* 为提交tab添加类型颜色指示器 */}
+              {tab.key === 'commits' && stats.categoryStats && Object.keys(stats.categoryStats).length > 0 && (
+                <div style={{
+                  position: "absolute",
+                  top: "2px",
+                  right: "2px",
+                  display: "flex",
+                  gap: "1px"
+                }}>
+                  {Object.entries(stats.categoryStats).slice(0, 3).map(([category, _]) => (
+                    <div
+                      key={category}
+                      style={{
+                        width: "4px",
+                        height: "4px",
+                        borderRadius: "50%",
+                        backgroundColor: getCategoryColor(category)
+                      }}
+                    />
+                  ))}
+                  {Object.keys(stats.categoryStats).length > 3 && (
+                    <div style={{
+                      width: "4px",
+                      height: "4px",
+                      borderRadius: "50%",
+                      backgroundColor: "var(--vscode-descriptionForeground)",
+                      fontSize: "6px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "white"
+                    }}>
+                      +
+                    </div>
+                  )}
+                </div>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Tab content */}

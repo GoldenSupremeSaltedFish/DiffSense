@@ -176,6 +176,12 @@ export interface LanguageText {
   fileClassification: string;
   changedMethods: string;
   
+  // 新增：提交页面相关
+  changeTypeSummary: string;
+  fileClassificationDetails: string;
+  primaryType: string;
+  multipleTypesLabel: string;
+  
   // 其他现有字段
   filesChanged: string;
   methodsChanged: string;
