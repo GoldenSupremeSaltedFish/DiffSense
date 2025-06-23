@@ -31,7 +31,7 @@ function copyDir(src, dest) {
 }
 
 /**
- * 准备VSIX包的前端资源
+ * 准备VSIX包的前端资源和分析器
  */
 function preparePackage() {
   console.log('🔄 准备VSIX包...');
@@ -40,6 +40,7 @@ function preparePackage() {
   const pluginDir = process.cwd();
   console.log('📁 插件目录:', pluginDir);
   
+  // ============ 1. 准备前端构建产物 ============
   // 前端构建产物源路径（优先使用环境变量）
   const frontendDistSrc = process.env.FRONTEND_DIST || path.join(pluginDir, 'dist');
   
@@ -97,6 +98,66 @@ function preparePackage() {
   } else {
     console.error('❌ 前端资源复制失败');
     process.exit(1);
+  }
+
+  // ============ 2. 准备分析器到analyzers目录 ============
+  console.log('🔧 准备分析器...');
+  
+  const workspaceRoot = path.resolve(pluginDir, '..');
+  const analyzersDestDir = path.join(pluginDir, 'analyzers');
+  
+  // 确保analyzers目录存在
+  if (!fs.existsSync(analyzersDestDir)) {
+    fs.mkdirSync(analyzersDestDir, { recursive: true });
+  }
+  
+  // 复制Node.js分析器
+  const nodeAnalyzerSrc = path.join(workspaceRoot, 'ui', 'node-analyzer');
+  const nodeAnalyzerDest = path.join(analyzersDestDir, 'node-analyzer');
+  
+  if (fs.existsSync(nodeAnalyzerSrc)) {
+    console.log('📦 复制Node.js分析器...');
+    copyDir(nodeAnalyzerSrc, nodeAnalyzerDest);
+    console.log('✅ Node.js分析器复制完成');
+  } else {
+    console.warn('⚠️ Node.js分析器源目录不存在:', nodeAnalyzerSrc);
+  }
+  
+  // 复制Golang分析器
+  const golangAnalyzerSrc = path.join(workspaceRoot, 'ui', 'golang-analyzer');
+  const golangAnalyzerDest = path.join(analyzersDestDir, 'golang-analyzer');
+  
+  if (fs.existsSync(golangAnalyzerSrc)) {
+    console.log('📦 复制Golang分析器...');
+    copyDir(golangAnalyzerSrc, golangAnalyzerDest);
+    console.log('✅ Golang分析器复制完成');
+  } else {
+    console.warn('⚠️ Golang分析器源目录不存在:', golangAnalyzerSrc);
+  }
+  
+  // 复制Java JAR文件
+  const targetDir = path.join(workspaceRoot, 'target');
+  if (fs.existsSync(targetDir)) {
+    console.log('📦 复制Java分析器...');
+    const jarFiles = fs.readdirSync(targetDir).filter(file => file.endsWith('.jar'));
+    
+    for (const jarFile of jarFiles) {
+      const jarSrc = path.join(targetDir, jarFile);
+      const jarDest = path.join(analyzersDestDir, jarFile);
+      fs.copyFileSync(jarSrc, jarDest);
+      console.log(`✅ 复制JAR文件: ${jarFile}`);
+    }
+  } else {
+    console.warn('⚠️ Java target目录不存在:', targetDir);
+  }
+  
+  // 验证analyzers目录
+  if (fs.existsSync(analyzersDestDir)) {
+    const analyzersContents = fs.readdirSync(analyzersDestDir);
+    console.log('📁 analyzers目录内容:', analyzersContents);
+    
+    const analyzerStats = getDirStats(analyzersDestDir);
+    console.log(`📊 分析器统计: ${analyzerStats.files}个文件, ${analyzerStats.dirs}个目录, 总大小: ${(analyzerStats.size / 1024 / 1024).toFixed(2)}MB`);
   }
   
   console.log('🎉 VSIX包准备完成！');

@@ -3157,20 +3157,51 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
    * 处理远程开发环境和本地开发环境的路径差异
    */
   private getAnalyzerPath(analyzerType: string): string {
-    // 使用相对于插件根目录的路径
-    const defaultPath = path.join(this._extensionUri.fsPath, 'analyzers', analyzerType);
+    // 首先尝试从analyzers目录获取
+    const analyzersPath = path.join(this._extensionUri.fsPath, 'analyzers', analyzerType);
+    
+    // 回退路径：ui目录（兼容旧版本）
+    const uiPath = path.join(this._extensionUri.fsPath, 'ui', analyzerType);
     
     try {
-      // 检查文件是否存在
-      if (fs.existsSync(defaultPath)) {
-        return defaultPath;
+      // 检查analyzers目录中的文件是否存在
+      if (fs.existsSync(analyzersPath)) {
+        console.log(`✅ [路径] 在analyzers目录找到分析器: ${analyzersPath}`);
+        return analyzersPath;
+      }
+      
+      // 检查ui目录中的文件是否存在
+      if (fs.existsSync(uiPath)) {
+        console.log(`✅ [路径] 在ui目录找到分析器: ${uiPath}`);
+        return uiPath;
       }
 
-      // 如果不存在，返回默认路径
-      return defaultPath;
+      // 都不存在时，输出诊断信息
+      console.warn(`⚠️ [路径] 分析器文件不存在:`);
+      console.warn(`  - analyzers路径: ${analyzersPath}`);
+      console.warn(`  - ui路径: ${uiPath}`);
+      
+      // 诊断扩展目录内容
+      const extensionDir = this._extensionUri.fsPath;
+      if (fs.existsSync(extensionDir)) {
+        console.warn(`📁 [诊断] 扩展目录内容:`, fs.readdirSync(extensionDir));
+        
+        const analyzersDir = path.join(extensionDir, 'analyzers');
+        if (fs.existsSync(analyzersDir)) {
+          console.warn(`📁 [诊断] analyzers目录内容:`, fs.readdirSync(analyzersDir));
+        }
+        
+        const uiDir = path.join(extensionDir, 'ui');
+        if (fs.existsSync(uiDir)) {
+          console.warn(`📁 [诊断] ui目录内容:`, fs.readdirSync(uiDir));
+        }
+      }
+
+      // 返回analyzers路径作为默认值
+      return analyzersPath;
     } catch (error: any) {
-      console.error('获取分析器路径失败:', error);
-      return defaultPath;
+      console.error('❌ [路径] 获取分析器路径失败:', error);
+      return analyzersPath;
     }
   }
 

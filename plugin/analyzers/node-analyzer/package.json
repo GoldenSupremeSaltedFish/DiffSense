@@ -1,0 +1,36 @@
+{
+  "name": "diffsense-frontend-analyzer",
+  "version": "1.0.0",
+  "description": "DiffSense前端代码分析器 - 分析JavaScript/TypeScript代码的依赖关系和调用链",
+  "main": "analyze.js",
+  "bin": {
+    "diffsense-analyzer": "./analyze.js"
+  },
+  "scripts": {
+    "test": "node analyze.js ../diffsense-frontend summary",
+    "analyze": "node analyze.js",
+    "demo": "node analyze.js ../diffsense-frontend json > output.json"
+  },
+  "keywords": [
+    "code-analysis",
+    "dependency-graph",
+    "call-graph",
+    "typescript",
+    "javascript",
+    "ast"
+  ],
+  "author": "DiffSense Team",
+  "license": "ISC",
+  "dependencies": {
+    "@babel/parser": "^7.26.3",
+    "@babel/traverse": "^7.26.4",
+    "glob": "^11.0.0",
+    "madge": "^8.0.0",
+    "ts-morph": "^24.0.0",
+    "@vue/compiler-sfc": "^3.4.20",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
