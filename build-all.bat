@@ -117,7 +117,7 @@ if defined VSIX_FILE (
 echo    - 插件代码: plugin\dist\extension.js
 echo    - 前端资源: plugin\dist\ 和 plugin\diffsense-frontend\
 echo    - Java 分析器: plugin\analyzers\*.jar
-echo    - Node/Go 分析器: plugin\ui\*-analyzer\
+echo    - Node/Go 分析器: plugin\analyzers\*-analyzer\
 echo.
 echo 🚀 现在可以：
 echo    1. 在 VS Code 中按 F5 调试插件
