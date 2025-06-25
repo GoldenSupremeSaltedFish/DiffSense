@@ -511,13 +511,8 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
           { key: 'callgraph', label: '🔗 调用图' },
           { key: 'snapshot', label: '📸 组件变动' }
         ].map(tab => {
-          // 为提交tab计算修改类型统计
-          let tabLabel = tab.label;
-          if (tab.key === 'commits' && stats.categoryStats && Object.keys(stats.categoryStats).length > 0) {
-            const typeCount = Object.keys(stats.categoryStats).length;
-            const totalFiles = Object.values(stats.categoryStats).reduce((sum, count) => sum + count, 0);
-            tabLabel = `${tab.label} (${typeCount}类型 ${totalFiles}文件)`;
-          }
+          // 提交tab仅显示文字，避免按钮过于拥挤
+          const tabLabel = tab.label;
           
           return (
             <button
@@ -535,43 +530,6 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
               }}
             >
               {tabLabel}
-              {/* 为提交tab添加类型颜色指示器 */}
-              {tab.key === 'commits' && stats.categoryStats && Object.keys(stats.categoryStats).length > 0 && (
-                <div style={{
-                  position: "absolute",
-                  top: "2px",
-                  right: "2px",
-                  display: "flex",
-                  gap: "1px"
-                }}>
-                  {Object.entries(stats.categoryStats).slice(0, 3).map(([category, _]) => (
-                    <div
-                      key={category}
-                      style={{
-                        width: "4px",
-                        height: "4px",
-                        borderRadius: "50%",
-                        backgroundColor: getCategoryColor(category)
-                      }}
-                    />
-                  ))}
-                  {Object.keys(stats.categoryStats).length > 3 && (
-                    <div style={{
-                      width: "4px",
-                      height: "4px",
-                      borderRadius: "50%",
-                      backgroundColor: "var(--vscode-descriptionForeground)",
-                      fontSize: "6px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "white"
-                    }}>
-                      +
-                    </div>
-                  )}
-                </div>
-              )}
             </button>
           );
         })}

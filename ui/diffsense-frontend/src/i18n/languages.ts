@@ -65,6 +65,7 @@ export interface LanguageConfig {
     exportHTML: string;
     reportBug: string;
     reportBugTitle: string;
+    detectRevert: string;
     
     loadingBranches: string;
   };
@@ -271,6 +272,7 @@ export const zhCN: LanguageConfig = {
     exportHTML: '🌐 导出HTML',
     reportBug: '📩 出bug了？点我汇报😊',
     reportBugTitle: '报告问题或建议',
+    detectRevert: '检测回退',
     
     loadingBranches: '正在加载分支列表...'
   },
@@ -401,6 +403,7 @@ export const enUS: LanguageConfig = {
     exportHTML: '🌐 Export HTML',
     reportBug: '📩 Bug Report 🐛',
     reportBugTitle: 'Report Issue or Suggestion',
+    detectRevert: 'Detect Revert',
     
     loadingBranches: 'Loading branch list...'
   },

@@ -717,9 +717,9 @@ const Toolbar = () => {
             borderRadius: '3px',
             cursor: 'pointer'
           }}
-          title="检测组件回退风险"
+          title={t('toolbar.detectRevert')}
         >
-          检测回退
+          {t('toolbar.detectRevert')}
         </button>
         
         {/* 导出按钮组 */}
