@@ -44,8 +44,8 @@ function preparePackage() {
   // 前端构建产物源路径（优先使用环境变量）
   const frontendDistSrc = process.env.FRONTEND_DIST || path.join(pluginDir, 'dist');
   
-  // 前端资源目标路径（插件内）
-  const frontendDistDest = path.join(pluginDir, 'ui', 'diffsense-frontend');
+  // 前端资源目标路径（插件内），统一放在 plugin/dist
+  const frontendDistDest = path.join(pluginDir, 'dist');
   
   console.log('📦 检查前端构建产物...');
   console.log('  源路径:', frontendDistSrc);
@@ -77,16 +77,16 @@ function preparePackage() {
   // 复制前端资源到插件目录
   console.log('📁 复制前端资源...');
   
-  // 清理目标目录
-  if (fs.existsSync(frontendDistDest)) {
-    fs.rmSync(frontendDistDest, { recursive: true, force: true });
+  if (path.resolve(frontendDistSrc) !== path.resolve(frontendDistDest)) {
+    // 若源 != 目标，则先清理再复制
+    if (fs.existsSync(frontendDistDest)) {
+      fs.rmSync(frontendDistDest, { recursive: true, force: true });
+    }
+    fs.mkdirSync(frontendDistDest, { recursive: true });
+    copyDir(frontendDistSrc, frontendDistDest);
+  } else {
+    console.log('📂 构建产物已位于目标目录，跳过复制');
   }
-  
-  // 创建目标目录
-  fs.mkdirSync(frontendDistDest, { recursive: true });
-  
-  // 复制前端构建产物
-  copyDir(frontendDistSrc, frontendDistDest);
   
   // 验证复制结果
   if (fs.existsSync(path.join(frontendDistDest, 'index.html'))) {

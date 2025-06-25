@@ -1,67 +1,46 @@
-# Development files
-.vscode/**
-.vscode-test/**
-src/**
-**/*.ts
-**/*.map
-tsconfig.json
-webpack.config.js
-.eslintrc.json
-.gitignore
+﻿# .vscodeignore for DiffSense plugin
 
-# Dependencies - include runtime dependencies for glob
-node_modules/**
-!node_modules/glob/**
-!node_modules/@types/glob/**
-!node_modules/minimatch/**
-!node_modules/foreground-child/**
-!node_modules/jackspeak/**
-!node_modules/minipass/**
-!node_modules/package-json-from-dist/**
-!node_modules/path-scurry/**
-!node_modules/lru-cache/**
-!node_modules/signal-exit/**
-!node_modules/brace-expansion/**
-!node_modules/balanced-match/**
+# First, include everything...
+!**/*
 
-# Build intermediate files
-.nyc_output
-coverage
+# Then, ignore what we don't want in the package.
+# This file is used by 'vsce package' to create the .vsix.
 
-# Runtime test files
-**/*.test.*
-**/*.spec.*
+# Git files
+.git
+.git*
+**/.git*
 
-# Source maps
-**/*.js.map
+# Standard development directories and files
+node_modules/
+!analyzers/node-analyzer/node_modules/**
+!analyzers/golang-analyzer/node_modules/**
+out/
+dist/
+*.tsbuildinfo
+.vscode/
 
-# Logs
-*.log
+# Ignore source code in favor of compiled output
+src/
 
-# Temporary files
-.DS_Store
-Thumbs.db
+# Test files
+**/test/**
+**/__tests__/**
 
-# Don't exclude frontend build files - these are needed
-!ui/diffsense-frontend/dist/**
+# Scripts used for development/building
+scripts/
 
-# Include Java analyzer JAR file in plugin directory
+# Config files
+*.json
+!package.json
+*.md
+!README.md
+!LICENSE.txt
+*.lock
+
+# Allow specific files needed for the extension
+!dist/extension.js
+!dist/index.html
+!dist/assets/**
 !analyzers/**
-
-# Include frontend and backend analyzer scripts (now in plugin directory)
-!ui/node-analyzer/**
-!ui/golang-analyzer/**
-
-# Exclude test files from analyzers to reduce package size
-ui/node-analyzer/**/test/**
-ui/node-analyzer/**/tests/**
-ui/node-analyzer/**/__tests__/**
-ui/node-analyzer/**/*.test.js
-ui/node-analyzer/**/*.spec.js
-ui/node-analyzer/**/*.test.ts
-ui/node-analyzer/**/*.spec.ts
-ui/golang-analyzer/**/test/**
-ui/golang-analyzer/**/tests/**
-ui/golang-analyzer/**/__tests__/**
-ui/golang-analyzer/**/*.test.js
-ui/golang-analyzer/**/*.spec.js 
+!icon.png

@@ -6,7 +6,23 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 // 使用环境变量或默认值
 const sourceDir = process.env.FRONTEND_DIST || resolve(__dirname, '../dist');
-const targetDir = process.env.FRONTEND_TARGET || resolve(__dirname, '../../../plugin/ui/diffsense-frontend');
+// 默认将构建产物复制到 plugin/dist（Webview 运行目录）
+const targetDir = process.env.FRONTEND_TARGET || resolve(__dirname, '../../../plugin/dist');
+
+function ensureDir(dirPath) {
+  try {
+    mkdirSync(dirPath, { recursive: true });
+    console.log('✓ 目标目录已创建/确认', dirPath);
+  } catch (err) {
+    if (err.code !== 'EEXIST') {
+      console.error('创建目录失败:', err);
+      process.exit(1);
+    }
+  }
+}
+
+// 确保目标目录存在
+ensureDir(targetDir);
 
 console.log('复制前端构建产物:');
 console.log('- 源目录:', sourceDir);
@@ -22,17 +38,6 @@ if (!existsSync(sourceDir)) {
         console.error('无法读取当前目录:', err);
     }
     process.exit(1);
-}
-
-// 确保目标目录存在
-try {
-    mkdirSync(targetDir, { recursive: true });
-    console.log('✓ 目标目录已创建/确认');
-} catch (err) {
-    if (err.code !== 'EEXIST') {
-        console.error('创建目标目录失败:', err);
-        process.exit(1);
-    }
 }
 
 // 递归复制文件

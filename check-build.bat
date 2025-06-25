@@ -47,7 +47,7 @@ if exist "ui\node-analyzer\analyze.js" (
     set MISSING=1
 )
 
-if exist "plugin\ui\node-analyzer\analyze.js" (
+if exist "plugin\analyzers\node-analyzer\analyze.js" (
     echo   ✅ Node.js 插件分析器存在
 ) else (
     echo   ❌ Node.js 插件分析器缺失
@@ -61,7 +61,7 @@ if exist "ui\golang-analyzer\analyze.js" (
     set MISSING=1
 )
 
-if exist "plugin\ui\golang-analyzer\analyze.js" (
+if exist "plugin\analyzers\golang-analyzer\analyze.js" (
     echo   ✅ Golang 插件分析器存在
 ) else (
     echo   ❌ Golang 插件分析器缺失
