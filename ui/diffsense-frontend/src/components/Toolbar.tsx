@@ -660,10 +660,10 @@ const Toolbar = () => {
 
       {/* 回退检测输入 */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
-        <label style={{ fontSize: '10px', fontWeight: '600' }}>基准分支/提交</label>
+        <label style={{ fontSize: '10px', fontWeight: '600' }}>{t('toolbar.baseCommitLabel')}</label>
         <input
           type="text"
-          placeholder="origin/main"
+          placeholder={t('toolbar.baseCommitPlaceholder')}
           value={baseCommitForRevert}
           onChange={(e) => setBaseCommitForRevert(e.target.value)}
           disabled={isAnalyzing}

@@ -66,6 +66,8 @@ export interface LanguageConfig {
     reportBug: string;
     reportBugTitle: string;
     detectRevert: string;
+    baseCommitLabel: string;
+    baseCommitPlaceholder: string;
     
     loadingBranches: string;
   };
@@ -273,6 +275,8 @@ export const zhCN: LanguageConfig = {
     reportBug: '📩 出bug了？点我汇报😊',
     reportBugTitle: '报告问题或建议',
     detectRevert: '检测回退',
+    baseCommitLabel: '基准分支/提交',
+    baseCommitPlaceholder: '例: origin/main',
     
     loadingBranches: '正在加载分支列表...'
   },
@@ -404,6 +408,8 @@ export const enUS: LanguageConfig = {
     reportBug: '📩 Bug Report 🐛',
     reportBugTitle: 'Report Issue or Suggestion',
     detectRevert: 'Detect Revert',
+    baseCommitLabel: 'Base Commit/Branch',
+    baseCommitPlaceholder: 'e.g.: origin/main',
     
     loadingBranches: 'Loading branch list...'
   },
