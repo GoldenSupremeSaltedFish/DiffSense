@@ -1276,7 +1276,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
   private async executeFrontendAnalysis(repoPath: string, analysisData: any): Promise<any[]> {
     return new Promise((resolve, reject) => {
       // 前端分析器脚本路径 - 修复远程开发环境路径问题
-      const analyzerPath = this.getAnalyzerPath('node-analyzer');
+      const analyzerPath = this.getNodeAnalyzerPath();
       
       // 确定要分析的目录
       let targetDir = repoPath;
@@ -1416,7 +1416,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
   private async executeGolangAnalysis(repoPath: string, analysisData: any): Promise<any[]> {
     return new Promise((resolve, reject) => {
       // Golang分析器脚本路径 - 修复远程开发环境路径问题
-      const analyzerPath = this.getAnalyzerPath('golang-analyzer');
+      const analyzerPath = this.getGolangAnalyzerPath();
       
       console.log('执行Golang分析命令:', 'node', analyzerPath, repoPath);
       console.log('分析目录:', repoPath);
@@ -3599,8 +3599,8 @@ ${codeBlock(String(errorContext))}
       }
       const repoPath = workspaceFolder.uri.fsPath;
 
-      const nodeAnalyzerPath = this.getNodeAnalyzerPath();
-      const mergeImpactPath = path.join(nodeAnalyzerPath, 'mergeImpact.js');
+      const nodeAnalyzerDirPath = this.getAnalyzerPath('node-analyzer');
+      const mergeImpactPath = path.join(nodeAnalyzerDirPath, 'mergeImpact.js');
       if (!fs.existsSync(mergeImpactPath)) {
         throw new Error(`mergeImpact.js 不存在: ${mergeImpactPath}`);
       }
