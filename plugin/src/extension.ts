@@ -3484,113 +3484,108 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
   }
 
   private generateIssueBody(data: any): string {
-    const { reportData, systemInfo, gitInfo, workspacePath, workspaceName, recentErrors, timestamp } = data;
-    
-    const body = `
-## 🐛 问题描述
+    const {
+      commitInfo = {},
+      analysisParams = {},
+      analysisResults,
+      errorContext,
+      systemInfo,
+      gitInfo,
+      recentErrors,
+    } = data;
 
-**发生时间**: ${new Date(timestamp).toLocaleString('zh-CN')}
-**报告来源**: DiffSense VSCode 扩展自动汇报
+    const codeBlock = (content: string, lang = '') => `\`\`\`${lang}\n${content}\n\`\`\``;
 
-## 📊 用户环境信息
+    let body = `
+### 🚨 Bug Report
 
-**项目信息**:
-- 项目名称: ${workspaceName}
-- 项目类型: ${reportData.projectType || '未知'}
-- 后端语言: ${reportData.backendLanguage || '未知'}
-- 分析范围: ${reportData.analysisScope || '未设置'}
+**1. Description**
+*Please provide a clear and concise description of what the bug is.*
+*Example: The analysis fails with a "..." error when comparing commit A and B.*
+> 
 
-**系统环境**:
-- 操作系统: ${systemInfo.platform} ${systemInfo.arch}
-- Node.js版本: ${systemInfo.nodeVersion}
-- VSCode版本: ${systemInfo.vscodeVersion}
-- 扩展版本: ${systemInfo.extensionVersion}
-- 用户代理: ${reportData.userAgent || '未知'}
+**2. How to Reproduce**
+*Steps to reproduce the behavior:*
+1. Go to '...'
+2. Click on '....'
+3. Scroll down to '....'
+4. See error
 
-**Git信息**:
-- 当前分支: ${gitInfo.currentBranch || '未知'}
-- 当前提交: ${gitInfo.currentCommit || '未知'}
-- 远程仓库: ${gitInfo.remoteUrl || '未知'}
-- 工作区状态: ${gitInfo.workingTreeStatus || '干净'}
-
-## 🔧 插件状态信息
-
-**分析配置**:
-- 选中分支: ${reportData.selectedBranch || '未选择'}
-- 分析范围: ${reportData.selectedRange || '未设置'}
-- 分析类型: ${reportData.analysisTypes?.join(', ') || '未选择'}
-- 前端路径: ${reportData.frontendPath || '未设置'}
-- 语言设置: ${reportData.currentLanguage || '未知'}
-
-**时间信息**:
-- 开始Commit: ${reportData.startCommitId || '未设置'}
-- 结束Commit: ${reportData.endCommitId || '未设置'}
-- 自定义开始日期: ${reportData.customDateFrom || '未设置'}
-- 自定义结束日期: ${reportData.customDateTo || '未设置'}
-
-**其他状态**:
-- 可用分支数: ${reportData.branches || 0}
-
-## 🚨 最近错误日志
-
-${recentErrors.length > 0 ? 
-  recentErrors.map((err: any, idx: number) => 
-    `**错误 ${idx + 1}** (${new Date(err.timestamp).toLocaleString('zh-CN')}):
-\`\`\`
-${err.error}
-\`\`\`
-${err.context ? `上下文: ${err.context}` : ''}
-`).join('\n') : 
-  '无最近错误记录'}
-
-## 📝 重现步骤
-
-请描述您遇到问题时的操作步骤：
-1. 
-2. 
-3. 
-
-## 🎯 期望行为
-
-请描述您期望的正确行为：
-
-## 📸 截图（可选）
-
-如果可能，请粘贴相关截图
-
-## 💡 其他信息
-
-请提供任何其他有用的信息：
+**3. Expected Behavior**
+*A clear and concise description of what you expected to happen.*
+> 
 
 ---
 
-> 此问题报告由DiffSense VSCode扩展自动生成。
-> 如有隐私相关的信息，请在提交前进行编辑。
-> 项目路径: \`${workspacePath}\`
+### 🔍 Analysis Context (Auto-generated)
+
+**Commit Info:**
+${codeBlock(JSON.stringify(commitInfo, null, 2), 'json')}
+
+**Analysis Parameters:**
+${codeBlock(JSON.stringify(analysisParams, null, 2), 'json')}
+
+**System Information:**
+- **OS:** ${systemInfo.os}
+- **VS Code Version:** ${systemInfo.vscodeVersion}
+- **Extension Version:** ${systemInfo.extensionVersion}
+
+**Git Information:**
+- **Git Version:** ${gitInfo.gitVersion}
+- **Current Branch:** \`${gitInfo.currentBranch}\`
+- **Remotes:**
+${codeBlock(gitInfo.remotes.map((r: any) => `${r.name}: ${r.url}`).join('\n'))}
+`;
+
+    if (recentErrors && recentErrors.length > 0) {
+      body += `
+**Recent Error Logs:**
+${codeBlock(recentErrors.map((e: any) => `[${e.timestamp}] ${e.context ? `(${e.context}) ` : ''}${e.error}`).join('\n'))}
+`;
+    }
+
+    if (analysisResults) {
+      body += `
+**Analysis Results (at time of report):**
+${codeBlock(JSON.stringify(analysisResults, null, 2), 'json')}
+`;
+    }
+
+    if (errorContext) {
+      body += `
+**Error Context:**
+${codeBlock(String(errorContext))}
+`;
+    }
+
+    body += `
+---
+*Please add any other context or screenshots about the problem here.*
 `;
 
     return body;
   }
 
   private buildGitHubIssueUrl(repoUrl: string, title: string, body: string): string {
+    const baseUrl = repoUrl.endsWith('/') ? repoUrl : `${repoUrl}/`;
     // 构建GitHub Issue URL
     const encodedTitle = encodeURIComponent(title);
     const encodedBody = encodeURIComponent(body);
     
     // GitHub URL参数有长度限制，检查并截断
     const maxUrlLength = 8000; // GitHub的实际限制可能更小，但这是一个安全值
-    let issueUrl = `${repoUrl}/issues/new?title=${encodedTitle}&body=${encodedBody}`;
+    let issueUrl = `${baseUrl}issues/new?title=${encodedTitle}&body=${encodedBody}`;
     
     if (issueUrl.length > maxUrlLength) {
       console.warn('⚠️ GitHub Issue URL太长，将截断body内容');
       
       // 计算可用的body长度
-      const baseUrl = `${repoUrl}/issues/new?title=${encodedTitle}&body=`;
-      const availableLength = maxUrlLength - baseUrl.length - 100; // 保留100字符的缓冲
+      const issueUrlPrefix = `${baseUrl}issues/new?title=${encodedTitle}&body=`;
+      const availableLength = maxUrlLength - issueUrlPrefix.length - 100; // 保留100字符的缓冲
       
-      // 截断body内容
-      const truncatedBody = body.substring(0, availableLength) + '\n\n... (内容因长度限制被截断，请查看VSCode控制台获取完整信息)';
-      issueUrl = baseUrl + encodeURIComponent(truncatedBody);
+      const truncatedBody = body.substring(0, availableLength);
+      const encodedTruncatedBody = encodeURIComponent(truncatedBody + "\n\n... (body truncated)");
+      issueUrl = `${baseUrl}issues/new?title=${encodedTitle}&body=${encodedTruncatedBody}`;
     }
     
     return issueUrl;
