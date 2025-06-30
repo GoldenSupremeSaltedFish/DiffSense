@@ -3465,22 +3465,43 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
   }
 
   private generateIssueTitle(reportData: any, systemInfo: any): string {
-    const { projectType, analysisScope, backendLanguage } = reportData;
-    const platform = systemInfo.platform;
+    const { projectType, analysisScope, backendLanguage, errorContext } = reportData;
+    const platform = systemInfo.os || systemInfo.platform || 'Unknown';
     
-    // 生成有意义的标题
-    let title = '🐛 ';
+    // 生成简洁明了的标题
+    let title = '[Bug] ';
     
-    if (projectType && projectType !== 'unknown') {
-      title += `${projectType}项目分析问题`;
-      if (backendLanguage && backendLanguage !== 'unknown') {
-        title += ` (${backendLanguage})`;
+    // 根据错误类型生成更具体的标题
+    if (errorContext && typeof errorContext === 'string') {
+      if (errorContext.includes('不存在') || errorContext.includes('not found')) {
+        title += '文件或路径不存在';
+      } else if (errorContext.includes('权限') || errorContext.includes('permission')) {
+        title += '权限问题';
+      } else if (errorContext.includes('超时') || errorContext.includes('timeout')) {
+        title += '分析超时';
+      } else if (errorContext.includes('解析') || errorContext.includes('parse')) {
+        title += '结果解析失败';
+      } else {
+        title += '分析执行错误';
       }
     } else {
-      title += 'DiffSense分析问题';
+      title += 'DiffSense执行异常';
     }
     
-    title += ` - ${platform}`;
+    // 添加项目类型信息
+    if (projectType && projectType !== 'unknown') {
+      if (backendLanguage && backendLanguage !== 'unknown') {
+        title += ` (${backendLanguage}项目)`;
+      } else {
+        title += ` (${projectType}项目)`;
+      }
+    }
+    
+    // 添加平台信息（简化版）
+    const platformShort = platform.includes('Windows') ? 'Win' : 
+                         platform.includes('Darwin') ? 'Mac' : 
+                         platform.includes('Linux') ? 'Linux' : platform;
+    title += ` - ${platformShort}`;
     
     return title;
   }
@@ -3498,95 +3519,113 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
     const codeBlock = (content: string, lang = '') => `\`\`\`${lang}\n${content}\n\`\`\``;
 
-    let body = `
-### 🚨 Bug Report
+    let body = `## 🐛 问题描述
 
-**1. Description**
-*Please provide a clear and concise description of what the bug is.*
-*Example: The analysis fails with a "..." error when comparing commit A and B.*
-> 
+**问题概述：**
+请简明描述遇到的问题（例如：分析某个提交时出现错误、界面无法加载等）
 
-**2. How to Reproduce**
-*Steps to reproduce the behavior:*
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+**具体表现：**
+请描述错误的具体表现（例如：弹出了什么错误信息、界面显示异常等）
 
-**3. Expected Behavior**
-*A clear and concise description of what you expected to happen.*
-> 
+## 🔄 复现步骤
+
+1. 在什么项目类型上进行分析（Java/Golang/前端）
+2. 执行了什么操作
+3. 比较的是哪两个提交或分支
+4. 出现了什么结果
+
+## 🎯 期望结果
+
+请描述您期望看到的正确结果
 
 ---
 
-### 🔍 Analysis Context (Auto-generated)
+## 📊 环境信息
 
-**Commit Info:**
-${codeBlock(JSON.stringify(commitInfo, null, 2), 'json')}
+**系统环境：**
+- OS: ${systemInfo.os || 'Unknown'}
+- VS Code: ${systemInfo.vscodeVersion || 'Unknown'}
+- DiffSense: ${systemInfo.extensionVersion || 'Unknown'}
 
-**Analysis Parameters:**
-${codeBlock(JSON.stringify(analysisParams, null, 2), 'json')}
+**项目信息：**
+- 分支: \`${gitInfo.currentBranch || 'Unknown'}\`
+- Git版本: ${gitInfo.gitVersion || 'Unknown'}
+- 工作区状态: ${gitInfo.workingTreeStatus ? '有未提交更改' : '工作区干净'}`;
 
-**System Information:**
-- **OS:** ${systemInfo.os}
-- **VS Code Version:** ${systemInfo.vscodeVersion}
-- **Extension Version:** ${systemInfo.extensionVersion}
+    // 添加分析参数（如果有的话）
+    if (analysisParams && Object.keys(analysisParams).length > 0) {
+      body += `
 
-**Git Information:**
-- **Git Version:** ${gitInfo.gitVersion || 'Unknown'}
-- **Current Branch:** \`${gitInfo.currentBranch || 'Unknown'}\`
-- **Remote URL:** \`${gitInfo.remoteUrl || 'Unknown'}\`
-- **Working Tree Status:** ${gitInfo.workingTreeStatus ? '有未提交的更改' : '干净'}
-`;
+**分析参数：**
+${codeBlock(JSON.stringify(analysisParams, null, 2), 'json')}`;
+    }
 
+    // 添加错误日志（只显示最近的几条）
     if (recentErrors && recentErrors.length > 0) {
+      const recentErrorsLimited = recentErrors.slice(-3); // 只显示最近3条
       body += `
-**Recent Error Logs:**
-${codeBlock(recentErrors.map((e: any) => `[${e.timestamp}] ${e.context ? `(${e.context}) ` : ''}${e.error}`).join('\n'))}
-`;
+
+**错误日志：**
+${codeBlock(recentErrorsLimited.map((e: any) => `[${e.timestamp}] ${e.context ? `(${e.context}) ` : ''}${e.error}`).join('\n'))}`;
     }
 
-    if (analysisResults) {
-      body += `
-**Analysis Results (at time of report):**
-${codeBlock(JSON.stringify(analysisResults, null, 2), 'json')}
-`;
-    }
-
+    // 添加错误上下文（如果有的话）
     if (errorContext) {
       body += `
-**Error Context:**
-${codeBlock(String(errorContext))}
-`;
+
+**错误详情：**
+${codeBlock(String(errorContext))}`;
     }
 
     body += `
+
 ---
-*Please add any other context or screenshots about the problem here.*
-`;
+**💡 提示：** 您可以在上方添加截图或其他补充信息来帮助我们更好地定位问题。`;
 
     return body;
   }
 
   private buildGitHubIssueUrl(repoUrl: string, title: string, body: string): string {
-    const baseUrl = repoUrl.endsWith('/') ? repoUrl : `${repoUrl}/`;
-    // 构建GitHub Issue URL
-    const encodedTitle = encodeURIComponent(title);
-    const encodedBody = encodeURIComponent(body);
+    // 确保仓库URL格式正确
+    const baseUrl = repoUrl.replace(/\.git$/, '').endsWith('/') 
+      ? repoUrl.replace(/\.git$/, '') 
+      : `${repoUrl.replace(/\.git$/, '')}/`;
     
-    // GitHub URL参数有长度限制，检查并截断
-    const maxUrlLength = 8000; // GitHub的实际限制可能更小，但这是一个安全值
+    // 清理和编码标题和正文
+    const cleanTitle = title.replace(/[#%]/g, ''); // 移除可能导致编码问题的字符
+    const cleanBody = body.replace(/[\u0000-\u001F\u007F-\u009F]/g, ''); // 移除控制字符
+    
+    const encodedTitle = encodeURIComponent(cleanTitle);
+    const encodedBody = encodeURIComponent(cleanBody);
+    
+    // GitHub URL参数长度限制（实际约8192字符）
+    const maxUrlLength = 7000; // 使用更保守的值
     let issueUrl = `${baseUrl}issues/new?title=${encodedTitle}&body=${encodedBody}`;
     
     if (issueUrl.length > maxUrlLength) {
-      console.warn('⚠️ GitHub Issue URL太长，将截断body内容');
+      console.warn('⚠️ GitHub Issue URL超长，正在优化内容...');
       
       // 计算可用的body长度
       const issueUrlPrefix = `${baseUrl}issues/new?title=${encodedTitle}&body=`;
-      const availableLength = maxUrlLength - issueUrlPrefix.length - 100; // 保留100字符的缓冲
+      const availableLength = maxUrlLength - issueUrlPrefix.length - 200; // 保留更多缓冲
       
-      const truncatedBody = body.substring(0, availableLength);
-      const encodedTruncatedBody = encodeURIComponent(truncatedBody + "\n\n... (body truncated)");
+      // 智能截断：尽量保留核心信息
+      let truncatedBody = cleanBody;
+      if (cleanBody.length > availableLength) {
+        // 找到环境信息部分的开始位置
+        const envInfoIndex = cleanBody.indexOf('## 📊 环境信息');
+        if (envInfoIndex > 0 && envInfoIndex < availableLength) {
+          // 保留问题描述和环境信息，移除详细日志
+          const beforeEnvInfo = cleanBody.substring(0, envInfoIndex);
+          const envInfoPart = cleanBody.substring(envInfoIndex, Math.min(cleanBody.length, envInfoIndex + 500));
+          truncatedBody = beforeEnvInfo + envInfoPart + '\n\n---\n**注意：** 详细日志信息已省略，完整信息请查看插件输出。';
+        } else {
+          // 简单截断
+          truncatedBody = cleanBody.substring(0, availableLength) + '\n\n---\n**注意：** 内容已截断。';
+        }
+      }
+      
+      const encodedTruncatedBody = encodeURIComponent(truncatedBody);
       issueUrl = `${baseUrl}issues/new?title=${encodedTitle}&body=${encodedTruncatedBody}`;
     }
     
