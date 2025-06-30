@@ -546,7 +546,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       // 限制webview只能加载本地资源
       localResourceRoots: [
         this._extensionUri,
-        vscode.Uri.file(path.join(this._extensionUri.fsPath, '..', 'ui', 'diffsense-frontend', 'dist'))
+        vscode.Uri.file(path.join(this._extensionUri.fsPath, 'dist'))
       ]
     };
 
