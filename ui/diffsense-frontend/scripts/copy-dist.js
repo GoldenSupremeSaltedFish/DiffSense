@@ -4,10 +4,33 @@ import { fileURLToPath } from 'url';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
-// 使用环境变量或默认值
+// 使用环境变量或计算相对路径
 const sourceDir = process.env.FRONTEND_DIST || resolve(__dirname, '../dist');
-// 默认将构建产物复制到 plugin/dist（Webview 运行目录）
-const targetDir = process.env.FRONTEND_TARGET || resolve(__dirname, '../../../plugin/dist');
+
+// 目标路径：优先使用环境变量，否则寻找 plugin 目录
+let targetDir = process.env.FRONTEND_TARGET;
+if (!targetDir) {
+  // 从当前脚本位置向上查找 plugin 目录
+  let searchDir = resolve(__dirname, '..');
+  let pluginDir = null;
+  
+  // 最多向上查找3级目录
+  for (let i = 0; i < 3; i++) {
+    const candidatePluginDir = resolve(searchDir, '..', 'plugin');
+    if (existsSync(candidatePluginDir) && existsSync(join(candidatePluginDir, 'package.json'))) {
+      pluginDir = candidatePluginDir;
+      break;
+    }
+    searchDir = resolve(searchDir, '..');
+  }
+  
+  if (pluginDir) {
+    targetDir = join(pluginDir, 'dist');
+  } else {
+    // 回退到默认相对路径
+    targetDir = resolve(__dirname, '../../../plugin/dist');
+  }
+}
 
 function ensureDir(dirPath) {
   try {
