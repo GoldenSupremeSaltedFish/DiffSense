@@ -3599,8 +3599,8 @@ ${codeBlock(String(errorContext))}
       }
       const repoPath = workspaceFolder.uri.fsPath;
 
-      const analyzerPath = this.getAnalyzerPath('node-analyzer');
-      const mergeImpactPath = path.join(path.dirname(analyzerPath), 'mergeImpact.js');
+      const nodeAnalyzerPath = this.getNodeAnalyzerPath();
+      const mergeImpactPath = path.join(nodeAnalyzerPath, 'mergeImpact.js');
       if (!fs.existsSync(mergeImpactPath)) {
         throw new Error(`mergeImpact.js 不存在: ${mergeImpactPath}`);
       }
