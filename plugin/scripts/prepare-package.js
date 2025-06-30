@@ -42,7 +42,7 @@ function preparePackage() {
   
   // ============ 1. 准备前端构建产物 ============
   // 前端构建产物源路径（优先使用环境变量）
-  const frontendDistSrc = process.env.FRONTEND_DIST || path.join(pluginDir, 'dist');
+  const frontendDistSrc = process.env.FRONTEND_DIST || path.join(pluginDir, '..', 'ui', 'diffsense-frontend', 'dist');
   
   // 前端资源目标路径（插件内），统一放在 plugin/dist
   const frontendDistDest = path.join(pluginDir, 'dist');
