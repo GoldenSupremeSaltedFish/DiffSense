@@ -3412,9 +3412,11 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       const gitCommands = [
         ['git', ['rev-parse', 'HEAD'], 'currentCommit'],
         ['git', ['rev-parse', '--abbrev-ref', 'HEAD'], 'currentBranch'],
+        ['git', ['remote', '-v'], 'remotes'],
         ['git', ['remote', 'get-url', 'origin'], 'remoteUrl'],
         ['git', ['status', '--porcelain'], 'workingTreeStatus'],
-        ['git', ['log', '--oneline', '-5'], 'recentCommits']
+        ['git', ['log', '--oneline', '-5'], 'recentCommits'],
+        ['git', ['--version'], 'gitVersion']
       ];
       
       const gitInfo: any = {};
@@ -3531,10 +3533,10 @@ ${codeBlock(JSON.stringify(analysisParams, null, 2), 'json')}
 - **Extension Version:** ${systemInfo.extensionVersion}
 
 **Git Information:**
-- **Git Version:** ${gitInfo.gitVersion}
-- **Current Branch:** \`${gitInfo.currentBranch}\`
-- **Remotes:**
-${codeBlock(gitInfo.remotes.map((r: any) => `${r.name}: ${r.url}`).join('\n'))}
+- **Git Version:** ${gitInfo.gitVersion || 'Unknown'}
+- **Current Branch:** \`${gitInfo.currentBranch || 'Unknown'}\`
+- **Remote URL:** \`${gitInfo.remoteUrl || 'Unknown'}\`
+- **Working Tree Status:** ${gitInfo.workingTreeStatus ? '有未提交的更改' : '干净'}
 `;
 
     if (recentErrors && recentErrors.length > 0) {
