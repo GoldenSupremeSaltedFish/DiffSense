@@ -1626,6 +1626,16 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
   private getGitBranches(repoPath: string): Promise<string[]> {
     return new Promise((resolve, reject) => {
+      // 增加.git目录检查
+      const gitPath = path.join(repoPath, '.git');
+      if (!fs.existsSync(gitPath)) {
+        // 如果.git目录不存在，提供更明确的错误信息
+        const errorMsg = `指定的路径不是一个Git仓库: ${repoPath}。请确保在VSCode中打开了正确的项目根目录。`;
+        console.error(errorMsg);
+        reject(new Error(errorMsg));
+        return;
+      }
+
       // 执行git branch命令
       const child = execFile('git', ['branch', '-a'], {
         cwd: repoPath,
@@ -1983,6 +1993,15 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
   private validateCommitIdsInBranch(repoPath: string, branch: string, startCommit: string, endCommit: string): Promise<{valid: boolean, error?: string}> {
     return new Promise((resolve) => {
+      // 增加.git目录检查
+      const gitPath = path.join(repoPath, '.git');
+      if (!fs.existsSync(gitPath)) {
+        const errorMsg = `指定的路径不是一个Git仓库: ${repoPath}。`;
+        console.error(errorMsg);
+        resolve({ valid: false, error: errorMsg });
+        return;
+      }
+      
       // 验证两个commit是否存在且在同一分支
       const child = execFile('git', [
         'merge-base', 
@@ -2015,6 +2034,15 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
   private verifyCommitsInBranch(repoPath: string, branch: string, startCommit: string, endCommit: string): Promise<{valid: boolean, error?: string}> {
     return new Promise((resolve, reject) => {
+      // 增加.git目录检查
+      const gitPath = path.join(repoPath, '.git');
+      if (!fs.existsSync(gitPath)) {
+        const errorMsg = `指定的路径不是一个Git仓库: ${repoPath}。`;
+        console.error(errorMsg);
+        reject(new Error(errorMsg));
+        return;
+      }
+      
       // 检查commits是否在分支历史中
       const child = execFile('git', [
         'log', 
@@ -3363,6 +3391,21 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
   private async collectGitInfo(workspacePath: string): Promise<any> {
     return new Promise((resolve) => {
+      // 增加.git目录检查
+      const gitPath = path.join(workspacePath, '.git');
+      if (!fs.existsSync(gitPath) && workspacePath !== '未知路径') {
+        const errorMsg = `指定的路径不是一个Git仓库: ${workspacePath}。`;
+        console.error(errorMsg);
+        resolve({
+          currentBranch: `Error: ${errorMsg}`,
+          currentCommit: `Error: ${errorMsg}`,
+          remoteUrl: `Error: ${errorMsg}`,
+          workingTreeStatus: `Error: ${errorMsg}`,
+          recentCommits: `Error: ${errorMsg}`
+        });
+        return;
+      }
+
       const { execFile } = require('child_process');
       
       // 收集基本Git信息
