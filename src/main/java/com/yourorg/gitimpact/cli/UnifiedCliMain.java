@@ -16,6 +16,7 @@ import picocli.CommandLine.HelpCommand;
     subcommands = {
         HelpCommand.class,
         AnalyzeCommand.class,
+        EnhancedAnalyzeCommand.class,
         ImpactedCommand.class,
         CallGraphCommand.class,
         RecommendTestsCommand.class,
