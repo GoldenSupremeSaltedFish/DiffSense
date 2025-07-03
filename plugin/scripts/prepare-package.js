@@ -31,6 +31,25 @@ function copyDir(src, dest) {
 }
 
 /**
+ * 检查本地资源是否存在
+ */
+function checkLocalResources(pluginDir) {
+  const localResources = {
+    frontend: path.join(pluginDir, 'ui', 'diffsense-frontend', 'dist'),
+    nodeAnalyzer: path.join(pluginDir, 'ui', 'node-analyzer'),
+    golangAnalyzer: path.join(pluginDir, 'ui', 'golang-analyzer'),
+    javaJar: path.join(pluginDir, 'target')
+  };
+
+  const available = {};
+  for (const [key, path] of Object.entries(localResources)) {
+    available[key] = fs.existsSync(path);
+  }
+
+  return { localResources, available };
+}
+
+/**
  * 准备VSIX包的前端资源和分析器
  */
 function preparePackage() {
@@ -40,9 +59,25 @@ function preparePackage() {
   const pluginDir = process.cwd();
   console.log('📁 插件目录:', pluginDir);
   
+  // 检查本地资源
+  const { localResources, available } = checkLocalResources(pluginDir);
+  console.log('🔍 本地资源检查结果:', available);
+  
   // ============ 1. 准备前端构建产物 ============
-  // 前端构建产物源路径（优先使用环境变量）
-  const frontendDistSrc = process.env.FRONTEND_DIST || path.join(pluginDir, '..', 'ui', 'diffsense-frontend', 'dist');
+  // 前端构建产物源路径（优先级：环境变量 > 本地资源 > 外部路径）
+  let frontendDistSrc = process.env.FRONTEND_DIST;
+  
+  if (!frontendDistSrc) {
+    if (available.frontend) {
+      frontendDistSrc = localResources.frontend;
+      console.log('✅ 使用本地前端资源');
+    } else {
+      frontendDistSrc = path.join(pluginDir, '..', 'ui', 'diffsense-frontend', 'dist');
+      console.log('⚠️ 使用外部前端资源');
+    }
+  } else {
+    console.log('✅ 使用环境变量指定的前端资源');
+  }
   
   // 前端资源目标路径（插件内），统一放在 plugin/dist
   const frontendDistDest = path.join(pluginDir, 'dist');
@@ -53,6 +88,7 @@ function preparePackage() {
   
   if (!fs.existsSync(frontendDistSrc)) {
     console.error('❌ 前端构建产物不存在！');
+    console.error('请确保前端已构建，或设置FRONTEND_DIST环境变量');
     console.error('源目录内容:');
     try {
       console.error(fs.readdirSync(path.dirname(frontendDistSrc)));
@@ -111,34 +147,37 @@ function preparePackage() {
     fs.mkdirSync(analyzersDestDir, { recursive: true });
   }
   
-  // 复制Node.js分析器
-  const nodeAnalyzerSrc = path.join(workspaceRoot, 'ui', 'node-analyzer');
+  // 复制Node.js分析器（优先级：本地 > 外部）
+  let nodeAnalyzerSrc = available.nodeAnalyzer ? localResources.nodeAnalyzer : path.join(workspaceRoot, 'ui', 'node-analyzer');
   const nodeAnalyzerDest = path.join(analyzersDestDir, 'node-analyzer');
   
   if (fs.existsSync(nodeAnalyzerSrc)) {
     console.log('📦 复制Node.js分析器...');
+    console.log(`  源路径: ${nodeAnalyzerSrc} ${available.nodeAnalyzer ? '(本地)' : '(外部)'}`);
     copyDir(nodeAnalyzerSrc, nodeAnalyzerDest);
     console.log('✅ Node.js分析器复制完成');
   } else {
     console.warn('⚠️ Node.js分析器源目录不存在:', nodeAnalyzerSrc);
   }
   
-  // 复制Golang分析器
-  const golangAnalyzerSrc = path.join(workspaceRoot, 'ui', 'golang-analyzer');
+  // 复制Golang分析器（优先级：本地 > 外部）
+  let golangAnalyzerSrc = available.golangAnalyzer ? localResources.golangAnalyzer : path.join(workspaceRoot, 'ui', 'golang-analyzer');
   const golangAnalyzerDest = path.join(analyzersDestDir, 'golang-analyzer');
   
   if (fs.existsSync(golangAnalyzerSrc)) {
     console.log('📦 复制Golang分析器...');
+    console.log(`  源路径: ${golangAnalyzerSrc} ${available.golangAnalyzer ? '(本地)' : '(外部)'}`);
     copyDir(golangAnalyzerSrc, golangAnalyzerDest);
     console.log('✅ Golang分析器复制完成');
   } else {
     console.warn('⚠️ Golang分析器源目录不存在:', golangAnalyzerSrc);
   }
   
-  // 复制Java JAR文件
-  const targetDir = path.join(workspaceRoot, 'target');
+  // 复制Java JAR文件（优先级：本地 > 外部）
+  let targetDir = available.javaJar ? localResources.javaJar : path.join(workspaceRoot, 'target');
   if (fs.existsSync(targetDir)) {
     console.log('📦 复制Java分析器...');
+    console.log(`  源路径: ${targetDir} ${available.javaJar ? '(本地)' : '(外部)'}`);
     const jarFiles = fs.readdirSync(targetDir).filter(file => file.endsWith('.jar'));
     
     for (const jarFile of jarFiles) {
@@ -161,6 +200,8 @@ function preparePackage() {
   }
   
   console.log('🎉 VSIX包准备完成！');
+  console.log('💡 提示: 可以通过环境变量自定义资源路径:');
+  console.log('   FRONTEND_DIST=路径  - 指定前端构建产物路径');
 }
 
 /**
