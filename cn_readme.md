@@ -2,6 +2,11 @@
 
 DiffSense 是一款强大的代码变更影响分析工具，以 VSCode 插件形式提供。它通过静态代码分析和版本差异比对，帮助开发者快速理解代码变更的影响范围和风险。
 
+[![Version](https://img.shields.io/badge/version-0.1.12-blue.svg)](https://github.com/GoldenSupremeSaltedFish/DiffSense)
+[![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](./LICENSE.txt)
+[![VSCode](https://img.shields.io/badge/VSCode-1.74.0+-blueviolet.svg)](https://code.visualstudio.com/)
+[![Marketplace](https://img.shields.io/badge/Marketplace-DiffSense-orange.svg)](https://marketplace.visualstudio.com/items?itemName=humphreyLi.diffsense)
+
 ## ✨ 主要特性
 
 - 🔍 **多语言支持**
@@ -33,9 +38,24 @@ DiffSense 是一款强大的代码变更影响分析工具，以 VSCode 插件�
 ## 🚀 快速开始
 
 ### 安装插件
+
+#### 方式一：从 VSCode 插件市场安装（推荐）
 1. 打开 VSCode
-2. 在扩展商店搜索 "DiffSense"
-3. 点击安装并重新加载
+2. 按 `Ctrl+P`（Mac 上按 `Cmd+P`）打开快速打开
+3. 输入：`ext install humphreyLi.diffsense`
+4. 按回车安装
+
+#### 方式二：从扩展面板安装
+1. 打开 VSCode
+2. 进入扩展面板（`Ctrl+Shift+X`）
+3. 搜索 "DiffSense"
+4. 点击安装
+
+#### 方式三：从 VSIX 文件安装
+1. 从 [Releases](https://github.com/GoldenSupremeSaltedFish/DiffSense/releases) 下载最新的 VSIX 文件
+2. 在 VSCode 中，进入扩展面板
+3. 点击 "..." 菜单，选择 "从 VSIX 安装..."
+4. 选择下载的 VSIX 文件
 
 ### 使用步骤
 1. 打开任意 Git 仓库项目
@@ -145,5 +165,9 @@ npm run package
 
 - 🐛 [报告问题](https://github.com/GoldenSupremeSaltedFish/DiffSense/issues)
 - 💡 [功能建议](https://github.com/GoldenSupremeSaltedFish/DiffSense/discussions)
-- 📧 技术支持: support@diffsense.com
-- 📚 [技术文档](./technical_documentation/) 
+- 📚 [技术文档](./technical_documentation/)
+- 🛒 [VSCode 插件市场](https://marketplace.visualstudio.com/items?itemName=humphreyLi.diffsense)
+
+---
+
+[English](./README.md) | **中文版** 

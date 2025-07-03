@@ -1,11 +1,5 @@
 ﻿# .vscodeignore for DiffSense plugin
 
-# First, include everything...
-!**/*
-
-# Then, ignore what we don't want in the package.
-# This file is used by 'vsce package' to create the .vsix.
-
 # Git files
 .git
 .git*
@@ -13,34 +7,28 @@
 
 # Standard development directories and files
 node_modules/
-!analyzers/node-analyzer/node_modules/**
-!analyzers/golang-analyzer/node_modules/**
 out/
-dist/
 *.tsbuildinfo
 .vscode/
-
-# Ignore source code in favor of compiled output
+ui/
 src/
+scripts/
 
 # Test files
 **/test/**
 **/__tests__/**
 
-# Scripts used for development/building
-scripts/
-
 # Config files
 *.json
-!package.json
 *.md
-!README.md
-!LICENSE.txt
 *.lock
 
-# Allow specific files needed for the extension
-!dist/extension.js
-!dist/index.html
-!dist/assets/**
+# Then explicitly include what we want
+!package.json
+!README.md
+!LICENSE.txt
+!dist/**
 !analyzers/**
+!analyzers/node-analyzer/node_modules/**
+!analyzers/golang-analyzer/node_modules/**
 !icon.png

@@ -1,12 +1,13 @@
-# DiffSense - Git Code Impact Analysis
+# DiffSense
 
-[![Version](https://img.shields.io/badge/version-0.1.7-blue.svg)](https://marketplace.visualstudio.com/items?itemName=humphreyLi.diffsense)
+[![Version](https://img.shields.io/badge/version-0.1.12-blue.svg)](https://marketplace.visualstudio.com/items?itemName=humphreyLi.diffsense)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE.txt)
 [![VSCode](https://img.shields.io/badge/VSCode-1.74.0+-orange.svg)](https://code.visualstudio.com/)
+[![Marketplace](https://img.shields.io/badge/Marketplace-DiffSense-orange.svg)](https://marketplace.visualstudio.com/items?itemName=humphreyLi.diffsense)
 
 🚀 智能Git代码影响分析工具，支持Java、Golang、前端代码的变更影响分析和可视化
 
-中文 | [English](README_EN.md)
+[English](./README_EN.md) | 中文
 
 ## ✨ 主要功能
 
@@ -18,11 +19,25 @@
 
 ## 🚀 快速开始
 
-1. 安装扩展
-2. 打开包含Git仓库的项目
-3. 在活动栏找到DiffSense图标
-4. 选择分析范围和类型
-5. 点击"开始分析"
+### 安装方式
+
+#### 方式一：从 VSCode 插件市场安装（推荐）
+1. 打开 VSCode
+2. 按 `Ctrl+P`（Mac 上按 `Cmd+P`）打开快速打开
+3. 输入：`ext install humphreyLi.diffsense`
+4. 按回车安装
+
+#### 方式二：从扩展面板安装
+1. 打开 VSCode
+2. 进入扩展面板（`Ctrl+Shift+X`）
+3. 搜索 "DiffSense"
+4. 点击安装
+
+### 使用步骤
+1. 打开包含Git仓库的项目
+2. 在活动栏找到DiffSense图标
+3. 选择分析范围和类型
+4. 点击"开始分析"
 
 ## 📋 支持的分析类型
 
@@ -50,7 +65,14 @@
 
 ## 📝 更新日志
 
-### 版本 0.1.7 (最新)
+### 版本 0.1.12 (最新)
+- 🎯 **插件名称优化**: 简化显示名称为"DiffSense"，提升品牌识别度
+- 📝 **Issue模板改进**: 中文化模板，智能内容截断，URL编码优化
+- 📦 **打包优化**: 解决重复文件问题，包大小从52MB优化到37MB
+- 🔧 **路径配置修复**: 确保TypeScript编译产物正确包含
+- 🌐 **远程开发支持**: 完善SSH/WSL/容器环境兼容性
+
+### 版本 0.1.7
 - 🔧 **增强路径解析**: 5种策略自动适配各种环境，完美解决远程开发问题
 - 🌐 **远程环境修复**: 完全兼容SSH/WSL/容器/云端开发环境
 - 📦 **JAR文件捆绑**: Java分析器现已内置到扩展中，无需外部依赖
@@ -72,6 +94,7 @@
 - 🐛 问题报告: [GitHub Issues](https://github.com/GoldenSupremeSaltedFish/DiffSense/issues)
 - 💡 功能建议: [GitHub Discussions](https://github.com/GoldenSupremeSaltedFish/DiffSense/discussions)
 - 📚 文档: [Wiki](https://github.com/GoldenSupremeSaltedFish/DiffSense/wiki)
+- 🛒 插件市场: [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=humphreyLi.diffsense)
 
 ---
 

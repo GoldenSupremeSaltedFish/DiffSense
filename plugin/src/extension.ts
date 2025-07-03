@@ -1163,8 +1163,20 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       let backendLanguage: 'java' | 'golang' | 'unknown';
       if (javaFeatures.detected) {
         backendLanguage = 'java';
+        
+        // 增强微服务检测
+        const microserviceInfo = await this.detectMicroserviceFeatures(repoUri);
+        if (microserviceInfo.isMicroservice) {
+          console.log(`🏗️ 检测到微服务架构: ${microserviceInfo.framework}, 构建工具: ${microserviceInfo.buildTool}`);
+        }
       } else if (goFeatures.detected) {
         backendLanguage = 'golang';
+        
+        // 增强微服务检测
+        const microserviceInfo = await this.detectMicroserviceFeatures(repoUri);
+        if (microserviceInfo.isMicroservice) {
+          console.log(`🏗️ 检测到微服务架构: ${microserviceInfo.framework}, 构建工具: ${microserviceInfo.buildTool}`);
+        }
       } else {
         backendLanguage = 'unknown';
       }
@@ -1174,6 +1186,143 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     } catch (error) {
       console.error('后端语言检测错误:', error);
       return 'unknown';
+    }
+  }
+
+  private async detectMicroserviceFeatures(repoUri: vscode.Uri): Promise<{
+    isMicroservice: boolean;
+    buildTool: string;
+    framework: string;
+    architectureFeatures: string[];
+    serviceTypes: string[];
+  }> {
+    try {
+      console.log(`🏗️ 开始微服务特征检测，URI: ${repoUri.toString()}`);
+      
+      const result = {
+        isMicroservice: false,
+        buildTool: 'unknown',
+        framework: 'unknown',
+        architectureFeatures: [] as string[],
+        serviceTypes: [] as string[]
+      };
+      
+      // 检测构建工具
+      const buildTools = ['pom.xml', 'build.gradle', 'build.gradle.kts', 'build.xml', 'BUILD', 'BUILD.bazel', 'package.json', 'Cargo.toml', 'go.mod', 'requirements.txt', 'Dockerfile'];
+      
+      for (const buildTool of buildTools) {
+        const buildFiles = await vscode.workspace.findFiles(
+          `**/${buildTool}`,
+          '**/node_modules/**,**/target/**,**/dist/**,**/build/**'
+        );
+        
+        if (buildFiles.length > 0) {
+          result.buildTool = this.mapBuildFileToTool(buildTool);
+          console.log(`🔧 检测到构建工具: ${result.buildTool} (${buildTool})`);
+          break;
+        }
+      }
+      
+      // 检测微服务架构特征
+      const microservicePatterns = ['*_service', 'service_*', '*-service', 'service-*', '*_api', 'api_*', '*-api', 'api-*', '*_gateway', 'gateway_*', '*-gateway', 'gateway-*'];
+      
+      for (const pattern of microservicePatterns) {
+        const serviceFiles = await vscode.workspace.findFiles(
+          `**/${pattern}/**`,
+          '**/node_modules/**,**/target/**,**/dist/**,**/build/**'
+        );
+        
+        if (serviceFiles.length > 0) {
+          result.architectureFeatures.push(pattern);
+          console.log(`🏛️ 检测到微服务架构特征: ${pattern}`);
+        }
+      }
+      
+      // 检测服务类型
+      const serviceTypes = ['user', 'order', 'product', 'payment', 'auth', 'config', 'registry', 'discovery'];
+      
+      for (const serviceType of serviceTypes) {
+        const serviceFiles = await vscode.workspace.findFiles(
+          `**/*${serviceType}*/**`,
+          '**/node_modules/**,**/target/**,**/dist/**,**/build/**'
+        );
+        
+        if (serviceFiles.length > 0) {
+          result.serviceTypes.push(`${serviceType}-service`);
+          console.log(`🔧 检测到服务类型: ${serviceType}-service`);
+        }
+      }
+      
+      // 检测微服务框架
+      const frameworkIndicators = {
+        'spring-boot': ['spring-boot-starter', '@SpringBootApplication', 'application.yml', 'application.properties'],
+        'spring-cloud': ['spring-cloud-starter', '@EnableEurekaServer', '@EnableDiscoveryClient', '@EnableConfigServer'],
+        'micronaut': ['micronaut', '@MicronautApplication'],
+        'quarkus': ['quarkus', '@QuarkusMain'],
+        'go-micro': ['github.com/micro/go-micro', 'micro.NewService'],
+        'node-micro': ['express', 'fastify', 'microservice']
+      };
+      
+      for (const [framework, indicators] of Object.entries(frameworkIndicators)) {
+        for (const indicator of indicators) {
+          const frameworkFiles = await vscode.workspace.findFiles(
+            `**/*${indicator}*`,
+            '**/node_modules/**,**/target/**,**/dist/**,**/build/**'
+          );
+          
+          if (frameworkFiles.length > 0) {
+            result.framework = framework;
+            console.log(`🏗️ 检测到微服务框架: ${framework}`);
+            break;
+          }
+        }
+        if (result.framework !== 'unknown') break;
+      }
+      
+      // 判断是否为微服务项目
+      result.isMicroservice = result.architectureFeatures.length > 0 || 
+                             result.serviceTypes.length > 1 || 
+                             result.framework === 'spring-cloud';
+      
+      console.log(`🏗️ 微服务检测结果: ${result.isMicroservice ? '✅ 微服务项目' : '❌ 单体应用'}`);
+      return result;
+      
+    } catch (error: any) {
+      console.error('🏗️ 微服务特征检测失败:', error);
+      return {
+        isMicroservice: false,
+        buildTool: 'unknown',
+        framework: 'unknown',
+        architectureFeatures: [],
+        serviceTypes: []
+      };
+    }
+  }
+  
+  private mapBuildFileToTool(fileName: string): string {
+    switch (fileName) {
+      case 'pom.xml':
+        return 'maven';
+      case 'build.gradle':
+      case 'build.gradle.kts':
+        return 'gradle';
+      case 'build.xml':
+        return 'ant';
+      case 'BUILD':
+      case 'BUILD.bazel':
+        return 'bazel';
+      case 'package.json':
+        return 'npm';
+      case 'Cargo.toml':
+        return 'cargo';
+      case 'go.mod':
+        return 'go';
+      case 'requirements.txt':
+        return 'python';
+      case 'Dockerfile':
+        return 'docker';
+      default:
+        return 'unknown';
     }
   }
 
@@ -1293,11 +1442,24 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         return;
       }
 
+      // 构建分析命令参数
+      const analyzerArgs = [analyzerPath, targetDir, 'json'];
+      
+      // 添加微服务检测选项
+      analyzerArgs.push(
+        '--enable-microservice-detection', 'true',
+        '--enable-build-tool-detection', 'true',
+        '--enable-framework-detection', 'true',
+        '--max-depth', '20'
+      );
+      
+      console.log('执行前端分析命令:', 'node', analyzerArgs.join(' '));
+      
       // 执行前端分析器
-      const child = execFile('node', [analyzerPath, targetDir, 'json'], {
+      const child = execFile('node', analyzerArgs, {
         cwd: repoPath,
-        timeout: 60000, // 60秒超时
-        maxBuffer: 1024 * 1024 * 10 // 10MB buffer
+        timeout: 120000, // 增加超时时间到2分钟，支持微服务项目
+        maxBuffer: 1024 * 1024 * 20 // 增加buffer到20MB
       }, (error, stdout, stderr) => {
       if (error) {
           console.error('前端分析器执行错误:', error);
@@ -1343,6 +1505,19 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       const allMethods: string[] = [];
       const allFiles: any[] = [];
       
+      // 处理微服务检测结果
+      let microserviceInfo = '';
+      if (frontendResult.microserviceDetection) {
+        const detection = frontendResult.microserviceDetection;
+        if (detection.isMicroservice) {
+          microserviceInfo = `🏗️ 微服务项目 (${detection.framework}, ${detection.buildTool})`;
+          console.log(`🌐 前端微服务检测: ${microserviceInfo}`);
+        } else {
+          microserviceInfo = `📦 单体应用 (${detection.buildTool})`;
+          console.log(`🌐 前端项目类型: ${microserviceInfo}`);
+        }
+      }
+      
       frontendResult.files.forEach((file: any) => {
         // 收集所有文件信息
         allFiles.push({
@@ -1369,7 +1544,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       // 创建单一的前端分析提交记录
       commits.push({
         commitId: 'frontend_analysis',
-        message: '前端代码分析结果',
+        message: `前端代码分析结果${microserviceInfo ? ` - ${microserviceInfo}` : ''}`,
         author: { name: '前端分析器', email: 'frontend@diffsense.com' },
         timestamp: frontendResult.timestamp || new Date().toISOString(),
         changedFilesCount: frontendResult.files.length,
@@ -1382,7 +1557,8 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         language: 'frontend',
         analysisSource: 'frontend',
         frontendSummary: frontendResult.summary,
-        frontendDependencies: frontendResult.dependencies
+        frontendDependencies: frontendResult.dependencies,
+        microserviceDetection: frontendResult.microserviceDetection || null
       });
     } else {
       // 如果没有文件数据，创建一个说明性的提交

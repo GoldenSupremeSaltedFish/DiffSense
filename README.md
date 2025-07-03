@@ -2,9 +2,10 @@
 
 **DiffSense** is a powerful code change impact analysis tool provided as a VSCode extension. It helps developers quickly understand the scope and risk of code changes through static code analysis and version difference comparison.
 
-[![Version](https://img.shields.io/badge/version-0.1.11-blue.svg)](https://github.com/GoldenSupremeSaltedFish/DiffSense)
+[![Version](https://img.shields.io/badge/version-0.1.12-blue.svg)](https://github.com/GoldenSupremeSaltedFish/DiffSense)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](./LICENSE.txt)
 [![VSCode](https://img.shields.io/badge/VSCode-1.74.0+-blueviolet.svg)](https://code.visualstudio.com/)
+[![Marketplace](https://img.shields.io/badge/Marketplace-DiffSense-orange.svg)](https://marketplace.visualstudio.com/items?itemName=humphreyLi.diffsense)
 
 ## ✨ Key Features
 
@@ -37,9 +38,24 @@
 ## 🚀 Quick Start
 
 ### Installation
+
+#### Option 1: Install from VSCode Marketplace (Recommended)
 1. Open VSCode
-2. Search for "DiffSense" in the Extensions marketplace
-3. Click Install and reload
+2. Press `Ctrl+P` (or `Cmd+P` on Mac) to open Quick Open
+3. Type: `ext install humphreyLi.diffsense`
+4. Press Enter to install
+
+#### Option 2: Install from Extensions Panel
+1. Open VSCode
+2. Go to Extensions panel (`Ctrl+Shift+X`)
+3. Search for "DiffSense"
+4. Click Install
+
+#### Option 3: Install from VSIX File
+1. Download the latest VSIX file from [Releases](https://github.com/GoldenSupremeSaltedFish/DiffSense/releases)
+2. In VSCode, go to Extensions panel
+3. Click the "..." menu and select "Install from VSIX..."
+4. Choose the downloaded VSIX file
 
 ### Usage
 1. Open any Git repository project
@@ -150,6 +166,7 @@ Thanks to all developers and users who have contributed to DiffSense!
 - 🐛 [Report Issues](https://github.com/GoldenSupremeSaltedFish/DiffSense/issues)
 - 💡 [Feature Requests](https://github.com/GoldenSupremeSaltedFish/DiffSense/discussions)
 - 📚 [Technical Documentation](./technical_documentation/)
+- 🛒 [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=humphreyLi.diffsense)
 
 ---
 
