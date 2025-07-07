@@ -11,6 +11,7 @@ public class InspectConfig {
     private final Path reportPath;
     private final int depth;
     private final Path cacheDir;
+    private final boolean includeTypeTags;
 
     private static final int DEFAULT_DEPTH = 10;
     private static final String DEFAULT_BASELINE = "main";
@@ -24,6 +25,7 @@ public class InspectConfig {
         this.reportPath = builder.reportPath;
         this.depth = builder.depth;
         this.cacheDir = builder.cacheDir;
+        this.includeTypeTags = builder.includeTypeTags;
     }
 
     public String getBranch() {
@@ -53,6 +55,10 @@ public class InspectConfig {
     public Path getCacheDir() {
         return cacheDir;
     }
+    
+    public boolean isIncludeTypeTags() {
+        return includeTypeTags;
+    }
 
     public static Builder builder() {
         return new Builder();
@@ -66,6 +72,7 @@ public class InspectConfig {
         private Path reportPath;
         private int depth = DEFAULT_DEPTH;
         private Path cacheDir = Path.of(DEFAULT_CACHE_DIR);
+        private boolean includeTypeTags = false;
 
         public Builder branch(String branch) {
             this.branch = branch;
@@ -99,6 +106,11 @@ public class InspectConfig {
 
         public Builder cacheDir(Path cacheDir) {
             this.cacheDir = cacheDir != null ? cacheDir : Path.of(DEFAULT_CACHE_DIR);
+            return this;
+        }
+        
+        public Builder includeTypeTags(boolean includeTypeTags) {
+            this.includeTypeTags = includeTypeTags;
             return this;
         }
 

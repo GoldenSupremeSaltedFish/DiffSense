@@ -1,6 +1,7 @@
 package com.yourorg.gitimpact.inspect;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -9,19 +10,25 @@ import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.revwalk.RevCommit;
 
 import com.yourorg.gitimpact.ast.DiffToASTMapper.ImpactedMethod;
+import com.yourorg.gitimpact.classification.BackendChangeClassifier;
+import com.yourorg.gitimpact.classification.GranularChangeAnalyzer;
 import com.yourorg.gitimpact.config.AnalysisConfig;
 import com.yourorg.gitimpact.impact.ImpactAnalyzer;
-import com.yourorg.gitimpact.classification.BackendChangeClassifier;
 
 public class CommitAnalyzer {
     private final Path projectRoot;
     private final AnalysisConfig analysisConfig;
+    private final boolean includeTypeTags;
 
     public CommitAnalyzer(Path projectRoot, int depth) {
+        this(projectRoot, depth, false);
+    }
+    
+    public CommitAnalyzer(Path projectRoot, int depth, boolean includeTypeTags) {
         this.projectRoot = projectRoot;
-        this.analysisConfig = AnalysisConfig.builder()
-            .maxDepth(depth)
-            .build();
+        this.analysisConfig = new AnalysisConfig();
+        this.analysisConfig.setMaxDepth(depth);
+        this.includeTypeTags = includeTypeTags;
     }
 
     /**
@@ -56,6 +63,24 @@ public class CommitAnalyzer {
             // 生成分类摘要
             Map<String, Object> classificationSummary = classifier.generateClassificationSummary(changeClassifications);
             
+            // 执行细粒度分析（仅在启用时）
+            List<com.yourorg.gitimpact.classification.ModificationDetail> modifications = new ArrayList<>();
+            if (includeTypeTags) {
+                GranularChangeAnalyzer granularAnalyzer = new GranularChangeAnalyzer();
+                
+                // 为每个文件分析细粒度变更
+                for (Path filePath : changedFiles) {
+                    List<ImpactedMethod> fileMethods = changedMethods.stream()
+                        .filter(method -> method.filePath != null && method.filePath.equals(filePath.toString()))
+                        .collect(java.util.stream.Collectors.toList());
+                    
+                    // 这里暂时传入null作为diffContent，实际实现中需要获取真实的diff内容
+                    List<com.yourorg.gitimpact.classification.ModificationDetail> fileModifications = 
+                        granularAnalyzer.analyzeFileChanges(filePath, fileMethods, null);
+                    modifications.addAll(fileModifications);
+                }
+            }
+            
             return new CommitImpact(
                 commit.getName(),
                 commit.getFullMessage(),
@@ -68,7 +93,8 @@ public class CommitAnalyzer {
                 changeClassifications,
                 classificationSummary,
                 testCoverageGaps,
-                testCoverageStats
+                testCoverageStats,
+                modifications
             );
         } catch (Exception e) {
             throw new RuntimeException("分析提交时发生错误: " + commit.getName(), e);

@@ -39,7 +39,7 @@ public class BranchMonitor {
     public BranchMonitor(InspectConfig config, Path projectRoot) {
         this.config = config;
         this.projectRoot = projectRoot;
-        this.commitAnalyzer = new CommitAnalyzer(projectRoot, config.getDepth());
+        this.commitAnalyzer = new CommitAnalyzer(projectRoot, config.getDepth(), config.isIncludeTypeTags());
         this.executor = Executors.newFixedThreadPool(
             Math.max(1, Runtime.getRuntime().availableProcessors() - 1)
         );

@@ -90,6 +90,13 @@ public class AnalyzeCommand implements Callable<Integer> {
     private String format;
     
     @Option(
+        names = {"--include-type-tags"},
+        description = "是否包含细粒度修改类型标签 (默认: false)",
+        defaultValue = "false"
+    )
+    private boolean includeTypeTags;
+    
+    @Option(
         names = {"--output"},
         description = "输出文件路径"
     )
@@ -143,6 +150,7 @@ public class AnalyzeCommand implements Callable<Integer> {
             .baseline(fromCommit)
             .reportPath(outputFile != null ? Paths.get(outputFile) : null)
             .depth(maxDepth)
+            .includeTypeTags(includeTypeTags) // 添加细粒度分析参数
             .build();
         
         // 执行分析

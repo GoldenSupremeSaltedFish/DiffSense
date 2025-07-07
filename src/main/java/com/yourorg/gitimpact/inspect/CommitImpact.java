@@ -1,6 +1,7 @@
 package com.yourorg.gitimpact.inspect;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -45,6 +46,9 @@ public class CommitImpact {
     
     @JsonProperty("testCoverageStats")
     private final Map<String, Object> testCoverageStats;
+    
+    @JsonProperty("modifications")
+    private final List<com.yourorg.gitimpact.classification.ModificationDetail> modifications;
 
     @JsonCreator
     public CommitImpact(
@@ -59,7 +63,8 @@ public class CommitImpact {
         @JsonProperty("changeClassifications") List<BackendChangeClassifier.FileClassification> changeClassifications,
         @JsonProperty("classificationSummary") Map<String, Object> classificationSummary,
         @JsonProperty("testCoverageGaps") List<Map<String, Object>> testCoverageGaps,
-        @JsonProperty("testCoverageStats") Map<String, Object> testCoverageStats
+        @JsonProperty("testCoverageStats") Map<String, Object> testCoverageStats,
+        @JsonProperty("modifications") List<com.yourorg.gitimpact.classification.ModificationDetail> modifications
     ) {
         this.commitId = commitId;
         this.message = message;
@@ -73,6 +78,7 @@ public class CommitImpact {
         this.classificationSummary = classificationSummary;
         this.testCoverageGaps = testCoverageGaps;
         this.testCoverageStats = testCoverageStats;
+        this.modifications = modifications != null ? modifications : new ArrayList<>();
     }
 
     public String getCommitId() { return commitId; }
@@ -87,4 +93,5 @@ public class CommitImpact {
     public Map<String, Object> getClassificationSummary() { return classificationSummary; }
     public List<Map<String, Object>> getTestCoverageGaps() { return testCoverageGaps; }
     public Map<String, Object> getTestCoverageStats() { return testCoverageStats; }
+    public List<com.yourorg.gitimpact.classification.ModificationDetail> getModifications() { return modifications; }
 } 
