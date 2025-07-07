@@ -15,6 +15,16 @@ interface FileClassification {
   changedMethods: string[];
 }
 
+interface ModificationDetail {
+  type: string;
+  typeName: string;
+  description: string;
+  file: string;
+  method?: string;
+  confidence: number;
+  indicators: string[];
+}
+
 interface CommitImpact {
   commitId: string;
   message: string;
@@ -34,6 +44,7 @@ interface CommitImpact {
     averageConfidence: number;
     detailedClassifications: Record<string, any[]>;
   };
+  modifications?: ModificationDetail[];
 }
 
 interface ReportRendererProps {
@@ -42,7 +53,7 @@ interface ReportRendererProps {
 }
 
 const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs = [] }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'classifications' | 'commits' | 'callgraph' | 'snapshot'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'classifications' | 'commits' | 'modifications' | 'callgraph' | 'snapshot'>('overview');
   // TODO: 待实现国际化
   // const { currentLanguage, t } = useLanguage();
 
@@ -423,6 +434,62 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
                 </div>
               </div>
             )}
+
+            {/* 细粒度修改标签 */}
+            {commit.modifications && commit.modifications.length > 0 && (
+              <div style={{ 
+                marginBottom: "6px",
+                padding: "6px",
+                backgroundColor: "var(--vscode-editorWidget-background)",
+                borderRadius: "3px",
+                fontSize: "9px"
+              }}>
+                <div style={{ fontWeight: "bold", marginBottom: "4px" }}>🔍 细粒度修改标签:</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                  {(() => {
+                    // 按类型分组并统计
+                    const modificationStats = commit.modifications.reduce((acc, mod) => {
+                      if (!acc[mod.type]) {
+                        acc[mod.type] = { count: 0, typeName: mod.typeName };
+                      }
+                      acc[mod.type].count++;
+                      return acc;
+                    }, {} as Record<string, { count: number; typeName: string }>);
+
+                    const getModificationTypeColor = (type: string) => {
+                      const colors: Record<string, string> = {
+                        'behavior-change': '#ff6b6b',
+                        'interface-change': '#4ecdc4',
+                        'api-endpoint-change': '#45b7d1',
+                        'config-change': '#96ceb4',
+                        'logging-added': '#feca57',
+                        'test-modified': '#ff9ff3',
+                        'dependency-updated': '#54a0ff',
+                        'css-change': '#ff6348',
+                        'component-logic-change': '#2ed573',
+                        'hook-change': '#5f27cd'
+                      };
+                      return colors[type] || '#6c757d';
+                    };
+
+                    return Object.entries(modificationStats).map(([type, stats]) => (
+                      <span key={type} style={{
+                        display: "inline-block",
+                        fontSize: "8px",
+                        padding: "2px 6px",
+                        borderRadius: "10px",
+                        backgroundColor: getModificationTypeColor(type) + '20',
+                        color: getModificationTypeColor(type),
+                        fontWeight: "bold",
+                        border: `1px solid ${getModificationTypeColor(type)}40`
+                      }}>
+                        {stats.typeName} ({stats.count})
+                      </span>
+                    ));
+                  })()}
+                </div>
+              </div>
+            )}
               
             {/* 分类详情 */}
             {commit.changeClassifications && commit.changeClassifications.length > 0 && (
@@ -484,6 +551,155 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
     </div>
   );
 
+  const renderModifications = () => {
+    // 收集所有提交的细粒度修改详情
+    const allModifications = impacts.reduce((acc, impact) => {
+      if (impact.modifications) {
+        acc.push(...impact.modifications.map(mod => ({
+          ...mod,
+          commitId: impact.commitId,
+          commitMessage: impact.message,
+          timestamp: impact.timestamp
+        })));
+      }
+      return acc;
+    }, [] as Array<ModificationDetail & { commitId: string; commitMessage: string; timestamp: string }>);
+
+    if (allModifications.length === 0) {
+      return (
+        <div style={{ padding: "12px", textAlign: "center", color: "var(--vscode-descriptionForeground)" }}>
+          <h3 style={{ margin: "0 0 12px 0", fontSize: "14px" }}>🔍 细粒度修改详情</h3>
+          <p>暂无细粒度修改数据，请使用 --include-type-tags 参数进行分析</p>
+        </div>
+      );
+    }
+
+    // 按修改类型分组
+    const modificationsByType = allModifications.reduce((acc, mod) => {
+      if (!acc[mod.type]) {
+        acc[mod.type] = [];
+      }
+      acc[mod.type].push(mod);
+      return acc;
+    }, {} as Record<string, Array<ModificationDetail & { commitId: string; commitMessage: string; timestamp: string }>>);
+
+    const getModificationTypeColor = (type: string) => {
+      const colors: Record<string, string> = {
+        'behavior-change': '#ff6b6b',
+        'interface-change': '#4ecdc4',
+        'api-endpoint-change': '#45b7d1',
+        'config-change': '#96ceb4',
+        'logging-added': '#feca57',
+        'test-modified': '#ff9ff3',
+        'dependency-updated': '#54a0ff',
+        'css-change': '#ff6348',
+        'component-logic-change': '#2ed573',
+        'hook-change': '#5f27cd'
+      };
+      return colors[type] || '#6c757d';
+    };
+
+    return (
+      <div style={{ padding: "12px" }}>
+        <h3 style={{ margin: "0 0 12px 0", fontSize: "14px" }}>🔍 细粒度修改详情</h3>
+        
+        <div style={{ marginBottom: "12px", fontSize: "11px", color: "var(--vscode-descriptionForeground)" }}>
+          总计 {allModifications.length} 个细粒度修改，涵盖 {Object.keys(modificationsByType).length} 种类型
+        </div>
+
+        {Object.entries(modificationsByType).map(([type, modifications]) => (
+          <div key={type} style={{ 
+            marginBottom: "16px",
+            border: "1px solid var(--vscode-panel-border)",
+            borderRadius: "4px",
+            overflow: "hidden"
+          }}>
+            {/* 类型标题 */}
+            <div style={{
+              padding: "8px 12px",
+              backgroundColor: getModificationTypeColor(type) + '20',
+              borderBottom: "1px solid var(--vscode-panel-border)",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center"
+            }}>
+              <span style={{
+                fontWeight: "bold",
+                fontSize: "12px",
+                color: getModificationTypeColor(type)
+              }}>
+                {modifications[0].typeName || type}
+              </span>
+              <span style={{
+                fontSize: "10px",
+                color: "var(--vscode-descriptionForeground)",
+                backgroundColor: "var(--vscode-badge-background)",
+                padding: "2px 6px",
+                borderRadius: "10px"
+              }}>
+                {modifications.length} 个修改
+              </span>
+            </div>
+
+            {/* 修改列表 */}
+            <div style={{ maxHeight: "200px", overflowY: "auto" }}>
+              {modifications.map((mod, index) => (
+                <div key={index} style={{
+                  padding: "8px 12px",
+                  borderBottom: index < modifications.length - 1 ? "1px solid var(--vscode-panel-border)" : "none",
+                  backgroundColor: index % 2 === 0 ? "var(--vscode-list-evenBackground)" : "transparent"
+                }}>
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    marginBottom: "4px"
+                  }}>
+                    <span style={{
+                      fontSize: "11px",
+                      fontWeight: "500",
+                      color: "var(--vscode-editor-foreground)"
+                    }}>
+                      {mod.description}
+                    </span>
+                    <span style={{
+                      fontSize: "9px",
+                      color: "var(--vscode-descriptionForeground)",
+                      backgroundColor: "var(--vscode-textCodeBlock-background)",
+                      padding: "2px 4px",
+                      borderRadius: "2px",
+                      marginLeft: "8px",
+                      whiteSpace: "nowrap"
+                    }}>
+                      置信度: {Math.round(mod.confidence * 100)}%
+                    </span>
+                  </div>
+                  
+                  <div style={{
+                    fontSize: "9px",
+                    color: "var(--vscode-descriptionForeground)",
+                    marginBottom: "2px"
+                  }}>
+                    📁 {mod.file}
+                    {mod.method && ` → ${mod.method}()`}
+                  </div>
+                  
+                  <div style={{
+                    fontSize: "9px",
+                    color: "var(--vscode-descriptionForeground)"
+                  }}>
+                    💾 提交: {mod.commitId.substring(0, 8)} - {mod.commitMessage.substring(0, 50)}
+                    {mod.commitMessage.length > 50 && '...'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const renderSnapshot = () => (
     <div style={{ padding: "12px" }}>
       <h3 style={{ margin: "0 0 12px 0", fontSize: "14px" }}>📸 组件变动</h3>
@@ -508,6 +724,7 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
           { key: 'overview', label: '📊 概览' },
           { key: 'classifications', label: '🎯 重要变更' },
           { key: 'commits', label: '📝 提交' },
+          { key: 'modifications', label: '🔍 细粒度修改' },
           { key: 'callgraph', label: '🔗 调用图' },
           { key: 'snapshot', label: '📸 组件变动' }
         ].map(tab => {
@@ -540,6 +757,7 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
         {activeTab === 'overview' && renderOverview()}
         {activeTab === 'classifications' && renderClassifications()}
         {activeTab === 'commits' && renderCommits()}
+        {activeTab === 'modifications' && renderModifications()}
         {activeTab === 'callgraph' && (
           <CallGraphVisualization 
             data={{ 

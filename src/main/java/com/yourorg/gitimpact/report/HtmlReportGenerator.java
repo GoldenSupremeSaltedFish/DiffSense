@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.yourorg.gitimpact.classification.BackendChangeClassifier;
+import com.yourorg.gitimpact.classification.ModificationDetail;
 import com.yourorg.gitimpact.inspect.CommitImpact;
 
 public class HtmlReportGenerator {
@@ -178,6 +179,7 @@ public class HtmlReportGenerator {
                 "    <div class=\"commit-classifications\">" +
                 "        %s" +
                 "    </div>" +
+                "    %s" +
                 "</div>",
                 commit.getCommitId().substring(0, 7),
                 commit.getAuthor().getName(),
@@ -189,7 +191,8 @@ public class HtmlReportGenerator {
                 commit.getChangedMethodsCount(),
                 commit.getImpactedMethods().size(),
                 commit.getImpactedTests().size(),
-                generateClassificationDetails(commit.getChangeClassifications())
+                generateClassificationDetails(commit.getChangeClassifications()),
+                generateModificationsDetails(commit.getModifications())
             ));
         }
         
@@ -229,6 +232,59 @@ public class HtmlReportGenerator {
                 fc.getClassification().getCategory().getDisplayName(),
                 fc.getClassification().getConfidence()
             ));
+        }
+        
+        details.append("</div>");
+        return details.toString();
+    }
+
+    private String generateModificationsDetails(List<ModificationDetail> modifications) {
+        if (modifications == null || modifications.isEmpty()) {
+            return "";
+        }
+        
+        StringBuilder details = new StringBuilder();
+        details.append("<div class=\"modifications-details\">");
+        details.append("<h4>🔍 细粒度修改详情:</h4>");
+        
+        // 按类型分组
+        Map<String, List<ModificationDetail>> modsByType = modifications.stream()
+            .collect(Collectors.groupingBy(mod -> mod.getType().getCode()));
+        
+        for (Map.Entry<String, List<ModificationDetail>> entry : modsByType.entrySet()) {
+            String typeCode = entry.getKey();
+            List<ModificationDetail> mods = entry.getValue();
+            
+            details.append(String.format(
+                "<div class=\"modification-type-group\">" +
+                "    <div class=\"modification-type-header\">" +
+                "        <span class=\"modification-type-badge modification-type-%s\">%s</span>" +
+                "        <span class=\"modification-count\">%d 个修改</span>" +
+                "    </div>" +
+                "    <div class=\"modification-list\">",
+                typeCode.toLowerCase().replace("_", "-"),
+                mods.get(0).getType().getDisplayName(),
+                mods.size()
+            ));
+            
+            for (ModificationDetail mod : mods) {
+                details.append(String.format(
+                    "<div class=\"modification-item\">" +
+                    "    <div class=\"modification-description\">%s</div>" +
+                    "    <div class=\"modification-meta\">" +
+                    "        <span class=\"modification-file\">📁 %s</span>" +
+                    "        %s" +
+                    "        <span class=\"modification-confidence\">置信度: %.0f%%</span>" +
+                    "    </div>" +
+                    "</div>",
+                    mod.getDescription(),
+                    mod.getFile(),
+                    mod.getMethod() != null ? String.format("<span class=\"modification-method\">⚡ %s()</span>", mod.getMethod()) : "",
+                    mod.getConfidence() * 100
+                ));
+            }
+            
+            details.append("    </div></div>");
         }
         
         details.append("</div>");
@@ -387,6 +443,85 @@ public class HtmlReportGenerator {
             "        .file-confidence {\n" +
             "            font-size: 12px;\n" +
             "            color: #666;\n" +
+            "        }\n" +
+            "        .modifications-details {\n" +
+            "            background: #f0f8ff;\n" +
+            "            border-radius: 4px;\n" +
+            "            padding: 10px;\n" +
+            "            margin-top: 10px;\n" +
+            "        }\n" +
+            "        .modification-type-group {\n" +
+            "            margin-bottom: 15px;\n" +
+            "            border: 1px solid #e0e0e0;\n" +
+            "            border-radius: 4px;\n" +
+            "            overflow: hidden;\n" +
+            "        }\n" +
+            "        .modification-type-header {\n" +
+            "            display: flex;\n" +
+            "            justify-content: space-between;\n" +
+            "            align-items: center;\n" +
+            "            padding: 8px 12px;\n" +
+            "            background: #f5f5f5;\n" +
+            "            border-bottom: 1px solid #e0e0e0;\n" +
+            "        }\n" +
+            "        .modification-type-badge {\n" +
+            "            padding: 4px 8px;\n" +
+            "            border-radius: 12px;\n" +
+            "            font-size: 11px;\n" +
+            "            font-weight: bold;\n" +
+            "            color: white;\n" +
+            "        }\n" +
+            "        .modification-type-behavior-change { background: #ff6b6b; }\n" +
+            "        .modification-type-interface-change { background: #4ecdc4; }\n" +
+            "        .modification-type-api-endpoint-change { background: #45b7d1; }\n" +
+            "        .modification-type-config-change { background: #96ceb4; }\n" +
+            "        .modification-type-logging-added { background: #feca57; }\n" +
+            "        .modification-type-test-modified { background: #ff9ff3; }\n" +
+            "        .modification-type-dependency-updated { background: #54a0ff; }\n" +
+            "        .modification-count {\n" +
+            "            font-size: 10px;\n" +
+            "            color: #666;\n" +
+            "            background: white;\n" +
+            "            padding: 2px 6px;\n" +
+            "            border-radius: 10px;\n" +
+            "        }\n" +
+            "        .modification-list {\n" +
+            "            max-height: 200px;\n" +
+            "            overflow-y: auto;\n" +
+            "        }\n" +
+            "        .modification-item {\n" +
+            "            padding: 8px 12px;\n" +
+            "            border-bottom: 1px solid #f0f0f0;\n" +
+            "        }\n" +
+            "        .modification-item:last-child {\n" +
+            "            border-bottom: none;\n" +
+            "        }\n" +
+            "        .modification-description {\n" +
+            "            font-weight: 500;\n" +
+            "            margin-bottom: 4px;\n" +
+            "            font-size: 13px;\n" +
+            "        }\n" +
+            "        .modification-meta {\n" +
+            "            display: flex;\n" +
+            "            flex-wrap: wrap;\n" +
+            "            gap: 8px;\n" +
+            "            font-size: 11px;\n" +
+            "            color: #666;\n" +
+            "        }\n" +
+            "        .modification-file {\n" +
+            "            background: #e8f4fd;\n" +
+            "            padding: 2px 6px;\n" +
+            "            border-radius: 3px;\n" +
+            "        }\n" +
+            "        .modification-method {\n" +
+            "            background: #fff3cd;\n" +
+            "            padding: 2px 6px;\n" +
+            "            border-radius: 3px;\n" +
+            "        }\n" +
+            "        .modification-confidence {\n" +
+            "            background: #d4edda;\n" +
+            "            padding: 2px 6px;\n" +
+            "            border-radius: 3px;\n" +
             "        }\n" +
             "    </style>\n" +
             "</head>\n" +

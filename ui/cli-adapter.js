@@ -198,6 +198,7 @@ class CliAdapter {
             targetDir: options.repo || process.cwd(),
             maxDepth: parseInt(options.maxDepth) || 15,
             maxFiles: parseInt(options.maxFiles) || 1000,
+            includeTypeTags: options.includeTypeTags === 'true' || options.includeTypeTags === true,
             includeTests: true,
             format: options.format || 'json',
             mode: options.mode || 'diff',
@@ -491,6 +492,7 @@ async function main() {
         .option('--max-files <n>', '最大文件数', '1000')
         .option('--format <format>', '输出格式', 'json')
         .option('--output <file>', '输出文件')
+        .option('--include-type-tags', '是否包含细粒度修改类型标签', false)
         .action(async (options) => {
             const adapter = new CliAdapter();
             const result = await adapter.execute('analyze', options);

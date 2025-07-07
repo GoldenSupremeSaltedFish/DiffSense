@@ -11,6 +11,7 @@ const fs = require('fs');
 const glob = require('glob');
 const { Project } = require('ts-morph');
 const { extractSnapshotsForFile } = require('./snapshotExtractors');
+const FrontendGranularAnalyzer = require('./granularAnalyzer');
 
 /**
  * 前端代码修改分类器 - 适用于 React / Vue / JS/TS
@@ -397,6 +398,7 @@ class FrontendAnalyzer {
       enableMicroserviceDetection: true, // 启用微服务检测
       enableBuildToolDetection: true, // 启用构建工具检测
       enableFrameworkDetection: true, // 启用框架检测
+      includeTypeTags: options.includeTypeTags || false, // 添加细粒度分析选项
       ...options
     };
     this.project = null;
@@ -404,6 +406,11 @@ class FrontendAnalyzer {
     this.componentSnapshots = [];
     // 微服务检测结果
     this.microserviceDetection = null;
+    
+    // 初始化细粒度分析器
+    if (this.options.includeTypeTags) {
+      this.granularAnalyzer = new FrontendGranularAnalyzer();
+    }
   }
 
   async analyze() {
@@ -422,6 +429,8 @@ class FrontendAnalyzer {
         // 添加前端分类结果
         changeClassifications: [],
         classificationSummary: {},
+        // 添加细粒度修改详情
+        modifications: [],
         // 添加微服务检测结果
         microserviceDetection: null
       };
@@ -456,6 +465,21 @@ class FrontendAnalyzer {
         const { classifications, summary } = FrontendChangeClassifier.classifyChanges(result.files);
         result.changeClassifications = classifications;
         result.classificationSummary = summary;
+        
+        // 5. 执行细粒度分析（如果启用）
+        if (this.options.includeTypeTags && this.granularAnalyzer) {
+          const allModifications = [];
+          for (const fileInfo of result.files) {
+            const modifications = this.granularAnalyzer.analyzeFileChanges(
+              fileInfo.relativePath,
+              fileInfo.methods,
+              null, // diffContent暂时为null，实际使用时需要获取真实diff
+              fileInfo.content
+            );
+            allModifications.push(...modifications);
+          }
+          result.modifications = allModifications;
+        }
       }
 
       // 5. 生成摘要信息
