@@ -9,23 +9,20 @@ const fs = require('fs');
 const path = require('path');
 const { Command } = require('commander');
 
-// 分析器模块
-const { analyze: granularAnalyze } = require('./node-analyzer/analyze.js');
-const FrontendAnalyzer = require('./node-analyzer/analyze.js');
-const GolangAnalyzer = require('./golang-analyzer/analyze.js');
-const RegressionAnalyzer = require('./regression-analyzer/index.js');
+// 分析器模块 - 使用相对于plugin目录的路径
+const FrontendAnalyzer = require('./analyzers/node-analyzer/analyze.js');
+const GolangAnalyzer = require('./analyzers/golang-analyzer/analyze.js');
 
 class CliAdapter {
     constructor() {
         this.analyzers = {
             ts: FrontendAnalyzer,
             js: FrontendAnalyzer,
-            go: GolangAnalyzer,
-            regression: RegressionAnalyzer
+            go: GolangAnalyzer
         };
         
         this.supportedCommands = [
-            'analyze', 'impacted', 'callgraph', 'recommend-tests', 'regression'
+            'analyze', 'impacted', 'callgraph', 'recommend-tests'
         ];
     }
 
@@ -48,8 +45,6 @@ class CliAdapter {
                     return await this.getCallGraph(options);
                 case 'recommend-tests':
                     return await this.recommendTests(options);
-                case 'regression':
-                    return await this.regressionAnalysis(options);
                 default:
                     throw new Error(`Unsupported command: ${command}`);
             }
@@ -159,23 +154,6 @@ class CliAdapter {
                 lowPriority: recommendations.filter(r => r.priority === 'low').length
             }
         };
-        
-        return this.formatOutput(result, options.format);
-    }
-
-    /**
-     * 回归分析
-     */
-    async regressionAnalysis(options) {
-        const regressionOptions = {
-            projectPath: options.repo,
-            commits: options.commits || 1,
-            language: options.lang === 'ts' ? 'auto' : options.lang,
-            outputFormat: options.format || 'json'
-        };
-        
-        const analyzer = new RegressionAnalyzer(regressionOptions);
-        const result = await analyzer.analyze();
         
         return this.formatOutput(result, options.format);
     }
@@ -382,8 +360,9 @@ class CliAdapter {
      */
     async analyzeFrontendImpact(changedFiles, options) {
         const frontendFiles = changedFiles.filter(file => 
+            file.endsWith('.js') || file.endsWith('.jsx') || 
             file.endsWith('.ts') || file.endsWith('.tsx') || 
-            file.endsWith('.js') || file.endsWith('.jsx')
+            file.endsWith('.vue')
         );
         
         if (frontendFiles.length === 0) {
@@ -393,6 +372,7 @@ class CliAdapter {
         const analyzer = new FrontendAnalyzer(options.targetDir, options);
         const fullResult = await analyzer.analyze();
         
+        // 简化的影响分析 - 只返回变更文件中的方法
         const impactedMethods = [];
         frontendFiles.forEach(file => {
             const relativePath = file.replace(/\\/g, '/');
@@ -403,7 +383,7 @@ class CliAdapter {
                         file: relativePath,
                         line: method.line || 0,
                         changeType: 'modified',
-                        riskLevel: 'medium'
+                        riskLevel: method.complexity > 10 ? 'high' : 'medium'
                     });
                 });
             }
@@ -422,182 +402,123 @@ class CliAdapter {
      * 生成测试推荐
      */
     generateTestRecommendations(impactedResult, options) {
+        if (!impactedResult.impactedMethods) {
+            return [];
+        }
+        
         const recommendations = [];
         
-        if (impactedResult.impactedMethods) {
-            impactedResult.impactedMethods.forEach(method => {
-                // 简化的测试推荐逻辑
-                const testFile = this.guessTestFile(method.file, options.lang);
-                const testMethod = this.guessTestMethod(method.signature || method.name);
-                
-                recommendations.push({
-                    testClass: testFile,
-                    testMethod: testMethod,
-                    reason: `直接测试受影响方法: ${method.signature || method.name}`,
-                    priority: method.riskLevel === 'high' ? 'high' : 'medium',
-                    targetMethod: method.signature || method.name,
-                    targetFile: method.file
-                });
+        impactedResult.impactedMethods.forEach(method => {
+            const testFile = this.guessTestFile(method.file, options.lang);
+            const testMethod = this.guessTestMethod(method.signature);
+            
+            recommendations.push({
+                testClass: testFile,
+                testMethod: testMethod,
+                sourceMethod: method.signature,
+                sourceFile: method.file,
+                priority: method.riskLevel === 'high' ? 'high' : 'medium',
+                reason: `方法 ${method.signature} 发生了变更，建议运行相关测试`
             });
-        }
+        });
         
         return recommendations;
     }
 
     /**
-     * 推测测试文件名
+     * 猜测测试文件
      */
     guessTestFile(sourceFile, language) {
         const baseName = path.basename(sourceFile, path.extname(sourceFile));
         
         if (language === 'go') {
-            return sourceFile.replace('.go', '_test.go');
+            return `${baseName}_test.go`;
         } else {
-            return `${baseName}.test.${language}`;
+            return `${baseName}.test.${path.extname(sourceFile).substring(1)}`;
         }
     }
 
     /**
-     * 推测测试方法名
+     * 猜测测试方法
      */
     guessTestMethod(methodName) {
-        if (methodName.startsWith('Test') || methodName.startsWith('test')) {
+        if (methodName.startsWith('Test')) {
             return methodName;
         }
-        
-        // 将方法名转换为测试方法名
-        const cleanName = methodName.replace(/[^a-zA-Z0-9]/g, '');
-        return `test${cleanName.charAt(0).toUpperCase()}${cleanName.slice(1)}`;
+        return `Test${methodName.charAt(0).toUpperCase()}${methodName.slice(1)}`;
     }
 }
 
 // 命令行接口
 async function main() {
     const program = new Command();
-
-    // 检查是否为简单的文件比较模式
-    if (process.argv.length >= 4 && fs.existsSync(process.argv[2]) && fs.existsSync(process.argv[3])) {
-        const oldFile = process.argv[2];
-        const newFile = process.argv[3];
-        const includeTypeTags = process.argv.includes('--include-type-tags');
-
-        try {
-            const oldContent = fs.readFileSync(oldFile, 'utf-8');
-            const newContent = fs.readFileSync(newFile, 'utf-8');
-
-            const result = await granularAnalyze({
-                oldContent,
-                newContent,
-                filePath: path.basename(newFile),
-                includeTypeTags
-            });
-
-            console.log(JSON.stringify(result, null, 2));
-            process.exit(0);
-        } catch (error) {
-            console.error(`File analysis failed: ${error.message}`);
-            process.exit(1);
-        }
-        return; // 结束执行
-    }
-
-
+    
     program
-        .name('cli-adapter')
-        .description('DiffSense Node.js CLI 适配器')
-        .version('1.0.0');
-
-    // analyze 命令
+        .version('1.0.0')
+        .description('DiffSense CLI 适配器');
+    
     program
         .command('analyze')
-        .description('代码分析')
-        .requiredOption('--lang <language>', '目标语言 (go|ts|js)')
-        .option('--mode <mode>', '分析模式', 'diff')
-        .option('--from <commit>', '起始提交', 'HEAD~1')
-        .option('--to <commit>', '结束提交', 'HEAD')
-        .option('--repo <path>', '仓库路径', process.cwd())
-        .option('--max-depth <n>', '最大深度', '15')
-        .option('--max-files <n>', '最大文件数', '1000')
-        .option('--format <format>', '输出格式', 'json')
-        .option('--output <file>', '输出文件')
-        .option('--include-type-tags', '是否包含细粒度修改类型标签', false)
+        .description('分析代码')
+        .option('--lang <language>', '编程语言 (go|ts|js)', 'ts')
+        .option('--repo <path>', '代码仓库路径', process.cwd())
+        .option('--format <format>', '输出格式 (json|summary|text)', 'json')
+        .option('--max-depth <number>', '最大分析深度', '15')
+        .option('--max-files <number>', '最大文件数', '1000')
+        .option('--include-type-tags', '包含细粒度类型标签', false)
         .action(async (options) => {
             const adapter = new CliAdapter();
             const result = await adapter.execute('analyze', options);
-            
-            if (options.output) {
-                fs.writeFileSync(options.output, result);
-                console.error(`结果已保存到: ${options.output}`);
-            } else {
-                console.log(result);
-            }
+            console.log(result);
         });
-
-    // impacted 命令
+    
     program
         .command('impacted')
-        .description('影响分析')
-        .requiredOption('--lang <language>', '目标语言 (go|ts|js)')
+        .description('分析影响的代码')
+        .option('--lang <language>', '编程语言 (go|ts|js)', 'ts')
+        .option('--repo <path>', '代码仓库路径', process.cwd())
         .option('--from <commit>', '起始提交', 'HEAD~1')
         .option('--to <commit>', '结束提交', 'HEAD')
-        .option('--repo <path>', '仓库路径', process.cwd())
-        .option('--format <format>', '输出格式', 'json')
+        .option('--format <format>', '输出格式 (json|summary|text)', 'json')
         .action(async (options) => {
             const adapter = new CliAdapter();
             const result = await adapter.execute('impacted', options);
             console.log(result);
         });
-
-    // callgraph 命令
+    
     program
         .command('callgraph')
-        .description('调用图分析')
-        .requiredOption('--lang <language>', '目标语言 (go|ts|js)')
-        .option('--repo <path>', '仓库路径', process.cwd())
-        .option('--max-depth <n>', '最大深度', '15')
-        .option('--format <format>', '输出格式', 'json')
+        .description('生成调用图')
+        .option('--lang <language>', '编程语言 (go|ts|js)', 'ts')
+        .option('--repo <path>', '代码仓库路径', process.cwd())
+        .option('--format <format>', '输出格式 (json|summary)', 'json')
         .action(async (options) => {
             const adapter = new CliAdapter();
             const result = await adapter.execute('callgraph', options);
             console.log(result);
         });
-
-    // recommend-tests 命令
+    
     program
         .command('recommend-tests')
-        .description('测试推荐')
-        .requiredOption('--lang <language>', '目标语言 (go|ts|js)')
+        .description('推荐测试')
+        .option('--lang <language>', '编程语言 (go|ts|js)', 'ts')
+        .option('--repo <path>', '代码仓库路径', process.cwd())
         .option('--from <commit>', '起始提交', 'HEAD~1')
         .option('--to <commit>', '结束提交', 'HEAD')
-        .option('--repo <path>', '仓库路径', process.cwd())
-        .option('--format <format>', '输出格式', 'json')
+        .option('--format <format>', '输出格式 (json|summary|text)', 'json')
         .action(async (options) => {
             const adapter = new CliAdapter();
             const result = await adapter.execute('recommend-tests', options);
             console.log(result);
         });
-
-    // regression 命令
-    program
-        .command('regression')
-        .description('回归分析')
-        .requiredOption('--lang <language>', '目标语言 (go|ts|js)')
-        .option('--repo <path>', '仓库路径', process.cwd())
-        .option('--commits <n>', '分析提交数', '1')
-        .option('--format <format>', '输出格式', 'json')
-        .action(async (options) => {
-            const adapter = new CliAdapter();
-            const result = await adapter.execute('regression', options);
-            console.log(result);
-        });
-
-    await program.parseAsync();
+    
+    program.parse();
 }
 
-// 如果直接执行此脚本
+// 如果直接运行此脚本
 if (require.main === module) {
     main().catch(error => {
-        console.error('CLI Adapter Error:', error.message);
+        console.error('CLI适配器执行失败:', error.message);
         process.exit(1);
     });
 }

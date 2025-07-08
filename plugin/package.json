@@ -99,6 +99,7 @@
     "prepare-release": "node scripts/prepare-release.js"
   },
   "dependencies": {
+    "commander": "^14.0.0",
     "glob": "^10.3.0"
   },
   "devDependencies": {
@@ -106,7 +107,7 @@
     "@types/node": "18.x",
     "@types/vscode": "^1.74.0",
     "@vscode/vsce": "^2.24.0",
-    "typescript": "^5.2.2",
-    "rimraf": "^5.0.1"
+    "rimraf": "^5.0.1",
+    "typescript": "^5.2.2"
   }
 }

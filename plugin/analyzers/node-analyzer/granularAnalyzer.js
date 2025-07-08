@@ -267,7 +267,7 @@ class FrontendGranularAnalyzer {
         filePath
       ));
     }
-
+    
     // 变量/常量值修改
     if (this.containsVariableValueChange(diffContent)) {
         modifications.push(this.createModification(
@@ -276,7 +276,7 @@ class FrontendGranularAnalyzer {
             filePath
         ));
     }
-    
+
     return modifications;
   }
   
@@ -438,6 +438,21 @@ class FrontendGranularAnalyzer {
     const stylePatterns = [/className=/, /style=/, /styled\./, /css`/, /\.css/, /\.scss/];
     return stylePatterns.some(pattern => pattern.test(diffContent));
   }
+
+  /**
+   * 检测Props变更
+   */
+  containsPropsChanges(diffContent) {
+    // 检查是否有新增或修改的props
+    const propsPatterns = [
+      /\{[^}]*\b\w+\s*:\s*\w+\b[^}]*\}/, // 对象形式的props
+      /\b\w+\s*=\s*\{[^}]+\}/, // JSX属性形式的props
+      /\b\w+Props\b/, // Props类型或接口
+      /interface\s+Props/, // Props接口定义
+      /type\s+Props/ // Props类型定义
+    ];
+    return propsPatterns.some(pattern => pattern.test(diffContent));
+  }
   
   /**
    * 检查是否仅为注释变更
@@ -460,32 +475,6 @@ class FrontendGranularAnalyzer {
   isFormattingChange(diffContent) {
     const normalized = diffContent.replace(/\s+/g, ' ').trim();
     return normalized.length < 10;
-  }
-
-  /**
-   * 检测变量或常量值的变化
-   */
-  containsVariableValueChange(diffContent) {
-      // 匹配 "const/let/var a = ...;" 或 "a: ..." 这样的模式
-      const varChangePattern = /(const|let|var)\s+\w+\s*=\s*[^;]+;?|\w+\s*:\s*[^,]+,?/;
-      // 检查是否有增加或删除的行包含这种模式
-      const diffLines = diffContent.split('\n');
-      return diffLines.some(line => (line.startsWith('+') || line.startsWith('-')) && !line.startsWith('---') && !line.startsWith('+++') && varChangePattern.test(line.substring(1)));
-  }
-
-  /**
-   * 检测Props变更
-   */
-  containsPropsChanges(diffContent) {
-    // 检查是否有新增或修改的props
-    const propsPatterns = [
-      /\{[^}]*\b\w+\s*:\s*\w+\b[^}]*\}/, // 对象形式的props
-      /\b\w+\s*=\s*\{[^}]+\}/, // JSX属性形式的props
-      /\b\w+Props\b/, // Props类型或接口
-      /interface\s+Props/, // Props接口定义
-      /type\s+Props/ // Props类型定义
-    ];
-    return propsPatterns.some(pattern => pattern.test(diffContent));
   }
 
   /**
@@ -560,6 +549,17 @@ class FrontendGranularAnalyzer {
     return logicPatterns.some(pattern => pattern.test(diffContent));
   }
   
+  /**
+   * 检测变量或常量值的变化
+   */
+  containsVariableValueChange(diffContent) {
+      // 匹配 "const/let/var a = ...;" 或 "a: ..." 这样的模式
+      const varChangePattern = /(const|let|var)\s+\w+\s*=\s*[^;]+;?|\w+\s*:\s*[^,]+,?/;
+      // 检查是否有增加或删除的行包含这种模式
+      const diffLines = diffContent.split('\n');
+      return diffLines.some(line => (line.startsWith('+') || line.startsWith('-')) && !line.startsWith('---') && !line.startsWith('+++') && varChangePattern.test(line.substring(1)));
+  }
+
   /**
    * 创建修改详情对象
    */

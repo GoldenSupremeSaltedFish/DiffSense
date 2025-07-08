@@ -11,6 +11,7 @@ const fs = require('fs');
 const glob = require('glob');
 const { Project } = require('ts-morph');
 const { extractSnapshotsForFile } = require('./snapshotExtractors');
+const FrontendGranularAnalyzer = require('./granularAnalyzer');
 
 /**
  * 前端代码修改分类器 - 适用于 React / Vue / JS/TS
@@ -404,6 +405,8 @@ class FrontendAnalyzer {
     this.componentSnapshots = [];
     // 微服务检测结果
     this.microserviceDetection = null;
+    // 初始化细粒度分析器
+    this.granularAnalyzer = new FrontendGranularAnalyzer();
   }
 
   async analyze() {
@@ -423,7 +426,9 @@ class FrontendAnalyzer {
         changeClassifications: [],
         classificationSummary: {},
         // 添加微服务检测结果
-        microserviceDetection: null
+        microserviceDetection: null,
+        // 添加细粒度修改分析结果
+        modifications: []
       };
 
       // 1. 执行微服务项目检测
@@ -458,7 +463,23 @@ class FrontendAnalyzer {
         result.classificationSummary = summary;
       }
 
-      // 5. 生成摘要信息
+      // 5. 细粒度修改分析 (如果启用)
+      if (this.options.includeTypeTags && result.files && result.files.length > 0) {
+        console.error('🔍 执行细粒度修改分析...');
+        const allModifications = [];
+        for (const fileInfo of result.files) {
+          const modifications = this.granularAnalyzer.analyzeFileChanges(
+            fileInfo.relativePath,
+            fileInfo.methods,
+            '', // 这里没有diff内容，但分析器会基于文件内容进行推断
+            fileInfo.content
+          );
+          allModifications.push(...modifications);
+        }
+        result.modifications = allModifications;
+      }
+
+      // 6. 生成摘要信息
       result.summary = this.generateSummary(result);
       result.componentSnapshots = this.componentSnapshots;
 
@@ -1108,6 +1129,61 @@ class FrontendAnalyzer {
   }
 }
 
+/**
+ * 分析文件变更
+ * @param {Object} options 分析选项
+ * @param {string} options.oldContent 旧文件内容
+ * @param {string} options.newContent 新文件内容
+ * @param {string} options.filePath 文件路径
+ * @param {boolean} options.includeTypeTags 是否包含类型标签
+ * @returns {Promise<Object>} 分析结果
+ */
+async function analyze(options) {
+  const { oldContent, newContent, filePath, includeTypeTags } = options;
+  const analyzer = new FrontendGranularAnalyzer();
+  
+  // 计算文件差异
+  const diffContent = computeDiff(oldContent, newContent);
+  
+  // 分析变更
+  const changes = analyzer.analyzeFileChanges(filePath, [], diffContent, newContent);
+  
+  return {
+    filePath,
+    changes,
+    includeTypeTags
+  };
+}
+
+/**
+ * 计算两个文本之间的差异
+ */
+function computeDiff(oldContent, newContent) {
+  // 简单的diff格式：包含删除的行（以-开头）和添加的行（以+开头）
+  const oldLines = oldContent.split('\n');
+  const newLines = newContent.split('\n');
+  
+  let diff = '';
+  
+  // 添加删除的行
+  oldLines.forEach(line => {
+    diff += `-${line}\n`;
+  });
+  
+  // 添加新增的行
+  newLines.forEach(line => {
+    diff += `+${line}\n`;
+  });
+  
+  return diff;
+}
+
+module.exports = {
+  analyze,
+  FrontendAnalyzer,
+  FrontendChangeClassifier
+};
+
 // 命令行调用
 async function main() {
   const targetDir = process.argv[2] || process.cwd();
@@ -1129,6 +1205,8 @@ async function main() {
     } else if (arg === '--max-depth') {
       options.maxDepth = parseInt(process.argv[i + 1]);
       i++;
+    } else if (arg === '--include-type-tags') {
+      options.includeTypeTags = true;
     }
   }
 
@@ -1164,6 +1242,4 @@ async function main() {
 // 如果直接运行此脚本
 if (require.main === module) {
   main();
-}
-
-module.exports = FrontendAnalyzer; 
+} 

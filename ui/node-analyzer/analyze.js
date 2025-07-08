@@ -1132,6 +1132,61 @@ class FrontendAnalyzer {
   }
 }
 
+/**
+ * 分析文件变更
+ * @param {Object} options 分析选项
+ * @param {string} options.oldContent 旧文件内容
+ * @param {string} options.newContent 新文件内容
+ * @param {string} options.filePath 文件路径
+ * @param {boolean} options.includeTypeTags 是否包含类型标签
+ * @returns {Promise<Object>} 分析结果
+ */
+async function analyze(options) {
+  const { oldContent, newContent, filePath, includeTypeTags } = options;
+  const analyzer = new FrontendGranularAnalyzer();
+  
+  // 计算文件差异
+  const diffContent = computeDiff(oldContent, newContent);
+  
+  // 分析变更
+  const changes = analyzer.analyzeFileChanges(filePath, [], diffContent, newContent);
+  
+  return {
+    filePath,
+    changes,
+    includeTypeTags
+  };
+}
+
+/**
+ * 计算两个文本之间的差异
+ */
+function computeDiff(oldContent, newContent) {
+  // 简单的diff格式：包含删除的行（以-开头）和添加的行（以+开头）
+  const oldLines = oldContent.split('\n');
+  const newLines = newContent.split('\n');
+  
+  let diff = '';
+  
+  // 添加删除的行
+  oldLines.forEach(line => {
+    diff += `-${line}\n`;
+  });
+  
+  // 添加新增的行
+  newLines.forEach(line => {
+    diff += `+${line}\n`;
+  });
+  
+  return diff;
+}
+
+module.exports = {
+  analyze,
+  FrontendAnalyzer,
+  FrontendChangeClassifier
+};
+
 // 命令行调用
 async function main() {
   const targetDir = process.argv[2] || process.cwd();
@@ -1188,6 +1243,4 @@ async function main() {
 // 如果直接运行此脚本
 if (require.main === module) {
   main();
-}
-
-module.exports = FrontendAnalyzer; 
+} 
