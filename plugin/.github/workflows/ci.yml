@@ -33,6 +33,11 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     
+    # 添加必要的权限
+    permissions:
+      contents: write
+      packages: write
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -119,14 +124,22 @@ jobs:
             "artifactsOnly": true
           }
           EOF
-      
-      - name: Deploy to Artifacts Repository
+
+      # 将推送步骤分离为独立步骤
+      - name: Push to Artifacts Repository
+        env:
+          ARTIFACTS_TOKEN: ${{ secrets.ARTIFACTS_TOKEN }}
         run: |
+          if [ -z "$ARTIFACTS_TOKEN" ]; then
+            echo "Error: ARTIFACTS_TOKEN is not set"
+            exit 1
+          fi
+          
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
           # 克隆 artifacts 仓库
-          git clone https://x-access-token:${{ secrets.ARTIFACTS_TOKEN }}@github.com/GoldenSupremeSaltedFish/Diffsense-artifacts.git artifacts-repo
+          git clone https://x-access-token:${ARTIFACTS_TOKEN}@github.com/GoldenSupremeSaltedFish/Diffsense-artifacts.git artifacts-repo
           
           # 清空并复制新的构建产物
           cd artifacts-repo
@@ -197,9 +210,6 @@ jobs:
             git commit -m "Deploy plugin artifacts $(date +'%Y-%m-%d %H:%M:%S')"
             git push origin main
           fi
-        
-        env:
-          CI: true
       
       - name: Upload VSIX Artifact
         uses: actions/upload-artifact@v3
