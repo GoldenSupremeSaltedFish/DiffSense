@@ -1,0 +1,112 @@
+name: Plugin CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Compile TypeScript
+        run: npm run compile
+      
+      - name: Run tests
+        run: npm test
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Build Frontend UI
+        run: |
+          if [ -d "ui/diffsense-frontend" ]; then
+            cd ui/diffsense-frontend
+            npm ci
+            npm run build
+            cd ../..
+          fi
+      
+      - name: Prepare Analyzers
+        run: |
+          if [ -d "analyzers/node-analyzer" ]; then
+            cd analyzers/node-analyzer && npm ci && cd ../..
+          fi
+          if [ -d "analyzers/golang-analyzer" ]; then
+            cd analyzers/golang-analyzer && npm ci && cd ../..
+          fi
+      
+      - name: Build Plugin
+        run: |
+          npm ci
+          npm run prepare-package
+          npm run compile
+      
+      - name: Package VSIX
+        run: npm run package
+      
+      - name: Deploy Frontend to Artifacts
+        if: success()
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # 克隆 artifacts 仓库
+          git clone https://x-access-token:${{ secrets.ARTIFACTS_TOKEN }}@github.com/GoldenSupremeSaltedFish/Diffsense-artifacts.git artifacts-repo
+          
+          # 复制构建产物
+          cd artifacts-repo
+          rm -rf *
+          
+          # 复制前端构建产物
+          if [ -d "../ui/diffsense-frontend/dist" ]; then
+            cp -r ../ui/diffsense-frontend/dist/* .
+          else
+            echo "<!DOCTYPE html><html><head><title>DiffSense Demo</title></head><body><h1>DiffSense Frontend Demo</h1><p>Build: $(date)</p></body></html>" > index.html
+          fi
+          
+          # 提交并推送
+          git add .
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Deploy frontend build $(date +'%Y-%m-%d %H:%M:%S')"
+            git push origin main
+          fi
+        
+        env:
+          CI: true
+      
+      - name: Upload VSIX Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: vsix-package
+          path: "*.vsix"
+          retention-days: 90 

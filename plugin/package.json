@@ -10,12 +10,12 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/GoldenSupremeSaltedFish/DiffSense.git"
+    "url": "https://github.com/GoldenSupremeSaltedFish/DiffSense-Plugin.git"
   },
   "bugs": {
-    "url": "https://github.com/GoldenSupremeSaltedFish/DiffSense/issues"
+    "url": "https://github.com/GoldenSupremeSaltedFish/DiffSense-Plugin/issues"
   },
-  "homepage": "https://github.com/GoldenSupremeSaltedFish/DiffSense#readme",
+  "homepage": "https://github.com/GoldenSupremeSaltedFish/DiffSense-Plugin#readme",
   "keywords": [
     "git",
     "code analysis",
@@ -92,8 +92,8 @@
     "publish": "npm run prepare-package && vsce publish",
     "dev": "npm run watch",
     "build": "npm run clean && tsc && npm run prepare-package",
-    "build-ui": "cd ../ui/diffsense-frontend && npm run build",
-    "dev-ui": "cd ../ui/diffsense-frontend && npm run dev",
+    "build-ui": "cd ui/diffsense-frontend && npm run build",
+    "dev-ui": "cd ui/diffsense-frontend && npm run dev",
     "clean": "rimraf dist out *.vsix",
     "test": "npm run compile && node ./dist/test/runTest.js",
     "prepare-release": "node scripts/prepare-release.js"
