@@ -28,7 +28,7 @@ jobs:
       - name: Run tests
         run: npm test
 
-  build:
+  build-and-deploy-artifacts:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
@@ -72,8 +72,55 @@ jobs:
       - name: Package VSIX
         run: npm run package
       
-      - name: Deploy Frontend to Artifacts
-        if: success()
+      - name: Prepare Artifacts Directory
+        run: |
+          mkdir -p artifacts-staging
+          
+          # 复制 package.json 和基本配置文件（保持插件结构）
+          cp package.json artifacts-staging/
+          cp tsconfig.json artifacts-staging/
+          cp icon.png artifacts-staging/
+          cp LICENSE.txt artifacts-staging/
+          cp README.md artifacts-staging/
+          cp .vscodeignore artifacts-staging/
+          
+          # 复制编译后的代码
+          cp -r dist artifacts-staging/
+          
+          # 复制前端构建产物（保持目录结构）
+          if [ -d "ui/diffsense-frontend/dist" ]; then
+            mkdir -p artifacts-staging/ui/diffsense-frontend
+            cp -r ui/diffsense-frontend/dist artifacts-staging/ui/diffsense-frontend/
+            cp ui/diffsense-frontend/package.json artifacts-staging/ui/diffsense-frontend/
+          fi
+          
+          # 复制分析器产物（包含 node_modules）
+          if [ -d "analyzers" ]; then
+            cp -r analyzers artifacts-staging/
+          fi
+          
+          # 复制 UI 适配层的编译产物
+          if [ -d "ui" ]; then
+            mkdir -p artifacts-staging/ui
+            find ui -name "*.js" -exec cp --parents {} artifacts-staging/ \;
+          fi
+          
+          # 复制 VSIX 文件
+          cp *.vsix artifacts-staging/ 2>/dev/null || echo "No VSIX files found"
+          
+          # 创建运行时配置
+          cat > artifacts-staging/runtime-config.json << EOF
+          {
+            "version": "$(node -p "require('./package.json').version")",
+            "buildTime": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "commit": "${{ github.sha }}",
+            "isProduction": true,
+            "debugMode": true,
+            "artifactsOnly": true
+          }
+          EOF
+      
+      - name: Deploy to Artifacts Repository
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
@@ -81,23 +128,73 @@ jobs:
           # 克隆 artifacts 仓库
           git clone https://x-access-token:${{ secrets.ARTIFACTS_TOKEN }}@github.com/GoldenSupremeSaltedFish/Diffsense-artifacts.git artifacts-repo
           
-          # 复制构建产物
+          # 清空并复制新的构建产物
           cd artifacts-repo
           rm -rf *
+          cp -r ../artifacts-staging/* .
           
-          # 复制前端构建产物
-          if [ -d "../ui/diffsense-frontend/dist" ]; then
-            cp -r ../ui/diffsense-frontend/dist/* .
-          else
-            echo "<!DOCTYPE html><html><head><title>DiffSense Demo</title></head><body><h1>DiffSense Frontend Demo</h1><p>Build: $(date)</p></body></html>" > index.html
-          fi
+          # 创建 artifacts 仓库的 README
+          cat > README.md << 'EOF'
+          # DiffSense Plugin Artifacts
+          
+          This repository contains the **production-ready artifacts** of the DiffSense VSCode plugin.
+          These artifacts maintain the same directory structure as the plugin source and can be used for independent debugging.
+          
+          ## 🚀 Quick Start
+          
+          ### Install VSIX
+          ```bash
+          code --install-extension diffsense-*.vsix
+          ```
+          
+          ### Debug with Artifacts
+          ```bash
+          git clone https://github.com/GoldenSupremeSaltedFish/Diffsense-artifacts.git
+          cd Diffsense-artifacts
+          code .
+          # Press F5 to debug with pre-built artifacts
+          ```
+          
+          ## 📁 Structure
+          
+          ```
+          ├── dist/                    # Compiled TypeScript code
+          ├── ui/                     # Frontend UI build artifacts
+          │   └── diffsense-frontend/ # React app build
+          ├── analyzers/              # Language analyzers (with dependencies)
+          │   ├── node-analyzer/     
+          │   └── golang-analyzer/   
+          ├── *.vsix                  # VSCode extension package
+          ├── runtime-config.json     # Build metadata
+          ├── package.json           # Plugin metadata
+          ├── tsconfig.json          # TypeScript configuration
+          └── icon.png              # Plugin icon
+          ```
+          
+          ## 🔧 Debugging
+          
+          This artifacts repository is **fully functional** and can be used for:
+          - Independent testing and debugging
+          - Plugin development without full source compilation
+          - Quick deployment and distribution
+          
+          The structure is identical to the plugin source, but contains only compiled/production-ready files.
+          
+          ## 📊 Build Information
+          
+          Check `runtime-config.json` for detailed build metadata.
+          
+          ---
+          
+          🔗 **Source Code**: [DiffSense](https://github.com/GoldenSupremeSaltedFish/DiffSense)
+          EOF
           
           # 提交并推送
           git add .
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Deploy frontend build $(date +'%Y-%m-%d %H:%M:%S')"
+            git commit -m "Deploy plugin artifacts $(date +'%Y-%m-%d %H:%M:%S')"
             git push origin main
           fi
         
@@ -109,4 +206,11 @@ jobs:
         with:
           name: vsix-package
           path: "*.vsix"
-          retention-days: 90 
+          retention-days: 90
+      
+      - name: Upload Full Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: plugin-artifacts-full
+          path: "artifacts-staging/"
+          retention-days: 30 

@@ -18,17 +18,18 @@ DiffSense/
 ### 拆分后的结构
 ```
 主仓库 (DiffSense):
-├── plugin/                    # 作为 subtree 引用子仓库
+├── plugin/                    # 插件源代码（保留）
 ├── ui/                       # 前端 UI 组件
 ├── src/main/java/           # Java 后端分析器
 └── ...
 
-子仓库 (DiffSense-Plugin):
-├── analyzers/                # 各语言分析器
-├── ui/                      # 插件内嵌 UI
-├── src/                     # 插件源代码
-├── .github/workflows/       # 独立的 CI/CD
-└── ...
+产物仓库 (Diffsense-artifacts):
+├── dist/                     # 编译后的 TypeScript 代码
+├── ui/                      # 前端构建产物
+├── analyzers/               # 分析器运行时文件
+├── *.vsix                   # 打包的插件文件
+├── runtime-config.json      # 运行时配置
+└── package.json            # 插件元数据
 ```
 
 ## 🚀 迁移步骤
@@ -47,57 +48,68 @@ DiffSense/
    git clone https://github.com/GoldenSupremeSaltedFish/DiffSense.git DiffSense-backup
    ```
 
-### 第二步：创建 Plugin 子仓库
+### 第二步：创建产物仓库
 
 1. **在 GitHub 上创建新仓库**
-   - 仓库名：`DiffSense-Plugin`
+   - 仓库名：`Diffsense-artifacts`
    - 可见性：Public（或根据需要选择 Private）
-   - 不要初始化 README、.gitignore 或 License
+   - 可以初始化空的 README
 
-2. **提取 plugin 目录的历史**
+2. **配置产物仓库**
+   ```bash
+   # 克隆空的产物仓库
+   git clone https://github.com/GoldenSupremeSaltedFish/Diffsense-artifacts.git
+   cd Diffsense-artifacts
+   
+   # 添加基本说明
+   echo "# DiffSense Plugin Artifacts" > README.md
+   echo "This repository contains production-ready plugin artifacts." >> README.md
+   git add README.md
+   git commit -m "Initial commit"
+   git push origin main
+   ```
+
+### 第三步：配置主仓库的 CI/CD
+
+1. **更新插件的 CI 配置**
+   - 使用已生成的 `plugin/.github/workflows/ci.yml` 文件
+   - 该配置会自动构建产物并推送到 artifacts 仓库
+
+2. **构建本地产物**
    ```bash
    cd DiffSense
    
-   # 创建包含 plugin 历史的新分支
-   git subtree split --prefix=plugin -b plugin-split
+   # 使用专门的产物构建脚本
+   ./build-artifacts-only.bat
    
-   # 推送到新的子仓库
-   git push https://github.com/GoldenSupremeSaltedFish/DiffSense-Plugin.git plugin-split:main
+   # 验证产物结构
+   ls plugin/artifacts-output/
    ```
 
-### 第三步：配置子仓库
+### 第四步：首次部署产物
 
-1. **克隆并配置子仓库**
+1. **手动推送首个产物**
    ```bash
-   git clone https://github.com/GoldenSupremeSaltedFish/DiffSense-Plugin.git
-   cd DiffSense-Plugin
+   cd plugin/artifacts-output
    
-   # 验证文件结构
-   ls -la
+   # 初始化为 git 仓库
+   git init
+   git remote add origin https://github.com/GoldenSupremeSaltedFish/Diffsense-artifacts.git
+   
+   # 推送产物
+   git add .
+   git commit -m "Initial plugin artifacts"
+   git push -u origin main
    ```
 
-2. **添加 GitHub Actions 配置**
-   - 使用已生成的 `.github/workflows/ci.yml` 文件
-   - 确保所有路径正确（相对于子仓库根目录）
-
-### 第四步：配置主仓库使用 Subtree
-
-1. **删除原有 plugin 目录**
+2. **验证产物可用性**
    ```bash
-   cd DiffSense
-   git rm -r plugin
-   git commit -m "Remove plugin directory for subtree conversion"
-   ```
-
-2. **添加 plugin 作为 subtree**
-   ```bash
-   git subtree add --prefix=plugin https://github.com/GoldenSupremeSaltedFish/DiffSense-Plugin.git main --squash
-   ```
-
-3. **验证 subtree 配置**
-   ```bash
-   git log --oneline -5  # 应该看到 subtree 相关的提交
-   ls plugin/            # 验证文件是否正确
+   # 克隆产物仓库进行测试
+   git clone https://github.com/GoldenSupremeSaltedFish/Diffsense-artifacts.git test-artifacts
+   cd test-artifacts
+   
+   # 在 VS Code 中打开并按 F5 测试
+   code .
    ```
 
 ### 第五步：配置 CI/CD
@@ -114,30 +126,43 @@ DiffSense/
 
 ## 🛠️ 日常使用工作流
 
-### 更新 Plugin（从子仓库拉取）
+### 开发和测试
 ```bash
-# 方法 1：使用管理脚本
-./scripts/subtree-management.bat
-# 选择选项 2
+# 1. 修改源代码后构建产物
+./build-artifacts-only.bat
 
-# 方法 2：手动命令
-git subtree pull --prefix=plugin https://github.com/GoldenSupremeSaltedFish/DiffSense-Plugin.git main --squash
+# 2. 本地测试产物
+cd plugin/artifacts-output
+code .  # 在 VS Code 中按 F5 调试
+
+# 3. 安装 VSIX 测试
+code --install-extension plugin/artifacts-output/*.vsix
 ```
 
-### 推送 Plugin 更改（到子仓库）
+### 部署到产物仓库
 ```bash
-# 方法 1：使用管理脚本
-./scripts/subtree-management.bat
-# 选择选项 3
+# 方法 1：通过 CI/CD 自动部署
+git add .
+git commit -m "Update plugin features"
+git push  # 触发 CI/CD，自动推送产物
 
-# 方法 2：手动命令
-git subtree push --prefix=plugin https://github.com/GoldenSupremeSaltedFish/DiffSense-Plugin.git main
+# 方法 2：手动推送产物
+cd plugin/artifacts-output
+git init
+git remote add origin https://github.com/GoldenSupremeSaltedFish/Diffsense-artifacts.git
+git add .
+git commit -m "Manual artifacts update"
+git push origin main --force
 ```
 
-### 构建完整项目
+### 使用产物进行独立开发
 ```bash
-# 使用新的构建脚本
-./build-all-subtree.bat
+# 克隆产物仓库
+git clone https://github.com/GoldenSupremeSaltedFish/Diffsense-artifacts.git
+cd Diffsense-artifacts
+
+# 直接调试和测试
+code .  # 按 F5 即可调试，无需编译
 ```
 
 ## 📊 CI/CD 流程
@@ -145,14 +170,18 @@ git subtree push --prefix=plugin https://github.com/GoldenSupremeSaltedFish/Diff
 ### 主仓库 CI/CD
 - 构建 Java 分析器
 - 构建前端 UI
-- 集成测试
-- 推送 Plugin 更改到子仓库（如果有变化）
+- 构建 Node.js 和 Golang 分析器
+- 编译插件 TypeScript 代码
+- 打包 VSIX 文件
+- 生成完整的可调试产物结构
+- 自动推送产物到 artifacts 仓库
 
-### 子仓库 CI/CD
-- 测试插件代码
-- 构建 VSIX 包
-- 部署前端到 artifacts 仓库
-- 自动发布到 VSCode Marketplace（可选）
+### 产物仓库特点
+- 包含所有运行时依赖
+- 保持与源码相同的目录结构
+- 支持独立调试（按 F5 即可）
+- 不含源码，只有编译产物
+- 可直接安装 VSIX 进行测试
 
 ## 🔧 故障排除
 
