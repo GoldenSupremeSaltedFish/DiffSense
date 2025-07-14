@@ -18,6 +18,9 @@ public class AnalysisConfig {
     private static final int DEFAULT_MAX_FILES = 1000; // 增加文件数量限制
     private static final int DEFAULT_TIMEOUT_SECONDS = 300; // 5分钟超时
     
+    // 分析范围
+    private String scope = "all"; // 默认分析所有内容
+    
     // 微服务项目检测配置
     private static final List<String> MICROSERVICE_PATTERNS = Arrays.asList(
         "*_service", "service_*", "*-service", "service-*",
@@ -120,24 +123,30 @@ public class AnalysisConfig {
         return maxDepth;
     }
     
-    public void setMaxDepth(int maxDepth) {
+    // 支持方法链式调用
+    public AnalysisConfig setMaxDepth(int maxDepth) {
         this.maxDepth = maxDepth;
+        return this;
     }
     
     public int getMaxFiles() {
         return maxFiles;
     }
     
-    public void setMaxFiles(int maxFiles) {
+    // 支持方法链式调用
+    public AnalysisConfig setMaxFiles(int maxFiles) {
         this.maxFiles = maxFiles;
+        return this;
     }
     
     public int getTimeoutSeconds() {
         return timeoutSeconds;
     }
     
-    public void setTimeoutSeconds(int timeoutSeconds) {
+    // 支持方法链式调用
+    public AnalysisConfig setTimeoutSeconds(int timeoutSeconds) {
         this.timeoutSeconds = timeoutSeconds;
+        return this;
     }
     
     public boolean isEnableMicroserviceDetection() {
@@ -304,5 +313,78 @@ public class AnalysisConfig {
     
     public enum OutputFormat {
         JSON, XML, YAML, SUMMARY
+    }
+    
+    /**
+     * 获取默认配置实例
+     */
+    public static AnalysisConfig getDefault() {
+        return new AnalysisConfig(Paths.get("."))
+            .setMaxDepth(DEFAULT_MAX_DEPTH)
+            .setMaxFiles(DEFAULT_MAX_FILES)
+            .setTimeoutSeconds(DEFAULT_TIMEOUT_SECONDS)
+            .setScope("all");
+    }
+    
+    /**
+     * 创建配置构建器
+     */
+    public static AnalysisConfigBuilder builder() {
+        return new AnalysisConfigBuilder();
+    }
+    
+    /**
+     * 获取分析范围
+     */
+    public String getScope() {
+        return scope;
+    }
+    
+    /**
+     * 设置分析范围
+     */
+    public AnalysisConfig setScope(String scope) {
+        this.scope = scope;
+        return this;
+    }
+    
+    /**
+     * 配置构建器类
+     */
+    public static class AnalysisConfigBuilder {
+        private final AnalysisConfig config;
+        
+        private AnalysisConfigBuilder() {
+            config = new AnalysisConfig();
+        }
+        
+        public AnalysisConfigBuilder targetDirectory(Path path) {
+            config.setTargetDirectory(path);
+            return this;
+        }
+        
+        public AnalysisConfigBuilder maxDepth(int maxDepth) {
+            config.setMaxDepth(maxDepth);
+            return this;
+        }
+        
+        public AnalysisConfigBuilder maxFiles(int maxFiles) {
+            config.setMaxFiles(maxFiles);
+            return this;
+        }
+        
+        public AnalysisConfigBuilder timeoutSeconds(int timeoutSeconds) {
+            config.setTimeoutSeconds(timeoutSeconds);
+            return this;
+        }
+        
+        public AnalysisConfigBuilder scope(String scope) {
+            config.setScope(scope);
+            return this;
+        }
+        
+        public AnalysisConfig build() {
+            return config;
+        }
     }
 } 
