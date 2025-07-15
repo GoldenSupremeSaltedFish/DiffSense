@@ -24,11 +24,11 @@ jobs:
       VITE_OUT_DIR: dist
       
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v3
       
       # 设置Java环境
       - name: Set up JDK
-        uses: actions/setup-java@v4.7.1
+        uses: actions/setup-java@v3
         with:
           java-version: "17"
           distribution: "temurin"
@@ -40,7 +40,7 @@ jobs:
       
       # 设置Node环境
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v3
         with:
           node-version: '18'
           cache: 'npm'
@@ -160,3 +160,54 @@ jobs:
             ${{ env.PLUGIN_DIR }}/release/ui/
             ${{ env.PLUGIN_DIR }}/release/*.vsix
           retention-days: 14
+
+      # 运行插件目录的工作流
+      - name: Run Plugin Workflow
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        working-directory: plugin
+        env:
+          ARTIFACTS_TOKEN: ${{ secrets.ARTIFACTS_TOKEN }}
+        run: |
+          echo "Running plugin workflow in $(pwd)"
+          
+          # 确保工作目录正确
+          if [ ! -f ".github/workflows/ci.yml" ]; then
+            echo "Error: Plugin workflow file not found!"
+            exit 1
+          fi
+          
+          # 运行插件的构建和部署步骤
+          npm ci
+          npm run prepare-package
+          npm run compile
+          npm run package
+          
+          # 准备产物目录
+          mkdir -p artifacts-staging
+          cp -r dist analyzers ui *.vsix package.json tsconfig.json icon.png LICENSE.txt README.md .vscodeignore artifacts-staging/
+          
+          # 推送到 artifacts 仓库
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          if [ -z "$ARTIFACTS_TOKEN" ]; then
+            echo "Error: ARTIFACTS_TOKEN is not set"
+            exit 1
+          fi
+          
+          # 克隆 artifacts 仓库
+          git clone https://x-access-token:${ARTIFACTS_TOKEN}@github.com/GoldenSupremeSaltedFish/Diffsense-artifacts.git artifacts-repo
+          
+          # 清空并复制新的构建产物
+          cd artifacts-repo
+          rm -rf *
+          cp -r ../artifacts-staging/* .
+          
+          # 提交并推送
+          git add .
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Deploy plugin artifacts $(date +'%Y-%m-%d %H:%M:%S')"
+            git push origin main
+          fi
