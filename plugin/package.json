@@ -2,7 +2,7 @@
   "name": "diffsense",
   "displayName": "DiffSense",
   "description": "智能Git代码影响分析工具，支持Java、Golang、前端代码的变更影响分析和可视化",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "publisher": "humphreyLi",
   "author": {
     "name": "DiffSense Team"

@@ -170,21 +170,70 @@ jobs:
         run: |
           echo "Running plugin workflow in $(pwd)"
           
-          # 确保工作目录正确
-          if [ ! -f ".github/workflows/ci.yml" ]; then
-            echo "Error: Plugin workflow file not found!"
-            exit 1
-          fi
-          
-          # 运行插件的构建和部署步骤
+          # 运行插件的构建步骤（不包括打包VSIX）
           npm ci
           npm run prepare-package
           npm run compile
-          npm run package
           
-          # 准备产物目录
+          # 准备产物目录（只包含运行时需要的产物）
           mkdir -p artifacts-staging
-          cp -r dist analyzers ui *.vsix package.json tsconfig.json icon.png LICENSE.txt README.md .vscodeignore artifacts-staging/
+          
+          echo "Preparing artifacts for deployment..."
+          
+          # 复制编译后的TypeScript代码
+          if [ -d "dist" ]; then
+            cp -r dist artifacts-staging/
+            echo "✅ TypeScript compiled code copied"
+          fi
+          
+          # 复制分析器产物
+          if [ -d "analyzers" ]; then
+            cp -r analyzers artifacts-staging/
+            echo "✅ Analyzers copied"
+          fi
+          
+          # 复制UI产物
+          if [ -d "ui" ]; then
+            cp -r ui artifacts-staging/
+            echo "✅ UI artifacts copied"
+          fi
+          
+          # 复制必要的配置文件（用于运行时）
+          cp package.json artifacts-staging/
+          cp tsconfig.json artifacts-staging/
+          cp icon.png artifacts-staging/
+          cp LICENSE.txt artifacts-staging/
+          cp README.md artifacts-staging/
+          cp .vscodeignore artifacts-staging/
+          
+          echo "✅ Configuration files copied"
+          
+          # 创建运行时配置文件
+          cat > artifacts-staging/runtime-config.json << EOF
+          {
+            "version": "$(node -p "require('./package.json').version")",
+            "buildTime": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "commit": "${{ github.sha }}",
+            "isProduction": true,
+            "debugMode": true,
+            "artifactsOnly": true,
+            "buildInfo": {
+              "javaAnalyzer": "$(ls analyzers/*.jar 2>/dev/null | wc -l) JAR files",
+              "nodeAnalyzer": "$(ls analyzers/node-analyzer/*.js 2>/dev/null | wc -l) JS files",
+              "golangAnalyzer": "$(ls analyzers/golang-analyzer/*.js 2>/dev/null | wc -l) JS files",
+              "frontend": "$(ls ui/index.html 2>/dev/null | wc -l) files"
+            }
+          }
+          EOF
+          
+          echo "✅ Runtime configuration created"
+          
+          # 显示产物统计
+          echo "📊 Artifacts summary:"
+          find artifacts-staging -type f -name "*.jar" | wc -l | xargs echo "JAR files:"
+          find artifacts-staging -type f -name "*.js" | wc -l | xargs echo "JS files:"
+          find artifacts-staging -type f -name "*.html" | wc -l | xargs echo "HTML files:"
+          find artifacts-staging -type f -name "*.json" | wc -l | xargs echo "JSON files:"
           
           # 推送到 artifacts 仓库
           git config --global user.name "github-actions[bot]"
@@ -195,19 +244,75 @@ jobs:
             exit 1
           fi
           
-          # 克隆 artifacts 仓库
+          echo "🔄 Cloning artifacts repository..."
           git clone https://x-access-token:${ARTIFACTS_TOKEN}@github.com/GoldenSupremeSaltedFish/Diffsense-artifacts.git artifacts-repo
           
           # 清空并复制新的构建产物
           cd artifacts-repo
+          echo "🗑️ Cleaning existing artifacts..."
           rm -rf *
+          
+          echo "📦 Copying new artifacts..."
           cp -r ../artifacts-staging/* .
+          
+          # 创建 artifacts 仓库的 README
+          cat > README.md << 'EOF'
+          # DiffSense Plugin Artifacts
+          
+          这个仓库包含 **DiffSense VSCode 插件的产物**，包含所有运行时依赖，可用于独立调试和测试。
+          
+          ## 🚀 快速开始
+          
+          ### 直接调试产物
+          ```bash
+          git clone https://github.com/GoldenSupremeSaltedFish/Diffsense-artifacts.git
+          cd Diffsense-artifacts
+          code .
+          # 按 F5 开始调试预构建的产物
+          ```
+          
+          ## 📁 产物结构
+          
+          ```
+          ├── dist/                    # 编译后的 TypeScript 代码
+          ├── ui/                     # 前端 UI 构建产物
+          ├── analyzers/              # 语言分析器（包含依赖）
+          │   ├── *.jar              # Java 分析器
+          │   ├── node-analyzer/     # Node.js 分析器
+          │   └── golang-analyzer/   # Golang 分析器
+          ├── runtime-config.json     # 构建元数据
+          ├── package.json           # 插件元数据
+          ├── tsconfig.json          # TypeScript 配置
+          └── icon.png              # 插件图标
+          ```
+          
+          ## 🔧 说明
+          
+          此产物仓库包含：
+          - ✅ 编译后的代码（可直接运行）
+          - ✅ 所有分析器的 JAR 包和 JS 文件
+          - ✅ 前端构建产物
+          - ✅ 运行时配置文件
+          - ❌ 不包含 VSIX 包（请到主仓库下载）
+          
+          产物结构与插件源码保持一致，但只包含运行时必需的文件。
+          
+          ## 📊 构建信息
+          
+          查看 `runtime-config.json` 获取详细的构建元数据。
+          
+          ---
+          
+          🔗 **源代码**: [DiffSense](https://github.com/GoldenSupremeSaltedFish/DiffSense)
+          EOF
           
           # 提交并推送
           git add .
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Deploy plugin artifacts $(date +'%Y-%m-%d %H:%M:%S')"
+            echo "📤 Committing and pushing artifacts..."
+            git commit -m "Deploy plugin artifacts $(date +'%Y-%m-%d %H:%M:%S') - v$(node -p "require('../artifacts-staging/package.json').version")"
             git push origin main
+            echo "✅ Artifacts deployed successfully!"
           fi
