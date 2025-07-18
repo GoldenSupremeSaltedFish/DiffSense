@@ -130,7 +130,11 @@
     "cacheDir": ".diffsense-cache",
     "cacheExpiry": "7d",
     "parallelAnalysis": true,
-    "threads": 4
+    "threads": 4,
+    "timeoutSeconds": 300,
+    "memoryLimitMB": 2048,
+    "enableProfiling": false,
+    "optimizeForLargeRepos": true
   },
   
   "output": {
@@ -184,7 +188,16 @@
     "timeoutSeconds": 300,
     "memoryLimitMB": 2048,
     "enableProfiling": false,
-    "optimizeForLargeRepos": true
+    "optimizeForLargeRepos": true,
+    "maxFileSizeMB": 10,
+    "analysisThresholds": {
+      "highConfidence": 0.8,
+      "mediumConfidence": 0.5,
+      "lowConfidence": 0.3,
+      "highRisk": 0.8,
+      "mediumRisk": 0.5,
+      "lowRisk": 0.3
+    }
   },
   
   "integrations": {

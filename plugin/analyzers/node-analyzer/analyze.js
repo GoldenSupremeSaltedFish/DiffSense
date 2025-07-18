@@ -12,9 +12,20 @@ const glob = require('glob');
 const { Project } = require('ts-morph');
 const { extractSnapshotsForFile } = require('./snapshotExtractors');
 const FrontendGranularAnalyzer = require('./granularAnalyzer');
+const { defaultErrorHandler, ErrorCodes, ErrorSeverity } = require('./errorHandler');
+const { TypeValidator } = require('../shared/types');
+const { 
+  AnalysisThresholds, 
+  ClassificationWeights, 
+  RegexPatterns,
+  FileTypes 
+} = require('../shared/constants');
+const { FrontendChangeClassifier } = require('../shared/classifiers');
 
 /**
  * 前端代码修改分类器 - 适用于 React / Vue / JS/TS
+ * 注意：此类已移至共享模块，此处保留以保持向后兼容性
+ * 建议使用 ../shared/classifiers 中的 FrontendChangeClassifier
  */
 class FrontendChangeClassifier {
   
@@ -30,48 +41,23 @@ class FrontendChangeClassifier {
 
   /**
    * 对文件进行前端代码分类
+   * 注意：此方法已移至共享模块，此处保留以保持向后兼容性
    */
   static classifyFile(filePath, fileInfo) {
-    const indicators = [];
-    const categoryScores = {
-      F1: 0, F2: 0, F3: 0, F4: 0, F5: 0
-    };
+    try {
+      // 输入验证
+      TypeValidator.isString(filePath, 'filePath');
+      TypeValidator.isObject(fileInfo, 'fileInfo');
 
-    // F1: 组件行为变更检测
-    categoryScores.F1 = this.calculateBehaviorChangeScore(filePath, fileInfo, indicators);
-    
-    // F2: UI结构调整检测
-    categoryScores.F2 = this.calculateUIStructureScore(filePath, fileInfo, indicators);
-    
-    // F3: 样式改动检测
-    categoryScores.F3 = this.calculateStyleChangeScore(filePath, fileInfo, indicators);
-    
-    // F4: 交互事件修改检测
-    categoryScores.F4 = this.calculateEventChangeScore(filePath, fileInfo, indicators);
-    
-    // F5: 依赖/配置变动检测
-    categoryScores.F5 = this.calculateDependencyChangeScore(filePath, fileInfo, indicators);
-
-    // 选择得分最高的类别
-    const bestCategory = Object.keys(categoryScores).reduce((a, b) => 
-      categoryScores[a] > categoryScores[b] ? a : b
-    );
-
-    const confidence = Math.min(categoryScores[bestCategory], 100) / 100;
-    const category = this.CATEGORIES[bestCategory];
-
-    return {
-      filePath: fileInfo.relativePath,
-      classification: {
-        category: bestCategory,
-        categoryName: category.name,
-        description: category.description,
-        reason: this.buildReason(bestCategory, indicators),
-        confidence: confidence,
-        indicators: indicators
-      },
-      changedMethods: fileInfo.methods ? fileInfo.methods.map(m => m.name) : []
-    };
+      // 使用共享模块的分类器
+      return require('../shared/classifiers').FrontendChangeClassifier.classifyFile(filePath, fileInfo);
+    } catch (error) {
+      return defaultErrorHandler.handleError(error, {
+        operation: 'classifyFile',
+        filePath,
+        fileInfo: { relativePath: fileInfo?.relativePath }
+      });
+    }
   }
 
   /**

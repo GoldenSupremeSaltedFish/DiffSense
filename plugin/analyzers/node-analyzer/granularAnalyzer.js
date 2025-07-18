@@ -1,5 +1,13 @@
 const { ModificationType } = require('./modificationType');
 const path = require('path');
+const { defaultErrorHandler, ErrorCodes, ErrorSeverity } = require('./errorHandler');
+const { TypeValidator } = require('../shared/types');
+const { 
+  AnalysisThresholds, 
+  ClassificationWeights, 
+  RegexPatterns,
+  ModificationTypes 
+} = require('../shared/constants');
 
 /**
  * 前端细粒度变更分析器
@@ -11,25 +19,39 @@ class FrontendGranularAnalyzer {
    * 分析文件变更，返回细粒度的修改详情列表
    */
   analyzeFileChanges(filePath, methods, diffContent, fileContent) {
-    const modifications = [];
-    const filePathStr = filePath.replace(/\\/g, '/');
-    
-    // 分析文件类型相关的变更
-    modifications.push(...this.analyzeFileTypeChanges(filePathStr, fileContent));
-    
-    // 分析方法级别的变更
-    if (methods && methods.length > 0) {
-      for (const method of methods) {
-        modifications.push(...this.analyzeMethodChanges(filePathStr, method, diffContent, fileContent));
+    try {
+      // 输入验证
+      TypeValidator.isString(filePath, 'filePath');
+      TypeValidator.isArray(methods, 'methods');
+      TypeValidator.isString(diffContent, 'diffContent');
+      TypeValidator.isString(fileContent, 'fileContent');
+
+      const modifications = [];
+      const filePathStr = filePath.replace(/\\/g, '/');
+      
+      // 分析文件类型相关的变更
+      modifications.push(...this.analyzeFileTypeChanges(filePathStr, fileContent));
+      
+      // 分析方法级别的变更
+      if (methods && methods.length > 0) {
+        for (const method of methods) {
+          modifications.push(...this.analyzeMethodChanges(filePathStr, method, diffContent, fileContent));
+        }
       }
+      
+      // 如果没有具体的方法变更，但有文件变更，进行整体分析
+      if ((!methods || methods.length === 0) && diffContent) {
+        modifications.push(...this.analyzeGeneralChanges(filePathStr, diffContent));
+      }
+      
+      return modifications;
+    } catch (error) {
+      return defaultErrorHandler.handleError(error, {
+        operation: 'analyzeFileChanges',
+        filePath,
+        methodCount: methods?.length
+      });
     }
-    
-    // 如果没有具体的方法变更，但有文件变更，进行整体分析
-    if ((!methods || methods.length === 0) && diffContent) {
-      modifications.push(...this.analyzeGeneralChanges(filePathStr, diffContent));
-    }
-    
-    return modifications;
   }
   
   /**
