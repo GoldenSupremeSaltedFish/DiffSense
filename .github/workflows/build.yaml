@@ -125,30 +125,13 @@ jobs:
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "Building version: ${VERSION}"
           
-      # 创建GitHub Release
-      - name: Create Release
+            # 构建完成，准备同步产物到子仓库
+      - name: Build Complete
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ env.VERSION }}
-          release_name: Release v${{ env.VERSION }}
-          draft: false
-          prerelease: false
-          
-      # 上传VSIX到Release
-      - name: Upload VSIX to Release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.PLUGIN_DIR }}/release/diffsense-${{ env.VERSION }}.vsix
-          asset_name: diffsense-${{ env.VERSION }}.vsix
-          asset_content_type: application/octet-stream
+        run: |
+          echo "✅ 构建完成，版本: ${{ env.VERSION }}"
+          echo "📦 产物位置: ${{ env.PLUGIN_DIR }}/release/"
+          echo "🔄 准备同步到子仓库..."
           
       # 上传构建产物（用于调试和验证）
       - name: Upload Build Artifacts
@@ -161,44 +144,45 @@ jobs:
             ${{ env.PLUGIN_DIR }}/release/*.vsix
           retention-days: 14
 
-      # 运行插件目录的工作流
-      - name: Run Plugin Workflow
+      # 同步产物到子仓库
+      - name: Sync Artifacts to Sub Repository
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         working-directory: plugin
         env:
           ARTIFACTS_TOKEN: ${{ secrets.ARTIFACTS_TOKEN }}
         run: |
-          echo "Running plugin workflow in $(pwd)"
+          echo "🔄 开始同步产物到子仓库..."
           
-          # 运行插件的构建步骤（不包括打包VSIX）
-          npm ci
-          npm run prepare-package
-          npm run compile
-          
-          # 准备产物目录（只包含运行时需要的产物）
+          # 准备产物目录
           mkdir -p artifacts-staging
           
-          echo "Preparing artifacts for deployment..."
+          echo "📦 准备构建产物..."
           
           # 复制编译后的TypeScript代码
           if [ -d "dist" ]; then
             cp -r dist artifacts-staging/
-            echo "✅ TypeScript compiled code copied"
+            echo "✅ TypeScript 编译代码已复制"
           fi
           
           # 复制分析器产物
           if [ -d "analyzers" ]; then
             cp -r analyzers artifacts-staging/
-            echo "✅ Analyzers copied"
+            echo "✅ 分析器产物已复制"
           fi
           
           # 复制UI产物
           if [ -d "ui" ]; then
             cp -r ui artifacts-staging/
-            echo "✅ UI artifacts copied"
+            echo "✅ UI产物已复制"
           fi
           
-          # 复制必要的配置文件（用于运行时）
+          # 复制VSIX文件
+          if [ -d "release" ]; then
+            cp release/*.vsix artifacts-staging/ 2>/dev/null || echo "⚠️ 未找到VSIX文件"
+            echo "✅ VSIX文件已复制"
+          fi
+          
+          # 复制必要的配置文件
           cp package.json artifacts-staging/
           cp tsconfig.json artifacts-staging/
           cp icon.png artifacts-staging/
@@ -206,7 +190,7 @@ jobs:
           cp README.md artifacts-staging/
           cp .vscodeignore artifacts-staging/
           
-          echo "✅ Configuration files copied"
+          echo "✅ 配置文件已复制"
           
           # 创建运行时配置文件
           cat > artifacts-staging/runtime-config.json << EOF
@@ -214,56 +198,67 @@ jobs:
             "version": "$(node -p "require('./package.json').version")",
             "buildTime": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "commit": "${{ github.sha }}",
+            "branch": "${{ github.ref_name }}",
             "isProduction": true,
-            "debugMode": true,
+            "debugMode": false,
             "artifactsOnly": true,
             "buildInfo": {
               "javaAnalyzer": "$(ls analyzers/*.jar 2>/dev/null | wc -l) JAR files",
               "nodeAnalyzer": "$(ls analyzers/node-analyzer/*.js 2>/dev/null | wc -l) JS files",
               "golangAnalyzer": "$(ls analyzers/golang-analyzer/*.js 2>/dev/null | wc -l) JS files",
-              "frontend": "$(ls ui/index.html 2>/dev/null | wc -l) files"
+              "frontend": "$(ls ui/index.html 2>/dev/null | wc -l) files",
+              "vsix": "$(ls release/*.vsix 2>/dev/null | wc -l) files"
             }
           }
           EOF
           
-          echo "✅ Runtime configuration created"
+          echo "✅ 运行时配置已创建"
           
           # 显示产物统计
-          echo "📊 Artifacts summary:"
-          find artifacts-staging -type f -name "*.jar" | wc -l | xargs echo "JAR files:"
-          find artifacts-staging -type f -name "*.js" | wc -l | xargs echo "JS files:"
-          find artifacts-staging -type f -name "*.html" | wc -l | xargs echo "HTML files:"
-          find artifacts-staging -type f -name "*.json" | wc -l | xargs echo "JSON files:"
+          echo "📊 产物统计:"
+          find artifacts-staging -type f -name "*.jar" | wc -l | xargs echo "JAR文件:"
+          find artifacts-staging -type f -name "*.js" | wc -l | xargs echo "JS文件:"
+          find artifacts-staging -type f -name "*.html" | wc -l | xargs echo "HTML文件:"
+          find artifacts-staging -type f -name "*.vsix" | wc -l | xargs echo "VSIX文件:"
           
           # 推送到 artifacts 仓库
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
           if [ -z "$ARTIFACTS_TOKEN" ]; then
-            echo "Error: ARTIFACTS_TOKEN is not set"
+            echo "❌ 错误: ARTIFACTS_TOKEN 未设置"
             exit 1
           fi
           
-          echo "🔄 Cloning artifacts repository..."
+          echo "🔄 克隆产物仓库..."
           git clone https://x-access-token:${ARTIFACTS_TOKEN}@github.com/GoldenSupremeSaltedFish/Diffsense-artifacts.git artifacts-repo
           
           # 清空并复制新的构建产物
           cd artifacts-repo
-          echo "🗑️ Cleaning existing artifacts..."
+          echo "🗑️ 清理现有产物..."
           rm -rf *
           
-          echo "📦 Copying new artifacts..."
+          echo "📦 复制新产物..."
           cp -r ../artifacts-staging/* .
           
-          # 创建 artifacts 仓库的 README
+          # 创建产物仓库的 README
           cat > README.md << 'EOF'
           # DiffSense Plugin Artifacts
           
-          这个仓库包含 **DiffSense VSCode 插件的产物**，包含所有运行时依赖，可用于独立调试和测试。
+          这个仓库包含 **DiffSense VSCode 插件的构建产物**，用于分发和调试。
           
           ## 🚀 快速开始
           
-          ### 直接调试产物
+          ### 安装插件
+          ```bash
+          # 下载最新的 VSIX 文件
+          wget https://github.com/GoldenSupremeSaltedFish/Diffsense-artifacts/raw/main/diffsense-*.vsix
+          
+          # 安装到 VSCode
+          code --install-extension diffsense-*.vsix
+          ```
+          
+          ### 调试产物
           ```bash
           git clone https://github.com/GoldenSupremeSaltedFish/Diffsense-artifacts.git
           cd Diffsense-artifacts
@@ -280,6 +275,7 @@ jobs:
           │   ├── *.jar              # Java 分析器
           │   ├── node-analyzer/     # Node.js 分析器
           │   └── golang-analyzer/   # Golang 分析器
+          ├── *.vsix                  # VSCode 插件包
           ├── runtime-config.json     # 构建元数据
           ├── package.json           # 插件元数据
           ├── tsconfig.json          # TypeScript 配置
@@ -292,14 +288,18 @@ jobs:
           - ✅ 编译后的代码（可直接运行）
           - ✅ 所有分析器的 JAR 包和 JS 文件
           - ✅ 前端构建产物
+          - ✅ VSCode 插件包（VSIX）
           - ✅ 运行时配置文件
-          - ❌ 不包含 VSIX 包（请到主仓库下载）
           
-          产物结构与插件源码保持一致，但只包含运行时必需的文件。
+          产物结构与插件源码保持一致，包含所有运行时必需的文件。
           
           ## 📊 构建信息
           
           查看 `runtime-config.json` 获取详细的构建元数据。
+          
+          ## 🔄 自动更新
+          
+          此仓库由主仓库的 CI/CD 自动更新，每次主仓库推送都会同步最新的构建产物。
           
           ---
           
@@ -309,10 +309,10 @@ jobs:
           # 提交并推送
           git add .
           if git diff --staged --quiet; then
-            echo "No changes to commit"
+            echo "ℹ️ 无变更需要提交"
           else
-            echo "📤 Committing and pushing artifacts..."
-            git commit -m "Deploy plugin artifacts $(date +'%Y-%m-%d %H:%M:%S') - v$(node -p "require('../artifacts-staging/package.json').version")"
+            echo "📤 提交并推送产物..."
+            git commit -m "🔄 同步产物 v$(node -p "require('../artifacts-staging/package.json').version") - $(date +'%Y-%m-%d %H:%M:%S')"
             git push origin main
-            echo "✅ Artifacts deployed successfully!"
+            echo "✅ 产物同步成功！"
           fi

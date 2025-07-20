@@ -223,4 +223,11 @@ jobs:
         with:
           name: plugin-artifacts-full
           path: "artifacts-staging/"
-          retention-days: 30 
+          retention-days: 30
+          
+      - name: Build Summary
+        run: |
+          echo "✅ 构建完成"
+          echo "📦 VSIX文件: $(ls *.vsix 2>/dev/null | wc -l) 个"
+          echo "📁 产物目录: artifacts-staging/"
+          echo "🔄 产物将同步到子仓库进行分发" 
