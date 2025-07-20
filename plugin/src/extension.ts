@@ -1504,6 +1504,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       // 创建单一的前端分析结果，包含所有文件
       const allMethods: string[] = [];
       const allFiles: any[] = [];
+      const allFilePaths: string[] = []; // 新增：用于存储文件路径字符串
       
       // 处理微服务检测结果
       let microserviceInfo = '';
@@ -1519,6 +1520,9 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       }
       
       frontendResult.files.forEach((file: any) => {
+        // 收集文件路径字符串
+        allFilePaths.push(file.relativePath);
+        
         // 收集所有文件信息
         allFiles.push({
           path: file.relativePath,
@@ -1543,14 +1547,15 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       
       // 创建单一的前端分析提交记录
       commits.push({
-        commitId: 'frontend_analysis',
+        commitId: 'frontend',
         message: `前端代码分析结果${microserviceInfo ? ` - ${microserviceInfo}` : ''}`,
         author: { name: '前端分析器', email: 'frontend@diffsense.com' },
         timestamp: frontendResult.timestamp || new Date().toISOString(),
         changedFilesCount: frontendResult.files.length,
         changedMethodsCount: allMethods.length,
         impactedMethods: allMethods,
-        impactedFiles: allFiles,
+        impactedFiles: allFilePaths, // 修复：使用文件路径字符串数组
+        files: allFiles, // 保留详细文件信息用于其他用途
         impactedTests: {},
         changeClassifications: classifications,
         classificationSummary: summary,
@@ -1571,6 +1576,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         changedMethodsCount: 0,
         impactedMethods: [],
         impactedFiles: [],
+        files: [],
         impactedTests: {},
         changeClassifications: [],
         classificationSummary: {
