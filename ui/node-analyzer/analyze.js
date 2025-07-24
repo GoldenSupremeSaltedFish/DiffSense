@@ -9,6 +9,7 @@ const madge = require('madge');
 const path = require('path');
 const fs = require('fs');
 const glob = require('glob');
+const { execSync } = require('child_process');
 const { Project } = require('ts-morph');
 const { extractSnapshotsForFile } = require('./snapshotExtractors');
 const FrontendGranularAnalyzer = require('./granularAnalyzer');
@@ -399,6 +400,14 @@ class FrontendAnalyzer {
       enableBuildToolDetection: true, // 启用构建工具检测
       enableFrameworkDetection: true, // 启用框架检测
       includeTypeTags: options.includeTypeTags || false, // 添加细粒度分析选项
+      // Git变更分析选项
+      enableGitAnalysis: false,
+      branch: 'master',
+      commits: null,
+      since: null,
+      until: null,
+      startCommit: null,
+      endCommit: null,
       ...options
     };
     this.project = null;
@@ -406,6 +415,8 @@ class FrontendAnalyzer {
     this.componentSnapshots = [];
     // 微服务检测结果
     this.microserviceDetection = null;
+    // 新增：Git变更信息
+    this.gitChanges = null;
     
     // 初始化细粒度分析器
     if (this.options.includeTypeTags) {
@@ -432,7 +443,9 @@ class FrontendAnalyzer {
         // 添加细粒度修改详情
         modifications: [],
         // 添加微服务检测结果
-        microserviceDetection: null
+        microserviceDetection: null,
+        // 新增：Git变更信息
+        gitChanges: null
       };
 
       // 1. 执行微服务项目检测
@@ -450,23 +463,30 @@ class FrontendAnalyzer {
         }
       }
 
-      // 2. 使用madge分析模块依赖关系
+      // 2. Git变更分析
+      if (this.options.enableGitAnalysis) {
+        console.error(`📝 执行Git变更分析...`);
+        this.gitChanges = await this.analyzeGitChanges();
+        result.gitChanges = this.gitChanges;
+      }
+
+      // 3. 使用madge分析模块依赖关系
       const dependencyGraph = await this.analyzeDependencies();
       result.dependencies = dependencyGraph;
 
-      // 3. 分析TypeScript/JavaScript代码
+      // 4. 分析TypeScript/JavaScript代码
       const codeAnalysis = await this.analyzeCode();
       result.methods = codeAnalysis.methods;
       result.callGraph = codeAnalysis.callGraph;
       result.files = codeAnalysis.files;
 
-      // 4. 应用前端代码分类
+      // 5. 应用前端代码分类
       if (result.files && result.files.length > 0) {
         const { classifications, summary } = FrontendChangeClassifier.classifyChanges(result.files);
         result.changeClassifications = classifications;
         result.classificationSummary = summary;
         
-        // 5. 执行细粒度分析（如果启用）
+        // 6. 执行细粒度分析（如果启用）
         if (this.options.includeTypeTags && this.granularAnalyzer) {
           const allModifications = [];
           for (const fileInfo of result.files) {
@@ -482,7 +502,7 @@ class FrontendAnalyzer {
         }
       }
 
-      // 5. 生成摘要信息
+      // 7. 生成摘要信息
       result.summary = this.generateSummary(result);
       result.componentSnapshots = this.componentSnapshots;
 
@@ -1083,6 +1103,151 @@ class FrontendAnalyzer {
   }
   
   /**
+   * 分析Git变更
+   */
+  async analyzeGitChanges() {
+    try {
+      
+      let changedFiles = [];
+      
+      // 根据不同的Git参数获取变更文件
+      if (this.options.commits) {
+        // 分析最近N个提交
+        const cmd = `git diff --name-only HEAD~${this.options.commits} HEAD`;
+        const output = execSync(cmd, { cwd: this.targetDir, encoding: 'utf-8' });
+        changedFiles = output.trim().split('\n').filter(file => file.length > 0);
+      } else if (this.options.since) {
+        // 分析指定日期以来的变更
+        let cmd = `git diff --name-only --since="${this.options.since}"`;
+        if (this.options.until) {
+          cmd += ` --until="${this.options.until}"`;
+        }
+        const output = execSync(cmd, { cwd: this.targetDir, encoding: 'utf-8' });
+        changedFiles = output.trim().split('\n').filter(file => file.length > 0);
+      } else if (this.options.startCommit && this.options.endCommit) {
+        // 分析两个提交之间的变更
+        const cmd = `git diff --name-only ${this.options.startCommit}..${this.options.endCommit}`;
+        const output = execSync(cmd, { cwd: this.targetDir, encoding: 'utf-8' });
+        changedFiles = output.trim().split('\n').filter(file => file.length > 0);
+      } else {
+        // 默认分析工作区变更
+        const cmd = `git diff --name-only`;
+        const output = execSync(cmd, { cwd: this.targetDir, encoding: 'utf-8' });
+        changedFiles = output.trim().split('\n').filter(file => file.length > 0);
+      }
+      
+      // 过滤前端相关文件
+      const frontendFiles = changedFiles.filter(file => {
+        const ext = path.extname(file).toLowerCase();
+        return ['.js', '.jsx', '.ts', '.tsx', '.vue', '.css', '.scss', '.sass', '.less'].includes(ext);
+      });
+      
+      // 分析变更的方法
+      const changedMethods = await this.analyzeChangedMethods(frontendFiles);
+      
+      console.error(`📝 Git变更分析完成: ${frontendFiles.length}个文件, ${changedMethods.length}个方法`);
+      
+      return {
+        changedFilesCount: frontendFiles.length,
+        changedMethodsCount: changedMethods.length,
+        changedFiles: frontendFiles,
+        changedMethods: changedMethods,
+        gitOptions: {
+          branch: this.options.branch,
+          commits: this.options.commits,
+          since: this.options.since,
+          until: this.options.until,
+          startCommit: this.options.startCommit,
+          endCommit: this.options.endCommit
+        }
+      };
+      
+    } catch (error) {
+      console.error(`❌ Git变更分析失败:`, error.message);
+      return {
+        changedFilesCount: 0,
+        changedMethodsCount: 0,
+        changedFiles: [],
+        changedMethods: [],
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * 分析变更文件中的方法
+   */
+  async analyzeChangedMethods(changedFiles) {
+    const changedMethods = [];
+    
+    for (const file of changedFiles) {
+      const fullPath = path.join(this.targetDir, file);
+      
+      // 检查文件是否存在
+      if (!fs.existsSync(fullPath)) {
+        continue;
+      }
+      
+      try {
+        // 分析文件中的方法
+        const methods = await this.extractMethodsFromFile(fullPath, file);
+        changedMethods.push(...methods);
+      } catch (error) {
+        console.error(`❌ 分析文件方法失败: ${file}`, error.message);
+      }
+    }
+    
+    return changedMethods;
+  }
+
+  /**
+   * 从文件中提取方法信息
+   */
+  async extractMethodsFromFile(fullPath, relativePath) {
+    const methods = [];
+    const content = fs.readFileSync(fullPath, 'utf-8');
+    const ext = path.extname(fullPath).toLowerCase();
+    
+    if (['.js', '.jsx', '.ts', '.tsx'].includes(ext)) {
+      // 使用TypeScript编译器分析
+      try {
+        const project = new Project();
+        const sourceFile = project.createSourceFile(fullPath, content);
+        
+        // 提取函数和方法
+        sourceFile.getFunctions().forEach(func => {
+          methods.push({
+            name: func.getName() || 'anonymous',
+            type: 'function',
+            signature: func.getText().split('{')[0].trim(),
+            file: relativePath,
+            line: func.getStartLineNumber()
+          });
+        });
+        
+        // 提取类方法
+        sourceFile.getClasses().forEach(cls => {
+          cls.getMethods().forEach(method => {
+            methods.push({
+              name: method.getName(),
+              type: 'method',
+              signature: method.getText().split('{')[0].trim(),
+              file: relativePath,
+              line: method.getStartLineNumber(),
+              className: cls.getName()
+            });
+          });
+        });
+        
+      } catch (error) {
+        console.error(`❌ TypeScript分析失败: ${relativePath}`, error.message);
+      }
+    }
+    
+    return methods;
+  }
+
+  /**
    * 根据微服务特征调整分析策略
    */
   adjustAnalysisStrategy() {
@@ -1193,7 +1358,17 @@ async function main() {
   const outputFormat = process.argv[3] || 'json';
   
   // 解析命令行选项
-  const options = {};
+  const options = {
+    // Git变更分析选项
+    branch: 'master',
+    commits: null,
+    since: null,
+    until: null,
+    startCommit: null,
+    endCommit: null,
+    enableGitAnalysis: false
+  };
+  
   for (let i = 4; i < process.argv.length; i++) {
     const arg = process.argv[i];
     if (arg === '--enable-microservice-detection') {
@@ -1207,6 +1382,30 @@ async function main() {
       i++;
     } else if (arg === '--max-depth') {
       options.maxDepth = parseInt(process.argv[i + 1]);
+      i++;
+    } else if (arg === '--branch') {
+      options.branch = process.argv[i + 1];
+      options.enableGitAnalysis = true;
+      i++;
+    } else if (arg === '--commits') {
+      options.commits = parseInt(process.argv[i + 1]);
+      options.enableGitAnalysis = true;
+      i++;
+    } else if (arg === '--since') {
+      options.since = process.argv[i + 1];
+      options.enableGitAnalysis = true;
+      i++;
+    } else if (arg === '--until') {
+      options.until = process.argv[i + 1];
+      options.enableGitAnalysis = true;
+      i++;
+    } else if (arg === '--start-commit') {
+      options.startCommit = process.argv[i + 1];
+      options.enableGitAnalysis = true;
+      i++;
+    } else if (arg === '--end-commit') {
+      options.endCommit = process.argv[i + 1];
+      options.enableGitAnalysis = true;
       i++;
     }
   }
@@ -1222,6 +1421,13 @@ async function main() {
       console.log(`文件数: ${result.summary.totalFiles}`);
       console.log(`方法数: ${result.summary.totalMethods}`);
       console.log(`依赖数: ${result.summary.totalDependencies}`);
+      
+      // 显示Git变更信息
+      if (result.gitChanges) {
+        console.log('\n📝 Git变更分析:');
+        console.log(`  变更文件数: ${result.gitChanges.changedFilesCount}`);
+        console.log(`  变更方法数: ${result.gitChanges.changedMethodsCount}`);
+      }
       
       // 显示微服务检测结果
       if (result.microserviceDetection) {
@@ -1243,4 +1449,4 @@ async function main() {
 // 如果直接运行此脚本
 if (require.main === module) {
   main();
-} 
+}
