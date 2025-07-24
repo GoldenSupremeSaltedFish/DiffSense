@@ -1636,7 +1636,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         impactedFiles: allFilePaths, // 修复：使用文件路径字符串数组
         files: allFiles, // 保留详细文件信息用于其他用途
         impactedTests: {},
-        changeClassifications: classifications.filter(c => limitedFiles.some(f => f.relativePath === c.filePath)),
+        changeClassifications: classifications.filter(c => limitedFiles.some((f: any) => f.relativePath === c.filePath)),
         classificationSummary: summary,
         language: 'frontend',
         analysisSource: 'frontend',
@@ -1808,7 +1808,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         impactedMethods: allMethods,
         impactedFiles: allFiles,
         impactedTests: {},
-        changeClassifications: classifications.filter(c => limitedFiles.some(f => f.relativePath === c.filePath)),
+        changeClassifications: classifications.filter(c => limitedFiles.some((f: any) => f.relativePath === c.filePath)),
         classificationSummary: summary,
         language: 'golang',
         analysisSource: 'golang',
