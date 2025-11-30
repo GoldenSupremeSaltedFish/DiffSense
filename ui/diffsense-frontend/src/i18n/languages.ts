@@ -61,6 +61,7 @@ export interface LanguageConfig {
     
     startAnalysis: string;
     analyzing: string;
+    export: string;
     exportJSON: string;
     exportHTML: string;
     reportBug: string;
@@ -270,6 +271,7 @@ export const zhCN: LanguageConfig = {
     
     startAnalysis: '🚀 开始分析',
     analyzing: '🔄 分析中...',
+    export: '📤 导出',
     exportJSON: '📄 导出JSON',
     exportHTML: '🌐 导出HTML',
     reportBug: '📩 出bug了？点我汇报😊',
@@ -403,6 +405,7 @@ export const enUS: LanguageConfig = {
     
     startAnalysis: '🚀 Start Analysis',
     analyzing: '🔄 Analyzing...',
+    export: '📤 Export',
     exportJSON: '📄 Export JSON',
     exportHTML: '🌐 Export HTML',
     reportBug: '📩 Bug Report 🐛',

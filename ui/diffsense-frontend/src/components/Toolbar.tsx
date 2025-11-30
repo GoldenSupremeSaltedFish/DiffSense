@@ -20,6 +20,7 @@ const Toolbar = () => {
   const [selectedBranch, setSelectedBranch] = useState<string>('');
   const [selectedRange, setSelectedRange] = useState<string>('Last 3 commits');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
   
   // 新增：分析范围和类型状态
   const [analysisScope, setAnalysisScope] = useState<'backend' | 'frontend' | 'mixed'>('backend');
@@ -297,21 +298,31 @@ const Toolbar = () => {
   const isCommitRange = selectedRange === 'Commit ID Range';
 
   // 导出分析结果（支持格式选择）
-  const handleExportJSON = () => {
+  const handleExport = (format: 'json' | 'html') => {
     postMessage({
       command: 'exportResults',
-      format: 'json',
+      format: format,
       language: currentLanguage
     });
+    setShowExportMenu(false); // 关闭下拉菜单
   };
 
-  const handleExportHTML = () => {
-    postMessage({
-      command: 'exportResults', 
-      format: 'html',
-      language: currentLanguage
-    });
-  };
+  // 点击外部区域关闭下拉菜单
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (showExportMenu && !target.closest('.export-button-container')) {
+        setShowExportMenu(false);
+      }
+    };
+
+    if (showExportMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [showExportMenu]);
 
   const handleReportBug = () => {
     // 收集当前状态信息用于bug报告
@@ -435,15 +446,22 @@ const Toolbar = () => {
                 flex: 1,
                 padding: "4px 6px",
                 fontSize: "9px",
-                border: "1px solid var(--vscode-button-border)",
+                border: analysisScope === option.value ? 
+                  '2px solid var(--vscode-button-background)' : 
+                  '1px solid var(--vscode-panel-border)',
                 borderRadius: "2px",
                 backgroundColor: analysisScope === option.value ? 
                   'var(--vscode-button-background)' : 
-                  'var(--vscode-button-secondaryBackground)',
+                  'var(--vscode-editor-background)',
                 color: analysisScope === option.value ? 
                   'var(--vscode-button-foreground)' : 
-                  'var(--vscode-button-secondaryForeground)',
-                cursor: isAnalyzing ? 'not-allowed' : 'pointer'
+                  'var(--vscode-descriptionForeground)',
+                fontWeight: analysisScope === option.value ? '600' : '400',
+                opacity: analysisScope === option.value ? 1 : 0.6,
+                cursor: isAnalyzing ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: analysisScope === option.value ? 
+                  '0 1px 3px rgba(0, 0, 0, 0.2)' : 'none'
               }}
             >
               {option.label}
@@ -722,41 +740,94 @@ const Toolbar = () => {
           {t('toolbar.detectRevert')}
         </button>
         
-        {/* 导出按钮组 */}
-        <div style={{ 
-          display: 'flex', 
-          flexDirection: 'column',
-          minWidth: '100px'
-        }}>
+        {/* 导出按钮（带下拉菜单） */}
+        <div 
+          className="export-button-container"
+          style={{ 
+            position: 'relative',
+            minWidth: '100px'
+          }}
+        >
           <button 
-            onClick={handleExportJSON}
+            onClick={() => setShowExportMenu(!showExportMenu)}
             style={{ 
               fontSize: '10px',
               padding: '4px 8px',
               backgroundColor: 'var(--vscode-button-secondaryBackground)',
               color: 'var(--vscode-button-secondaryForeground)',
               border: 'none',
-              borderRadius: '3px 3px 0 0',
+              borderRadius: '3px',
               cursor: 'pointer',
-              borderBottom: '1px solid var(--vscode-panel-border)'
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '4px'
             }}
           >
-            {t('toolbar.exportJSON')}
+            <span>{t('toolbar.export')}</span>
+            <span style={{ fontSize: '8px' }}>▼</span>
           </button>
-          <button 
-            onClick={handleExportHTML}
-            style={{ 
-              fontSize: '10px',
-              padding: '4px 8px',
-              backgroundColor: 'var(--vscode-button-secondaryBackground)',
-              color: 'var(--vscode-button-secondaryForeground)',
-              border: 'none',
-              borderRadius: '0 0 3px 3px',
-              cursor: 'pointer'
-            }}
-          >
-            {t('toolbar.exportHTML')}
-          </button>
+          {showExportMenu && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              right: 0,
+              marginTop: '2px',
+              backgroundColor: 'var(--vscode-dropdown-background)',
+              border: '1px solid var(--vscode-dropdown-border)',
+              borderRadius: '3px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+              zIndex: 1000,
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              <button
+                onClick={() => handleExport('json')}
+                style={{
+                  fontSize: '10px',
+                  padding: '4px 8px',
+                  backgroundColor: 'transparent',
+                  color: 'var(--vscode-foreground)',
+                  border: 'none',
+                  borderRadius: '3px 3px 0 0',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  borderBottom: '1px solid var(--vscode-panel-border)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--vscode-list-hoverBackground)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                {t('toolbar.exportJSON')}
+              </button>
+              <button
+                onClick={() => handleExport('html')}
+                style={{
+                  fontSize: '10px',
+                  padding: '4px 8px',
+                  backgroundColor: 'transparent',
+                  color: 'var(--vscode-foreground)',
+                  border: 'none',
+                  borderRadius: '0 0 3px 3px',
+                  cursor: 'pointer',
+                  textAlign: 'left'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--vscode-list-hoverBackground)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                {t('toolbar.exportHTML')}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
