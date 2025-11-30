@@ -737,6 +737,11 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
   private async handleDetectProjectType() {
     try {
+      // 发送项目分析开始消息
+      this._view?.webview.postMessage({
+        command: 'projectAnalysisStarted'
+      });
+
       // 获取工作区文件夹
       const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
       if (!workspaceFolder) {
@@ -757,6 +762,11 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       console.log('🔍 后端语言:', backendLanguage);
       console.log('📁 前端路径检测结果:', frontendPaths);
 
+      // 发送项目分析完成消息
+      this._view?.webview.postMessage({
+        command: 'projectAnalysisCompleted'
+      });
+
       // 发送检测结果给前端
       this._view?.webview.postMessage({
         command: 'projectTypeDetected',
@@ -767,6 +777,11 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
     } catch (error) {
       console.error('项目类型检测失败:', error);
+      
+      // 发送项目分析完成消息（即使失败也算完成）
+      this._view?.webview.postMessage({
+        command: 'projectAnalysisCompleted'
+      });
       
       // 发送错误消息给前端
       this._view?.webview.postMessage({

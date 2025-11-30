@@ -9,6 +9,8 @@ const MainView = () => {
   const [error, setError] = useState<string | null>(null);
   const [snapshotDiffs, setSnapshotDiffs] = useState<any[]>([]);
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
+  const [isAnalyzingProject, setIsAnalyzingProject] = useState(true);
+  const [projectAnalysisCompleted, setProjectAnalysisCompleted] = useState(false);
 
   // 组件挂载时恢复分析结果
   useEffect(() => {
@@ -46,6 +48,14 @@ const MainView = () => {
       console.log('MainView received message:', message);
       
       switch (message.command) {
+        case 'projectAnalysisStarted':
+          setIsAnalyzingProject(true);
+          setProjectAnalysisCompleted(false);
+          break;
+        case 'projectAnalysisCompleted':
+          setIsAnalyzingProject(false);
+          setProjectAnalysisCompleted(true);
+          break;
         case 'analysisStarted':
           setIsLoading(true);
           setError(null);
@@ -98,7 +108,17 @@ const MainView = () => {
         🔍 DiffSense v1.0 - Debug Mode
       </div>
       <div style={{ padding: "4px", fontSize: "10px", color: "var(--vscode-descriptionForeground)" }}>
-        {isLoading ? '正在分析...' : error ? error : hasAnalyzed ? '分析完成' : '等待分析...'}
+        {isAnalyzingProject 
+          ? '正在分析项目...' 
+          : projectAnalysisCompleted 
+            ? '项目分析完成' 
+            : isLoading 
+              ? '正在分析...' 
+              : error 
+                ? error 
+                : hasAnalyzed 
+                  ? '分析完成' 
+                  : '等待分析...'}
       </div>
       <Toolbar />
       <CommitList analysisResults={analysisResults} snapshotDiffs={snapshotDiffs} />
