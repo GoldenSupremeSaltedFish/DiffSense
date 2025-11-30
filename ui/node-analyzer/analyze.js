@@ -474,6 +474,55 @@ class FrontendAnalyzer {
         console.error(`📝 执行Git变更分析...`);
         this.gitChanges = await this.analyzeGitChanges();
         result.gitChanges = this.gitChanges;
+        
+        // 如果有多个提交，为每个提交分别分析变更的文件
+        if (this.gitChanges.commits && this.gitChanges.commits.length > 0) {
+          const commitResults = [];
+          for (const commitInfo of this.gitChanges.commits) {
+            if (commitInfo.changedFiles && commitInfo.changedFiles.length > 0) {
+              // 分析该提交的变更文件
+              const commitFiles = await this.analyzeChangedFilesForCommit(commitInfo.changedFiles, commitInfo.commitId);
+              
+              // 应用前端代码分类
+              const { classifications, summary } = FrontendChangeClassifier.classifyChanges(commitFiles);
+              
+              // 执行细粒度分析（如果启用）
+              let modifications = [];
+              if (this.options.includeTypeTags && this.granularAnalyzer) {
+                for (const fileInfo of commitFiles) {
+                  const diffContent = await this.getFileDiffForCommit(fileInfo.relativePath, commitInfo.commitId);
+                  const fileModifications = this.granularAnalyzer.analyzeFileChanges(
+                    fileInfo.relativePath,
+                    fileInfo.methods,
+                    diffContent || '',
+                    fileInfo.content
+                  );
+                  modifications.push(...fileModifications);
+                }
+              }
+              
+              commitResults.push({
+                ...commitInfo,
+                files: commitFiles,
+                changeClassifications: classifications,
+                classificationSummary: summary,
+                modifications: modifications
+              });
+            } else {
+              // 没有变更文件，仍然添加提交信息
+              commitResults.push({
+                ...commitInfo,
+                files: [],
+                changeClassifications: [],
+                classificationSummary: { totalFiles: 0, categoryStats: {}, averageConfidence: 0 },
+                modifications: []
+              });
+            }
+          }
+          
+          // 将提交结果添加到主结果中
+          result.commits = commitResults;
+        }
       }
 
       // 3. 使用madge分析模块依赖关系
@@ -486,8 +535,8 @@ class FrontendAnalyzer {
       result.callGraph = codeAnalysis.callGraph;
       result.files = codeAnalysis.files;
 
-      // 5. 应用前端代码分类
-      if (result.files && result.files.length > 0) {
+      // 5. 应用前端代码分类（仅在没有Git分析或Git分析没有结果时）
+      if (!this.options.enableGitAnalysis && result.files && result.files.length > 0) {
         const { classifications, summary } = FrontendChangeClassifier.classifyChanges(result.files);
         result.changeClassifications = classifications;
         result.classificationSummary = summary;
@@ -1173,70 +1222,433 @@ class FrontendAnalyzer {
    */
   async analyzeGitChanges() {
     try {
-      
-      let changedFiles = [];
-      
-      // 根据不同的Git参数获取变更文件
+      // 如果指定了提交数量，分别分析每个提交
       if (this.options.commits) {
-        // 分析最近N个提交
-        const cmd = `git diff --name-only HEAD~${this.options.commits} HEAD`;
-        const output = execSync(cmd, { cwd: this.targetDir, encoding: 'utf-8' });
-        changedFiles = output.trim().split('\n').filter(file => file.length > 0);
+        return await this.analyzeCommitsIndividually();
       } else if (this.options.since) {
-        // 分析指定日期以来的变更
-        let cmd = `git diff --name-only --since="${this.options.since}"`;
-        if (this.options.until) {
-          cmd += ` --until="${this.options.until}"`;
-        }
-        const output = execSync(cmd, { cwd: this.targetDir, encoding: 'utf-8' });
-        changedFiles = output.trim().split('\n').filter(file => file.length > 0);
+        return await this.analyzeCommitsByDate();
       } else if (this.options.startCommit && this.options.endCommit) {
-        // 分析两个提交之间的变更
-        const cmd = `git diff --name-only ${this.options.startCommit}..${this.options.endCommit}`;
-        const output = execSync(cmd, { cwd: this.targetDir, encoding: 'utf-8' });
-        changedFiles = output.trim().split('\n').filter(file => file.length > 0);
+        return await this.analyzeCommitsByRange();
       } else {
         // 默认分析工作区变更
-        const cmd = `git diff --name-only`;
-        const output = execSync(cmd, { cwd: this.targetDir, encoding: 'utf-8' });
-        changedFiles = output.trim().split('\n').filter(file => file.length > 0);
+        return await this.analyzeWorkingTreeChanges();
       }
-      
-      // 过滤前端相关文件
-      const frontendFiles = changedFiles.filter(file => {
-        const ext = path.extname(file).toLowerCase();
-        return ['.js', '.jsx', '.ts', '.tsx', '.vue', '.css', '.scss', '.sass', '.less'].includes(ext);
-      });
-      
-      // 分析变更的方法
-      const changedMethods = await this.analyzeChangedMethods(frontendFiles);
-      
-      console.error(`📝 Git变更分析完成: ${frontendFiles.length}个文件, ${changedMethods.length}个方法`);
-      
-      return {
-        changedFilesCount: frontendFiles.length,
-        changedMethodsCount: changedMethods.length,
-        changedFiles: frontendFiles,
-        changedMethods: changedMethods,
-        gitOptions: {
-          branch: this.options.branch,
-          commits: this.options.commits,
-          since: this.options.since,
-          until: this.options.until,
-          startCommit: this.options.startCommit,
-          endCommit: this.options.endCommit
-        }
-      };
-      
     } catch (error) {
       console.error(`❌ Git变更分析失败:`, error.message);
       return {
-        changedFilesCount: 0,
-        changedMethodsCount: 0,
-        changedFiles: [],
-        changedMethods: [],
+        commits: [],
         error: error.message
       };
+    }
+  }
+
+  /**
+   * 分别分析每个提交
+   */
+  async analyzeCommitsIndividually() {
+    const commits = [];
+    const numCommits = parseInt(this.options.commits, 10);
+    
+    // 获取最近N个提交的信息
+    const logCmd = `git log --format="%H|%s|%an|%ae|%ai" -n ${numCommits} ${this.options.branch || 'HEAD'}`;
+    const logOutput = execSync(logCmd, { cwd: this.targetDir, encoding: 'utf-8' });
+    const commitLines = logOutput.trim().split('\n').filter(line => line.length > 0);
+    
+    console.error(`📝 找到 ${commitLines.length} 个提交，开始分别分析...`);
+    
+    for (let i = 0; i < commitLines.length; i++) {
+      const [commitHash, message, authorName, authorEmail, authorDate] = commitLines[i].split('|');
+      
+      try {
+        // 获取该提交的变更文件
+        let changedFiles = [];
+        if (i === 0) {
+          // 第一个提交（最新的），与它的父提交比较
+          try {
+            const parentCmd = `git rev-parse ${commitHash}^`;
+            const parentHash = execSync(parentCmd, { 
+              cwd: this.targetDir, 
+              encoding: 'utf-8',
+              stdio: ['pipe', 'pipe', 'ignore']
+            }).trim();
+            if (parentHash) {
+              const diffCmd = `git diff --name-only ${parentHash} ${commitHash}`;
+              const diffOutput = execSync(diffCmd, { cwd: this.targetDir, encoding: 'utf-8' });
+              changedFiles = diffOutput.trim().split('\n').filter(file => file.length > 0);
+            }
+          } catch (e) {
+            // 如果没有父提交（初始提交），获取该提交的所有文件
+            try {
+              const showCmd = `git show --name-only --format="" ${commitHash}`;
+              const showOutput = execSync(showCmd, { cwd: this.targetDir, encoding: 'utf-8' });
+              changedFiles = showOutput.trim().split('\n').filter(file => file.length > 0);
+            } catch (showError) {
+              // 如果获取文件列表也失败，使用空数组
+              changedFiles = [];
+            }
+          }
+        } else {
+          // 其他提交，与它的父提交比较
+          const parentHash = commitLines[i + 1] ? commitLines[i + 1].split('|')[0] : null;
+          if (parentHash) {
+            try {
+              const diffCmd = `git diff --name-only ${parentHash} ${commitHash}`;
+              const diffOutput = execSync(diffCmd, { cwd: this.targetDir, encoding: 'utf-8' });
+              changedFiles = diffOutput.trim().split('\n').filter(file => file.length > 0);
+            } catch (e) {
+              // diff失败，使用空数组
+              changedFiles = [];
+            }
+          }
+        }
+        
+        // 过滤前端相关文件
+        const frontendFiles = changedFiles.filter(file => {
+          const ext = path.extname(file).toLowerCase();
+          return ['.js', '.jsx', '.ts', '.tsx', '.vue', '.css', '.scss', '.sass', '.less'].includes(ext);
+        });
+        
+        // 分析变更的方法
+        const changedMethods = await this.analyzeChangedMethodsForCommit(frontendFiles, commitHash);
+        
+        commits.push({
+          commitId: commitHash,
+          commitHash: commitHash.substring(0, 7),
+          message: message,
+          author: {
+            name: authorName,
+            email: authorEmail
+          },
+          timestamp: new Date(authorDate).toISOString(),
+          changedFilesCount: frontendFiles.length,
+          changedMethodsCount: changedMethods.length,
+          changedFiles: frontendFiles,
+          changedMethods: changedMethods
+        });
+        
+        console.error(`✅ 分析提交 ${commitHash.substring(0, 7)}: ${frontendFiles.length}个文件, ${changedMethods.length}个方法`);
+      } catch (error) {
+        console.error(`❌ 分析提交 ${commitHash.substring(0, 7)} 失败:`, error.message);
+        // 即使分析失败，也添加一个空结果
+        commits.push({
+          commitId: commitHash,
+          commitHash: commitHash.substring(0, 7),
+          message: message,
+          author: {
+            name: authorName || 'Unknown',
+            email: authorEmail || 'unknown@example.com'
+          },
+          timestamp: new Date(authorDate).toISOString(),
+          changedFilesCount: 0,
+          changedMethodsCount: 0,
+          changedFiles: [],
+          changedMethods: [],
+          error: error.message
+        });
+      }
+    }
+    
+    console.error(`📝 Git变更分析完成: 共分析 ${commits.length} 个提交`);
+    
+    return {
+      commits: commits,
+      gitOptions: {
+        branch: this.options.branch,
+        commits: this.options.commits,
+        since: this.options.since,
+        until: this.options.until,
+        startCommit: this.options.startCommit,
+        endCommit: this.options.endCommit
+      }
+    };
+  }
+
+  /**
+   * 按日期分析提交
+   */
+  async analyzeCommitsByDate() {
+    // 对于日期范围，仍然合并所有提交（保持原有行为）
+    let cmd = `git diff --name-only --since="${this.options.since}"`;
+    if (this.options.until) {
+      cmd += ` --until="${this.options.until}"`;
+    }
+    const output = execSync(cmd, { cwd: this.targetDir, encoding: 'utf-8' });
+    const changedFiles = output.trim().split('\n').filter(file => file.length > 0);
+    
+    const frontendFiles = changedFiles.filter(file => {
+      const ext = path.extname(file).toLowerCase();
+      return ['.js', '.jsx', '.ts', '.tsx', '.vue', '.css', '.scss', '.sass', '.less'].includes(ext);
+    });
+    
+    const changedMethods = await this.analyzeChangedMethods(frontendFiles);
+    
+    return {
+      commits: [{
+        commitId: 'date-range',
+        changedFilesCount: frontendFiles.length,
+        changedMethodsCount: changedMethods.length,
+        changedFiles: frontendFiles,
+        changedMethods: changedMethods
+      }],
+      gitOptions: {
+        branch: this.options.branch,
+        since: this.options.since,
+        until: this.options.until
+      }
+    };
+  }
+
+  /**
+   * 按提交范围分析
+   */
+  async analyzeCommitsByRange() {
+    const cmd = `git diff --name-only ${this.options.startCommit}..${this.options.endCommit}`;
+    const output = execSync(cmd, { cwd: this.targetDir, encoding: 'utf-8' });
+    const changedFiles = output.trim().split('\n').filter(file => file.length > 0);
+    
+    const frontendFiles = changedFiles.filter(file => {
+      const ext = path.extname(file).toLowerCase();
+      return ['.js', '.jsx', '.ts', '.tsx', '.vue', '.css', '.scss', '.sass', '.less'].includes(ext);
+    });
+    
+    const changedMethods = await this.analyzeChangedMethods(frontendFiles);
+    
+    return {
+      commits: [{
+        commitId: `${this.options.startCommit}..${this.options.endCommit}`,
+        changedFilesCount: frontendFiles.length,
+        changedMethodsCount: changedMethods.length,
+        changedFiles: frontendFiles,
+        changedMethods: changedMethods
+      }],
+      gitOptions: {
+        startCommit: this.options.startCommit,
+        endCommit: this.options.endCommit
+      }
+    };
+  }
+
+  /**
+   * 分析工作区变更
+   */
+  async analyzeWorkingTreeChanges() {
+    const cmd = `git diff --name-only`;
+    const output = execSync(cmd, { cwd: this.targetDir, encoding: 'utf-8' });
+    const changedFiles = output.trim().split('\n').filter(file => file.length > 0);
+    
+    const frontendFiles = changedFiles.filter(file => {
+      const ext = path.extname(file).toLowerCase();
+      return ['.js', '.jsx', '.ts', '.tsx', '.vue', '.css', '.scss', '.sass', '.less'].includes(ext);
+    });
+    
+    const changedMethods = await this.analyzeChangedMethods(frontendFiles);
+    
+    return {
+      commits: [{
+        commitId: 'working-tree',
+        changedFilesCount: frontendFiles.length,
+        changedMethodsCount: changedMethods.length,
+        changedFiles: frontendFiles,
+        changedMethods: changedMethods
+      }],
+      gitOptions: {}
+    };
+  }
+
+  /**
+   * 分析特定提交的变更方法
+   */
+  async analyzeChangedMethodsForCommit(changedFiles, commitHash) {
+    const changedMethods = [];
+    
+    for (const file of changedFiles) {
+      try {
+        // 获取该提交中该文件的内容
+        let fileContent = '';
+        try {
+          const showCmd = `git show ${commitHash}:${file}`;
+          fileContent = execSync(showCmd, { 
+            cwd: this.targetDir, 
+            encoding: 'utf-8',
+            stdio: ['pipe', 'pipe', 'ignore']
+          });
+        } catch (e) {
+          // 文件可能被删除，跳过
+          continue;
+        }
+        
+        if (!fileContent || fileContent.trim().length === 0) {
+          continue;
+        }
+        
+        const fullPath = path.join(this.targetDir, file);
+        const methods = await this.extractMethodsFromFileContent(fileContent, file);
+        changedMethods.push(...methods);
+      } catch (error) {
+        console.error(`❌ 分析文件方法失败: ${file}`, error.message);
+      }
+    }
+    
+    return changedMethods;
+  }
+
+  /**
+   * 从文件内容中提取方法信息（不依赖文件系统）
+   */
+  async extractMethodsFromFileContent(fileContent, relativePath) {
+    const methods = [];
+    
+    try {
+      const ext = path.extname(relativePath).toLowerCase();
+      
+      if (['.ts', '.tsx', '.js', '.jsx'].includes(ext)) {
+        // 使用ts-morph分析TypeScript/JavaScript文件
+        const project = new Project({
+          useInMemoryFileSystem: true
+        });
+        
+        const sourceFile = project.createSourceFile(relativePath, fileContent);
+        
+        // 提取函数和方法
+        sourceFile.getFunctions().forEach(func => {
+          methods.push({
+            name: func.getName() || 'anonymous',
+            signature: func.getSignature().getText(),
+            type: 'function',
+            file: relativePath
+          });
+        });
+        
+        // 提取类方法
+        sourceFile.getClasses().forEach(cls => {
+          cls.getMethods().forEach(method => {
+            methods.push({
+              name: method.getName(),
+              signature: method.getSignature().getText(),
+              type: 'method',
+              file: relativePath,
+              className: cls.getName()
+            });
+          });
+        });
+      }
+    } catch (error) {
+      // 如果解析失败，尝试简单的正则匹配
+      const functionRegex = /(?:function\s+(\w+)|const\s+(\w+)\s*=\s*(?:async\s*)?\(|(\w+)\s*:\s*(?:async\s*)?\(/g;
+      let match;
+      while ((match = functionRegex.exec(fileContent)) !== null) {
+        const name = match[1] || match[2] || match[3];
+        if (name) {
+          methods.push({
+            name: name,
+            signature: match[0],
+            type: 'function',
+            file: relativePath
+          });
+        }
+      }
+    }
+    
+    return methods;
+  }
+
+  /**
+   * 分析特定提交的变更文件，返回完整的文件信息
+   */
+  async analyzeChangedFilesForCommit(changedFiles, commitHash) {
+    const fileInfos = [];
+    
+    for (const file of changedFiles) {
+      try {
+        // 获取该提交中该文件的内容
+        let fileContent = '';
+        try {
+          const showCmd = `git show ${commitHash}:${file}`;
+          fileContent = execSync(showCmd, { 
+            cwd: this.targetDir, 
+            encoding: 'utf-8',
+            stdio: ['pipe', 'pipe', 'ignore']
+          });
+        } catch (e) {
+          // 文件可能被删除，跳过
+          continue;
+        }
+        
+        if (!fileContent || fileContent.trim().length === 0) {
+          continue;
+        }
+        
+        // 提取方法信息
+        const methods = await this.extractMethodsFromFileContent(fileContent, file);
+        
+        fileInfos.push({
+          relativePath: file,
+          filePath: file,
+          content: fileContent,
+          methods: methods.map(m => ({
+            name: m.name,
+            signature: m.signature,
+            type: m.type,
+            calls: [],
+            calledBy: []
+          }))
+        });
+      } catch (error) {
+        console.error(`❌ 分析文件失败: ${file}`, error.message);
+      }
+    }
+    
+    return fileInfos;
+  }
+
+  /**
+   * 获取特定提交的文件diff
+   */
+  async getFileDiffForCommit(relativePath, commitHash) {
+    try {
+      // 获取该提交的父提交
+      let parentHash = '';
+      try {
+        const parentCmd = `git rev-parse ${commitHash}^`;
+        parentHash = execSync(parentCmd, { 
+          cwd: this.targetDir, 
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'ignore']
+        }).trim();
+      } catch (e) {
+        // 没有父提交（初始提交）
+        return '';
+      }
+      
+      if (!parentHash) {
+        return '';
+      }
+      
+      // 获取diff
+      const diffCmd = `git diff ${parentHash} ${commitHash} -- ${relativePath}`;
+      try {
+        const gitDiff = execSync(diffCmd, { 
+          cwd: this.targetDir, 
+          encoding: 'utf-8', 
+          stdio: ['pipe', 'pipe', 'ignore'] 
+        });
+        
+        if (gitDiff && gitDiff.trim()) {
+          // 将git diff格式转换为简单格式（只保留+和-行）
+          const lines = gitDiff.split('\n');
+          const simpleDiff = lines
+            .filter(line => line.startsWith('+') || line.startsWith('-'))
+            .filter(line => !line.startsWith('+++') && !line.startsWith('---'))
+            .join('\n');
+          return simpleDiff || '';
+        }
+      } catch (err) {
+        // diff失败，返回空
+      }
+      
+      return '';
+    } catch (error) {
+      return '';
     }
   }
 

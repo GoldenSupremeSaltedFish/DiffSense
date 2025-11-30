@@ -1549,9 +1549,104 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
 
   private convertFrontendResult(frontendResult: any, targetDir: string): any[] {
     // 将前端分析结果转换为与后端分析结果兼容的格式
-    // 不再人为分组，而是生成一个统一的分析结果
     const commits = [];
     
+    // 检查是否有多个提交的分析结果（新格式）
+    if (frontendResult.gitChanges && frontendResult.gitChanges.commits && frontendResult.gitChanges.commits.length > 0) {
+      // 处理多个提交的情况
+      const commitResults = frontendResult.commits || frontendResult.gitChanges.commits;
+      
+      for (const commitInfo of commitResults) {
+        // 处理微服务检测结果
+        let microserviceInfo = '';
+        if (frontendResult.microserviceDetection) {
+          const detection = frontendResult.microserviceDetection;
+          if (detection.isMicroservice) {
+            microserviceInfo = `🏗️ 微服务项目 (${detection.framework}, ${detection.buildTool})`;
+          } else {
+            microserviceInfo = `📦 单体应用 (${detection.buildTool})`;
+          }
+        }
+        
+        // 获取该提交的文件和分类信息
+        const commitFiles = commitInfo.files || [];
+        const classifications = commitInfo.changeClassifications || [];
+        const summary = commitInfo.classificationSummary || { totalFiles: 0, categoryStats: {}, averageConfidence: 0 };
+        const modifications = commitInfo.modifications || [];
+        
+        // 过滤重要文件
+        const importantFiles = commitFiles.filter((file: any) => {
+          const classification = classifications.find((c: any) => c.filePath === file.relativePath);
+          return (
+            (file.methods && file.methods.length > 0) ||
+            (classification && classification.classification && classification.classification.confidence > 50) ||
+            file.relativePath.includes('/src/') ||
+            file.relativePath.includes('/components/') ||
+            file.relativePath.includes('/pages/') ||
+            file.relativePath.includes('/utils/')
+          );
+        });
+        
+        // 限制文件数量
+        const limitedFiles = importantFiles.slice(0, 50);
+        
+        // 收集方法和文件路径
+        const allMethods: string[] = [];
+        const allFiles: any[] = [];
+        const allFilePaths: string[] = [];
+        
+        limitedFiles.forEach((file: any) => {
+          allFilePaths.push(file.relativePath);
+          allFiles.push({
+            path: file.relativePath,
+            filePath: file.relativePath,
+            methods: file.methods || [],
+            impactedMethods: file.methods ? file.methods.map((m: any) => ({
+              methodName: m.name,
+              signature: m.signature,
+              type: m.type,
+              calls: m.calls || [],
+              calledBy: []
+            })) : []
+          });
+          
+          if (file.methods) {
+            file.methods.forEach((method: any) => {
+              allMethods.push(`${file.relativePath}:${method.name}`);
+            });
+          }
+        });
+        
+        // 创建提交记录
+        commits.push({
+          commitId: commitInfo.commitId || commitInfo.commitHash || 'unknown',
+          message: commitInfo.message || '前端代码变更',
+          author: commitInfo.author || { name: '前端分析器', email: 'frontend@diffsense.com' },
+          timestamp: commitInfo.timestamp || frontendResult.timestamp || new Date().toISOString(),
+          changedFilesCount: commitInfo.changedFilesCount || 0,
+          changedMethodsCount: commitInfo.changedMethodsCount || 0,
+          impactedMethods: allMethods,
+          impactedFiles: allFilePaths,
+          files: allFiles,
+          impactedTests: {},
+          changeClassifications: classifications.filter((c: any) => limitedFiles.some((f: any) => f.relativePath === c.filePath)),
+          classificationSummary: summary,
+          language: 'frontend',
+          analysisSource: 'frontend',
+          frontendSummary: frontendResult.summary,
+          frontendDependencies: null,
+          microserviceDetection: frontendResult.microserviceDetection || null,
+          totalFilesScanned: commitFiles.length,
+          importantFilesShown: limitedFiles.length,
+          gitChanges: commitInfo,
+          granularModifications: modifications
+        });
+      }
+      
+      return commits;
+    }
+    
+    // 原有的单一结果处理逻辑（向后兼容）
     if (frontendResult && frontendResult.files && frontendResult.files.length > 0) {
       // 使用前端变更分类器（已更新为F1-F5分类系统）
       const { classifications, summary } = FrontendChangeClassifier.classifyChanges(frontendResult.files);
@@ -1562,8 +1657,8 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       let analysisMessage = '前端代码分析结果';
       
       if (frontendResult.gitChanges) {
-        changedFilesCount = frontendResult.gitChanges.changedFilesCount;
-        changedMethodsCount = frontendResult.gitChanges.changedMethodsCount;
+        changedFilesCount = frontendResult.gitChanges.changedFilesCount || frontendResult.files.length;
+        changedMethodsCount = frontendResult.gitChanges.changedMethodsCount || 0;
         analysisMessage = `前端Git变更分析结果 (${changedFilesCount}个变更文件)`;
       } else {
         // 静态分析模式
