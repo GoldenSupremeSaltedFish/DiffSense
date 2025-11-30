@@ -408,6 +408,12 @@ class FrontendAnalyzer {
       until: null,
       startCommit: null,
       endCommit: null,
+      // 调用图生成配置
+      enableCallGraph: options.enableCallGraph !== false, // 默认启用
+      callGraphTimeout: options.callGraphTimeout || 60000, // 默认60秒整体超时
+      maxFilesToAnalyze: options.maxFilesToAnalyze || 1000, // 最大分析文件数
+      enableSampling: options.enableSampling !== false, // 默认启用采样
+      samplingRatio: options.samplingRatio || 0.5, // 采样比例（大项目时）
       ...options
     };
     this.project = null;
@@ -474,8 +480,8 @@ class FrontendAnalyzer {
       const dependencyGraph = await this.analyzeDependencies();
       result.dependencies = dependencyGraph;
 
-      // 4. 分析TypeScript/JavaScript代码
-      const codeAnalysis = await this.analyzeCode();
+      // 4. 分析TypeScript/JavaScript代码（带超时控制）
+      const codeAnalysis = await this.analyzeCodeWithTimeout();
       result.methods = codeAnalysis.methods;
       result.callGraph = codeAnalysis.callGraph;
       result.files = codeAnalysis.files;
@@ -555,6 +561,46 @@ class FrontendAnalyzer {
     }
   }
 
+  async analyzeCodeWithTimeout() {
+    // 检查是否启用调用图生成
+    if (!this.options.enableCallGraph) {
+      console.error('⚠️  调用图生成已禁用，返回空调用图');
+      return {
+        methods: {},
+        callGraph: { nodes: [], edges: [] },
+        files: []
+      };
+    }
+
+    // 使用Promise.race实现整体超时控制
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`调用图生成超时 (${this.options.callGraphTimeout}ms)，启用熔断机制`));
+      }, this.options.callGraphTimeout);
+    });
+
+    try {
+      const result = await Promise.race([
+        this.analyzeCode(),
+        timeoutPromise
+      ]);
+      return result;
+    } catch (error) {
+      if (error.message.includes('超时') || error.message.includes('timeout')) {
+        console.error('⏱️  调用图生成超时，使用快速fallback模式');
+        // 超时后返回部分结果
+        return {
+          methods: {},
+          callGraph: { nodes: [], edges: [] },
+          files: [],
+          timeout: true,
+          message: '调用图生成超时，已启用熔断机制'
+        };
+      }
+      throw error;
+    }
+  }
+
   async analyzeCode() {
     console.error('🔬 分析代码结构...');
     
@@ -623,10 +669,27 @@ class FrontendAnalyzer {
           });
         }
 
+        processedCount++;
+        // 每处理50个文件输出一次进度
+        if (processedCount % 50 === 0) {
+          console.error(`📊 调用图分析进度: ${processedCount}/${filesToAnalyze.length} (已用 ${Math.round(elapsed / 1000)}s)`);
+        }
+
       } catch (error) {
-        console.error(`分析文件失败 ${filePath}:`, error.message);
+        if (error.message.includes('超时') || error.message.includes('timeout')) {
+          console.error(`⏱️  文件分析超时 ${filePath}`);
+        } else {
+          console.error(`分析文件失败 ${filePath}:`, error.message);
+        }
+        skippedCount++;
       }
     }
+
+    if (skippedCount > 0) {
+      console.error(`⚠️  跳过了 ${skippedCount} 个文件的分析（超时或错误）`);
+    }
+
+    console.error(`✅ 调用图分析完成: ${processedCount} 个文件，${callGraphNodes.length} 节点，${callGraphEdges.length} 边`);
 
     return {
       methods,

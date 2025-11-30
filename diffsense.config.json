@@ -43,7 +43,12 @@
         "includeVendor": false,
         "analyzeTestCoverage": true,
         "analyzeGoroutines": true,
-        "analyzeChannels": true
+        "analyzeChannels": true,
+        "enableCallGraph": true,
+        "callGraphTimeout": 60000,
+        "maxFunctionsToAnalyze": 500,
+        "enableSampling": true,
+        "samplingRatio": 0.5
       }
     },
     
@@ -69,7 +74,12 @@
       "options": {
         "includeNodeModules": false,
         "useMadge": true,
-        "enableDependencyGraph": true
+        "enableDependencyGraph": true,
+        "enableCallGraph": true,
+        "callGraphTimeout": 60000,
+        "maxFilesToAnalyze": 1000,
+        "enableSampling": true,
+        "samplingRatio": 0.5
       }
     },
     
@@ -93,7 +103,12 @@
       "analyzer": "node",
       "options": {
         "useBabel": true,
-        "enableBasicAnalysis": true
+        "enableBasicAnalysis": true,
+        "enableCallGraph": true,
+        "callGraphTimeout": 60000,
+        "maxFilesToAnalyze": 1000,
+        "enableSampling": true,
+        "samplingRatio": 0.5
       }
     },
     
@@ -144,6 +159,16 @@
     "includeRiskAssessment": true,
     "verboseOutput": false,
     "colorOutput": true
+  },
+  
+  "callGraph": {
+    "enabled": true,
+    "timeoutSeconds": 60,
+    "maxFunctions": 500,
+    "enableSampling": true,
+    "samplingRatio": 0.5,
+    "enableCircuitBreaker": true,
+    "circuitBreakerThreshold": 0.8
   },
   
   "git": {

@@ -32,8 +32,14 @@ class GolangAnalyzer {
     // 新增：测试覆盖分析器
     this.testCoverageAnalyzer = new GoTestCoverageAnalyzer();
     
-    // 新增：调用图增强分析器
-    this.callGraphAnalyzer = new GoCallGraphAnalyzer(targetDir);
+    // 新增：调用图增强分析器（传递配置选项）
+    this.callGraphAnalyzer = new GoCallGraphAnalyzer(targetDir, {
+      enableCallGraph: options.enableCallGraph !== false,
+      callGraphTimeout: options.callGraphTimeout || 60000,
+      maxFunctionsToAnalyze: options.maxFunctionsToAnalyze || 500,
+      enableSampling: options.enableSampling !== false,
+      samplingRatio: options.samplingRatio || 0.5
+    });
     
     // 新增：Go特性分析器
     this.goFeaturesAnalyzer = new GoFeaturesAnalyzer();
@@ -1274,7 +1280,7 @@ class GoTestCoverageAnalyzer {
 
 // 新增：增强调用图分析器
 class GoCallGraphAnalyzer {
-  constructor(targetDir) {
+  constructor(targetDir, options = {}) {
     this.targetDir = targetDir;
     this.astParser = new GoASTParser();
     this.toolPath = {
@@ -1282,11 +1288,52 @@ class GoCallGraphAnalyzer {
       guru: null,
       golist: 'go'
     };
+    // 熔断配置
+    this.options = {
+      enableCallGraph: options.enableCallGraph !== false, // 默认启用
+      callGraphTimeout: options.callGraphTimeout || 60000, // 默认60秒整体超时
+      maxFunctionsToAnalyze: options.maxFunctionsToAnalyze || 500, // 最大分析函数数
+      enableSampling: options.enableSampling !== false, // 默认启用采样
+      samplingRatio: options.samplingRatio || 0.5, // 采样比例（大项目时）
+      ...options
+    };
   }
 
   async buildEnhancedCallGraph(fileInfos, functions) {
+    // 检查是否启用调用图生成
+    if (!this.options.enableCallGraph) {
+      console.error('⚠️  调用图生成已禁用，返回空调用图');
+      return { nodes: [], edges: [] };
+    }
+
     console.error('🕸️ 构建增强调用图 (使用Go工具链)...');
     
+    // 使用Promise.race实现整体超时控制
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`调用图生成超时 (${this.options.callGraphTimeout}ms)，启用熔断机制`));
+      }, this.options.callGraphTimeout);
+    });
+
+    try {
+      const callGraph = await Promise.race([
+        this.buildCallGraphWithTimeout(fileInfos, functions),
+        timeoutPromise
+      ]);
+      
+      console.error(`📊 增强调用图: ${callGraph.nodes.length} 节点, ${callGraph.edges.length} 边`);
+      return callGraph;
+    } catch (error) {
+      if (error.message.includes('超时') || error.message.includes('timeout')) {
+        console.error('⏱️  调用图生成超时，使用快速fallback模式');
+        // 超时后使用快速fallback，只生成基本结构
+        return await this.buildCallGraphFallback(fileInfos, functions, true); // true表示快速模式
+      }
+      throw error;
+    }
+  }
+
+  async buildCallGraphWithTimeout(fileInfos, functions) {
     // 1. 检查可用工具
     const availableTools = await this.checkAvailableTools();
     console.error(`📋 可用工具: ${Object.keys(availableTools).filter(k => availableTools[k]).join(', ')}`);
@@ -1302,13 +1349,15 @@ class GoCallGraphAnalyzer {
       callGraph = await this.buildCallGraphFallback(fileInfos, functions);
     }
     
-    // 3. 增强调用图信息
-    await this.enhanceCallGraphWithAST(callGraph, fileInfos);
+    // 3. 增强调用图信息（在超时控制内）
+    try {
+      await this.enhanceCallGraphWithAST(callGraph, fileInfos);
+    } catch (error) {
+      console.error('⚠️  AST增强失败，继续使用基础调用图:', error.message);
+    }
     
-    // 4. 添加测试覆盖信息
+    // 4. 添加测试覆盖信息（同步操作，不会超时）
     this.addTestCoverageToCallGraph(callGraph, fileInfos);
-    
-    console.error(`📊 增强调用图: ${callGraph.nodes.length} 节点, ${callGraph.edges.length} 边`);
     
     return callGraph;
   }
@@ -1424,42 +1473,98 @@ class GoCallGraphAnalyzer {
       const edges = [];
       const nodeMap = new Map();
 
-      // 为每个函数运行guru callstack分析
+      // 收集所有需要分析的函数
+      const allFunctions = [];
       for (const fileInfo of fileInfos) {
         for (const func of fileInfo.functions || []) {
-          try {
-            const funcPosition = `${fileInfo.relativePath}:#${func.line}`;
-            
-            // 分析调用者 (callers)
-            const callersResult = await execFileAsync(this.toolPath.guru, [
-              '-scope', scope,
-              'callers',
-              funcPosition
-            ], {
-              cwd: this.targetDir,
-              timeout: 10000
-            });
-
-            // 分析被调用者 (callees)  
-            const calleesResult = await execFileAsync(this.toolPath.guru, [
-              '-scope', scope,
-              'callees',
-              funcPosition
-            ], {
-              cwd: this.targetDir,
-              timeout: 10000
-            });
-
-            // 解析guru输出并添加到调用图
-            this.parseGuruOutput(callersResult.stdout, calleesResult.stdout, func, fileInfo, nodes, edges, nodeMap);
-
-          } catch (funcError) {
-            // 单个函数分析失败不影响整体
-            console.error(`guru分析函数失败 ${func.name}:`, funcError.message);
-          }
+          allFunctions.push({ func, fileInfo });
         }
       }
 
+      // 采样机制：如果函数太多，只分析一部分
+      let functionsToAnalyze = allFunctions;
+      if (this.options.enableSampling && allFunctions.length > this.options.maxFunctionsToAnalyze) {
+        console.error(`⚠️  函数数量过多 (${allFunctions.length})，启用采样模式 (${this.options.samplingRatio * 100}%)`);
+        const sampleSize = Math.floor(allFunctions.length * this.options.samplingRatio);
+        // 优先选择导出的函数和变更的文件
+        functionsToAnalyze = allFunctions
+          .sort((a, b) => {
+            // 优先：导出的函数 > 变更的文件 > 其他
+            if (a.func.isExported !== b.func.isExported) {
+              return a.func.isExported ? -1 : 1;
+            }
+            return 0;
+          })
+          .slice(0, sampleSize);
+        console.error(`📊 采样后分析 ${functionsToAnalyze.length} 个函数`);
+      }
+
+      // 进度监控
+      const startTime = Date.now();
+      const maxTimePerFunction = 5000; // 每个函数最多5秒
+      let analyzedCount = 0;
+      let skippedCount = 0;
+
+      // 为每个函数运行guru callstack分析
+      for (const { func, fileInfo } of functionsToAnalyze) {
+        // 检查是否已经超时（留出一些缓冲时间）
+        const elapsed = Date.now() - startTime;
+        const remainingTime = this.options.callGraphTimeout - elapsed;
+        if (remainingTime < maxTimePerFunction * 2) {
+          console.error(`⏱️  剩余时间不足，跳过剩余 ${functionsToAnalyze.length - analyzedCount} 个函数`);
+          skippedCount = functionsToAnalyze.length - analyzedCount;
+          break;
+        }
+
+        try {
+          const funcPosition = `${fileInfo.relativePath}:#${func.line}`;
+          
+          // 分析调用者 (callers) - 使用更短的超时
+          const callersPromise = execFileAsync(this.toolPath.guru, [
+            '-scope', scope,
+            'callers',
+            funcPosition
+          ], {
+            cwd: this.targetDir,
+            timeout: Math.min(maxTimePerFunction, remainingTime / 2)
+          });
+
+          // 分析被调用者 (callees) - 并行执行
+          const calleesPromise = execFileAsync(this.toolPath.guru, [
+            '-scope', scope,
+            'callees',
+            funcPosition
+          ], {
+            cwd: this.targetDir,
+            timeout: Math.min(maxTimePerFunction, remainingTime / 2)
+          });
+
+          // 等待两个分析完成
+          const [callersResult, calleesResult] = await Promise.all([callersPromise, calleesPromise]);
+
+          // 解析guru输出并添加到调用图
+          this.parseGuruOutput(callersResult.stdout, calleesResult.stdout, func, fileInfo, nodes, edges, nodeMap);
+          analyzedCount++;
+
+          // 每分析10个函数输出一次进度
+          if (analyzedCount % 10 === 0) {
+            console.error(`📊 调用图分析进度: ${analyzedCount}/${functionsToAnalyze.length} (已用 ${Math.round(elapsed / 1000)}s)`);
+          }
+
+        } catch (funcError) {
+          // 单个函数分析失败不影响整体
+          if (!funcError.message.includes('timeout')) {
+            console.error(`⚠️  guru分析函数失败 ${func.name}:`, funcError.message);
+          }
+          skippedCount++;
+        }
+      }
+
+      if (skippedCount > 0) {
+        console.error(`⚠️  跳过了 ${skippedCount} 个函数的分析（超时或错误）`);
+      }
+
+      console.error(`✅ guru分析完成: ${analyzedCount} 个函数，${nodes.length} 节点，${edges.length} 边`);
       return { nodes, edges };
 
     } catch (error) {
@@ -1628,16 +1733,25 @@ class GoCallGraphAnalyzer {
     }
   }
 
-  async buildCallGraphFallback(fileInfos, functions) {
-    console.error('🔄 使用内置调用图分析器...');
+  async buildCallGraphFallback(fileInfos, functions, fastMode = false) {
+    console.error(`🔄 使用内置调用图分析器${fastMode ? ' (快速模式)' : ''}...`);
     
     const nodes = [];
     const edges = [];
     const nodeMap = new Map();
     
+    // 快速模式：只分析导出的函数和变更的文件
+    const functionsToProcess = fastMode 
+      ? fileInfos.flatMap(fi => (fi.functions || []).filter(f => f.isExported || fi.fileType === 'modified'))
+      : fileInfos.flatMap(fi => fi.functions || []);
+    
     // 使用原有的简化分析逻辑
     for (const fileInfo of fileInfos) {
-      for (const func of fileInfo.functions || []) {
+      const funcsToAnalyze = fastMode 
+        ? (fileInfo.functions || []).filter(f => f.isExported || fileInfo.fileType === 'modified')
+        : (fileInfo.functions || []);
+        
+      for (const func of funcsToAnalyze) {
         const nodeId = `${fileInfo.packageName}.${func.name}`;
         const node = {
           data: {
