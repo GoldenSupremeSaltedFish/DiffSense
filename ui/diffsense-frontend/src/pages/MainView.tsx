@@ -10,7 +10,6 @@ const MainView = () => {
   const [snapshotDiffs, setSnapshotDiffs] = useState<any[]>([]);
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
   const [isAnalyzingProject, setIsAnalyzingProject] = useState(true);
-  const [projectAnalysisCompleted, setProjectAnalysisCompleted] = useState(false);
 
   // 组件挂载时恢复分析结果
   useEffect(() => {
@@ -50,11 +49,9 @@ const MainView = () => {
       switch (message.command) {
         case 'projectAnalysisStarted':
           setIsAnalyzingProject(true);
-          setProjectAnalysisCompleted(false);
           break;
         case 'projectAnalysisCompleted':
           setIsAnalyzingProject(false);
-          setProjectAnalysisCompleted(true);
           break;
         case 'analysisStarted':
           setIsLoading(true);
