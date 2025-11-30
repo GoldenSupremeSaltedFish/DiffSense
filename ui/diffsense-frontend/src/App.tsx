@@ -34,8 +34,12 @@ const App = () => {
     >
       <div className="app-container" style={{
         width: "100%",
-        height: "100%",
-        padding: "2px"
+        minHeight: "100%",
+        padding: "2px",
+        display: "flex",
+        flexDirection: "column",
+        overflowY: "auto",
+        overflowX: "hidden"
       }}>
         <MainView />
       </div>
