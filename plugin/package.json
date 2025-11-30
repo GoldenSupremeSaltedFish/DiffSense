@@ -53,6 +53,11 @@
         "command": "diffsense.refresh",
         "title": "Refresh",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "diffsense.showOutput",
+        "title": "显示输出日志",
+        "category": "DiffSense"
       }
     ],
     "views": {

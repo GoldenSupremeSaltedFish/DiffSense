@@ -517,7 +517,12 @@ export function activate(context: vscode.ExtensionContext) {
     provider.refresh();
   });
 
-  context.subscriptions.push(analysisCommand, refreshCommand);
+  // 注册命令：显示输出面板
+  const showOutputCommand = vscode.commands.registerCommand('diffsense.showOutput', () => {
+    provider.showOutput();
+  });
+
+  context.subscriptions.push(analysisCommand, refreshCommand, showOutputCommand);
 }
 
 class DiffSenseViewProvider implements vscode.WebviewViewProvider {
@@ -562,6 +567,15 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       console.warn(message);
     } else {
       console.log(message);
+    }
+  }
+
+  /**
+   * 显示输出面板
+   */
+  public showOutput() {
+    if (this._outputChannel) {
+      this._outputChannel.show(true);
     }
   }
 
