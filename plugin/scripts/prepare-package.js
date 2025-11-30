@@ -1,5 +1,22 @@
 #!/usr/bin/env node
 
+// 修复 undici File API 兼容性问题
+if (typeof globalThis.File === 'undefined') {
+  // 为 Node.js < 18 提供 File API polyfill
+  try {
+    // 尝试从 undici 导入 File（如果可用）
+    const { File } = require('undici');
+    globalThis.File = File;
+  } catch (e) {
+    // 如果不可用，创建一个简单的 polyfill
+    globalThis.File = class File {
+      constructor() {
+        throw new Error('File API not supported in this Node.js version');
+      }
+    };
+  }
+}
+
 const fs = require('fs');
 const path = require('path');
 

@@ -27,7 +27,8 @@
     "code review"
   ],
   "engines": {
-    "vscode": "^1.74.0"
+    "vscode": "^1.74.0",
+    "node": ">=18.0.0"
   },
   "categories": [
     "Other",
@@ -88,7 +89,7 @@
     "watch": "tsc -w",
     "prepare-package": "node scripts/prepare-package.js",
     "clean-package": "node scripts/clean-package.js",
-    "package": "npm run prepare-package && vsce package",
+    "package": "npm run prepare-package && node scripts/package-vsix.js",
     "publish": "npm run prepare-package && vsce publish",
     "dev": "npm run watch",
     "build": "npm run clean && tsc && npm run prepare-package",
