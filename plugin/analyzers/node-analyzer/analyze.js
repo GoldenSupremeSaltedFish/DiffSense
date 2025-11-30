@@ -392,8 +392,39 @@ class FrontendAnalyzer {
       includeNodeModules: false,
       // 支持 .vue 文件以便提取组件快照
       filePattern: '**/*.{js,jsx,ts,tsx,vue}',
-      exclude: ['node_modules/**', 'dist/**', 'build/**', '**/*.test.*', '**/*.spec.*'],
-      maxDepth: 15, // 增加递归深度以支持微服务项目
+      // 扩展exclude模式，确保排除所有不需要的目录
+      exclude: [
+        '**/node_modules/**',      // 所有层级的node_modules
+        '**/dist/**',               // 所有层级的dist
+        '**/build/**',              // 所有层级的build
+        '**/out/**',                // 所有层级的out
+        '**/.git/**',               // Git目录
+        '**/.vscode/**',            // VSCode配置
+        '**/.idea/**',              // IntelliJ IDEA配置
+        '**/.next/**',              // Next.js构建输出
+        '**/.nuxt/**',              // Nuxt.js构建输出
+        '**/coverage/**',           // 测试覆盖率报告
+        '**/.cache/**',             // 缓存目录
+        '**/.turbo/**',             // Turbo缓存
+        '**/.parcel-cache/**',      // Parcel缓存
+        '**/.vite/**',              // Vite缓存
+        '**/node_modules',          // node_modules目录本身
+        '**/dist',                  // dist目录本身
+        '**/build',                 // build目录本身
+        '**/out',                   // out目录本身
+        '**/*.test.*',              // 测试文件
+        '**/*.spec.*',              // 测试规范文件
+        '**/test-results/**',       // 测试结果
+        '**/playwright-report/**',  // Playwright报告
+        '**/.nyc_output/**',        // NYC覆盖率输出
+        '**/logs/**',               // 日志目录
+        '**/tmp/**',                // 临时目录
+        '**/temp/**'                // 临时目录
+      ],
+      maxDepth: options.maxDepth || 15, // 从选项或默认值
+      enableMicroserviceDetection: options.enableMicroserviceDetection !== false,
+      enableBuildToolDetection: options.enableBuildToolDetection !== false,
+      enableFrameworkDetection: options.enableFrameworkDetection !== false,
       ...options
     };
     this.project = null;
@@ -486,6 +517,39 @@ class FrontendAnalyzer {
     }
   }
 
+  /**
+   * 检查文件是否应该被排除
+   */
+  shouldExcludeFile(filePath) {
+    const normalizedPath = filePath.replace(/\\/g, '/');
+    const excludePatterns = [
+      /node_modules/i,
+      /dist[\/\\]/i,
+      /build[\/\\]/i,
+      /out[\/\\]/i,
+      /\.git[\/\\]/i,
+      /\.vscode[\/\\]/i,
+      /\.idea[\/\\]/i,
+      /\.next[\/\\]/i,
+      /\.nuxt[\/\\]/i,
+      /coverage[\/\\]/i,
+      /\.cache[\/\\]/i,
+      /\.turbo[\/\\]/i,
+      /\.parcel-cache[\/\\]/i,
+      /\.vite[\/\\]/i,
+      /test-results[\/\\]/i,
+      /playwright-report[\/\\]/i,
+      /\.nyc_output[\/\\]/i,
+      /logs[\/\\]/i,
+      /tmp[\/\\]/i,
+      /temp[\/\\]/i,
+      /\.test\./i,
+      /\.spec\./i
+    ];
+
+    return excludePatterns.some(pattern => pattern.test(normalizedPath));
+  }
+
   async analyzeCode() {
     console.error('🔬 分析代码结构...');
     
@@ -496,12 +560,25 @@ class FrontendAnalyzer {
       maxDepth: this.options.maxDepth // 使用配置的深度
     });
 
-    console.error(`�� 找到 ${files.length} 个文件`);
+    // 额外的文件过滤，作为双重保障
+    const filteredFiles = files.filter(filePath => {
+      return !this.shouldExcludeFile(filePath);
+    });
+
+    console.error(`📄 找到 ${files.length} 个文件（过滤前）`);
+    console.error(`📄 过滤后剩余 ${filteredFiles.length} 个文件`);
+
+    // 文件数量检查
+    if (filteredFiles.length > 5000) {
+      console.error(`⚠️  警告: 文件数量过多 (${filteredFiles.length})，分析可能需要较长时间`);
+    }
 
     const methods = {};
     const callGraphNodes = [];
     const callGraphEdges = [];
     const fileInfos = [];
+    let processedCount = 0;
+    const totalFiles = filteredFiles.length;
 
     // 初始化TypeScript项目
     this.project = new Project({
@@ -509,8 +586,18 @@ class FrontendAnalyzer {
       skipAddingFilesFromTsConfig: true
     });
 
-    for (const filePath of files) {
+    // 文件大小限制（10MB）
+    const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+    for (const filePath of filteredFiles) {
       try {
+        // 检查文件大小
+        const stats = fs.statSync(filePath);
+        if (stats.size > MAX_FILE_SIZE) {
+          console.error(`⚠️  跳过过大文件: ${filePath} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`);
+          continue;
+        }
+
         const fileInfo = await this.analyzeFile(filePath);
         fileInfos.push(fileInfo);
 
@@ -554,10 +641,18 @@ class FrontendAnalyzer {
           });
         }
 
+        processedCount++;
+        // 每处理100个文件显示一次进度
+        if (processedCount % 100 === 0) {
+          console.error(`📊 进度: ${processedCount}/${totalFiles} (${Math.round(processedCount / totalFiles * 100)}%)`);
+        }
+
       } catch (error) {
         console.error(`分析文件失败 ${filePath}:`, error.message);
       }
     }
+
+    console.error(`✅ 完成分析: ${processedCount}/${totalFiles} 个文件`);
 
     return {
       methods,
@@ -743,13 +838,86 @@ class FrontendAnalyzer {
   }
 }
 
+/**
+ * 解析命令行参数
+ */
+function parseArgs() {
+  const args = process.argv.slice(2);
+  const options = {
+    targetDir: process.cwd(),
+    outputFormat: 'json',
+    maxDepth: 15,
+    enableMicroserviceDetection: true,
+    enableBuildToolDetection: true,
+    enableFrameworkDetection: true
+  };
+
+  // 第一个参数是目标目录（如果不是以--开头）
+  if (args.length > 0 && !args[0].startsWith('--')) {
+    options.targetDir = args[0];
+  }
+
+  // 第二个参数是输出格式（如果不是以--开头）
+  if (args.length > 1 && !args[1].startsWith('--')) {
+    options.outputFormat = args[1];
+  }
+
+  // 解析所有--参数
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    
+    if (arg === '--max-depth' && args[i + 1]) {
+      options.maxDepth = parseInt(args[i + 1], 10) || 15;
+      i++;
+    } else if (arg === '--branch' && args[i + 1]) {
+      options.branch = args[i + 1];
+      i++;
+    } else if (arg === '--commits' && args[i + 1]) {
+      options.commits = parseInt(args[i + 1], 10);
+      i++;
+    } else if (arg === '--since' && args[i + 1]) {
+      options.since = args[i + 1];
+      i++;
+    } else if (arg === '--until' && args[i + 1]) {
+      options.until = args[i + 1];
+      i++;
+    } else if (arg === '--start-commit' && args[i + 1]) {
+      options.startCommit = args[i + 1];
+      i++;
+    } else if (arg === '--end-commit' && args[i + 1]) {
+      options.endCommit = args[i + 1];
+      i++;
+    } else if (arg === '--enable-microservice-detection' && args[i + 1]) {
+      options.enableMicroserviceDetection = args[i + 1] === 'true';
+      i++;
+    } else if (arg === '--enable-build-tool-detection' && args[i + 1]) {
+      options.enableBuildToolDetection = args[i + 1] === 'true';
+      i++;
+    } else if (arg === '--enable-framework-detection' && args[i + 1]) {
+      options.enableFrameworkDetection = args[i + 1] === 'true';
+      i++;
+    }
+  }
+
+  return options;
+}
+
 // 命令行调用
 async function main() {
-  const targetDir = process.argv[2] || process.cwd();
-  const outputFormat = process.argv[3] || 'json';
+  const parsedOptions = parseArgs();
+  const targetDir = parsedOptions.targetDir;
+  const outputFormat = parsedOptions.outputFormat;
 
   try {
-    const analyzer = new FrontendAnalyzer(targetDir);
+    // 构建分析器选项
+    const analyzerOptions = {
+      maxDepth: parsedOptions.maxDepth,
+      enableMicroserviceDetection: parsedOptions.enableMicroserviceDetection,
+      enableBuildToolDetection: parsedOptions.enableBuildToolDetection,
+      enableFrameworkDetection: parsedOptions.enableFrameworkDetection
+    };
+
+    const analyzer = new FrontendAnalyzer(targetDir, analyzerOptions);
     const result = await analyzer.analyze();
 
     if (outputFormat === 'json') {
@@ -763,6 +931,9 @@ async function main() {
 
   } catch (error) {
     console.error('分析失败:', error.message);
+    if (error.stack) {
+      console.error('堆栈:', error.stack);
+    }
     process.exit(1);
   }
 }
