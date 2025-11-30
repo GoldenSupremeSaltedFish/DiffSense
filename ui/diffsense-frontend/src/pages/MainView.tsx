@@ -107,21 +107,18 @@ const MainView = () => {
       <div style={{ padding: "4px", fontSize: "10px", color: "var(--vscode-descriptionForeground)" }}>
         🔍 DiffSense v1.0 - Debug Mode
       </div>
-      <div style={{ padding: "4px", fontSize: "10px", color: "var(--vscode-descriptionForeground)" }}>
-        {isAnalyzingProject 
-          ? '正在分析项目...' 
-          : projectAnalysisCompleted 
-            ? '项目分析完成' 
-            : isLoading 
-              ? '正在分析...' 
-              : error 
-                ? error 
-                : hasAnalyzed 
-                  ? '分析完成' 
-                  : '等待分析...'}
-      </div>
+      {(isAnalyzingProject || isLoading) && (
+        <div style={{ padding: "4px", fontSize: "10px", color: "var(--vscode-descriptionForeground)" }}>
+          {isAnalyzingProject ? '正在分析项目...' : '正在分析...'}
+        </div>
+      )}
       <Toolbar />
-      <CommitList analysisResults={analysisResults} snapshotDiffs={snapshotDiffs} />
+      <CommitList 
+        analysisResults={analysisResults} 
+        snapshotDiffs={snapshotDiffs} 
+        error={error}
+        hasAnalyzed={hasAnalyzed}
+      />
     </div>
   );
 };
