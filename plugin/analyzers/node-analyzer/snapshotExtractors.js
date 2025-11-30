@@ -57,11 +57,14 @@ class ReactSnapshotExtractor extends SnapshotExtractor {
         let componentName = '';
         let parameters = [];
         let bodyText = '';
+        let isReactComponent = false;
 
         if (node.getKind() === SyntaxKind.FunctionDeclaration) {
           componentName = node.getName() || 'Anonymous';
           parameters = node.getParameters().map(p => p.getName());
           bodyText = node.getBody()?.getText() || '';
+          // 使用AST检查是否为React组件
+          isReactComponent = this.isReactFunctionComponent(node);
         } else if (node.getKind() === SyntaxKind.VariableStatement) {
           // arrow function const Foo = (props) => { ... }
           const declarations = node.getDeclarations();
@@ -72,6 +75,8 @@ class ReactSnapshotExtractor extends SnapshotExtractor {
               if (initializer.getKind() === SyntaxKind.ArrowFunction) {
                 parameters = initializer.getParameters().map(p => p.getName());
                 bodyText = initializer.getBody().getText();
+                // 使用AST检查是否为React组件
+                isReactComponent = this.isReactFunctionComponent(initializer);
               }
             }
           }
@@ -80,12 +85,11 @@ class ReactSnapshotExtractor extends SnapshotExtractor {
           // React class component uses this.props
           parameters = ['props'];
           bodyText = node.getText();
+          // 使用AST检查是否为React class组件
+          isReactComponent = this.isReactClassComponent(node);
         }
 
-        if (!componentName) return;
-
-        // 判断是否包含 JSX => 大致判断是否是 React 组件
-        if (!bodyText.includes('<')) return;
+        if (!componentName || !isReactComponent) return;
 
         const snapshot = createSnapshot({
           componentName,
@@ -101,6 +105,115 @@ class ReactSnapshotExtractor extends SnapshotExtractor {
     });
 
     return snapshots;
+  }
+
+  /**
+   * 检查节点是否为JSX元素
+   */
+  isJSX(node) {
+    if (!node) return false;
+    const kind = node.getKind();
+    return kind === SyntaxKind.JsxElement ||
+           kind === SyntaxKind.JsxSelfClosingElement ||
+           kind === SyntaxKind.JsxFragment ||
+           kind === SyntaxKind.JsxExpression;
+  }
+
+  /**
+   * 检查函数是否为React函数组件
+   * 函数组件：返回JSX的函数或箭头函数
+   */
+  isReactFunctionComponent(node) {
+    if (!node) return false;
+
+    // 检查函数体
+    let body;
+    if (node.getKind() === SyntaxKind.FunctionDeclaration) {
+      body = node.getBody();
+    } else if (node.getKind() === SyntaxKind.ArrowFunction) {
+      body = node.getBody();
+    } else {
+      return false;
+    }
+
+    if (!body) return false;
+
+    // 查找所有return语句
+    const returnStatements = body.getDescendantsOfKind(SyntaxKind.ReturnStatement);
+    
+    // 检查是否有return JSX
+    for (const returnStmt of returnStatements) {
+      const expression = returnStmt.getExpression();
+      if (expression && this.isJSX(expression)) {
+        return true;
+      }
+      
+      // 检查条件表达式中的JSX (如 condition ? <div/> : null)
+      if (expression) {
+        const jsxNodes = expression.getDescendantsOfKind(SyntaxKind.JsxElement)
+          .concat(expression.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement))
+          .concat(expression.getDescendantsOfKind(SyntaxKind.JsxFragment));
+        if (jsxNodes.length > 0) {
+          return true;
+        }
+      }
+    }
+
+    // 对于箭头函数，可能直接返回JSX（没有return关键字）
+    if (node.getKind() === SyntaxKind.ArrowFunction) {
+      // 检查body是否为JSX表达式
+      if (this.isJSX(body)) {
+        return true;
+      }
+      
+      // 检查body中是否包含JSX
+      const jsxNodes = body.getDescendantsOfKind(SyntaxKind.JsxElement)
+        .concat(body.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement))
+        .concat(body.getDescendantsOfKind(SyntaxKind.JsxFragment));
+      if (jsxNodes.length > 0) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * 检查class是否为React class组件
+   * class组件：有render方法且返回JSX
+   */
+  isReactClassComponent(classNode) {
+    if (!classNode || classNode.getKind() !== SyntaxKind.ClassDeclaration) {
+      return false;
+    }
+
+    // 查找render方法
+    const renderMethod = classNode.getInstanceMethod('render');
+    if (!renderMethod) return false;
+
+    // 检查render方法是否返回JSX
+    const methodBody = renderMethod.getBody();
+    if (!methodBody) return false;
+
+    const returnStatements = methodBody.getDescendantsOfKind(SyntaxKind.ReturnStatement);
+    for (const returnStmt of returnStatements) {
+      const expression = returnStmt.getExpression();
+      if (expression && this.isJSX(expression)) {
+        return true;
+      }
+      
+      // 检查条件表达式中的JSX
+      if (expression) {
+        const jsxNodes = expression.getDescendantsOfKind(SyntaxKind.JsxElement)
+          .concat(expression.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement))
+          .concat(expression.getDescendantsOfKind(SyntaxKind.JsxFragment));
+        if (jsxNodes.length > 0) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 
   _extractHooks(text) {

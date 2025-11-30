@@ -196,110 +196,334 @@ class FrontendGranularAnalyzer {
   
   /**
    * 分析一般性变更（无具体方法信息时）
+   * 基于diff内容进行精确分析，定位具体变更位置
    */
   analyzeGeneralChanges(filePath, diffContent) {
     const modifications = [];
     
-    // Hook变更检测
-    if (this.containsHookChanges(diffContent)) {
-      modifications.push(this.createModification(
-        ModificationType.HOOK_CHANGE,
-        'React Hook变更：检测到useState、useEffect等Hook的使用变化',
-        filePath
-      ));
+    if (!diffContent || !diffContent.trim()) {
+      return modifications;
     }
     
-    // 状态管理变更检测
-    if (this.containsStateManagementChanges(diffContent)) {
-      modifications.push(this.createModification(
-        ModificationType.STATE_MANAGEMENT_CHANGE,
-        '状态管理变更：检测到状态相关逻辑的变化',
-        filePath
-      ));
-    }
+    // 解析diff，获取变更行
+    const changedLines = this.parseDiffLines(diffContent);
     
-    // API调用变更检测
-    if (this.containsApiCallChanges(diffContent)) {
-      modifications.push(this.createModification(
-        ModificationType.API_CALL_CHANGE,
-        'API调用变更：检测到fetch、axios等API调用的变化',
-        filePath
-      ));
-    }
-    
-    // 组件逻辑变更检测
-    if (this.containsComponentLogicChanges(diffContent)) {
-      modifications.push(this.createModification(
-        ModificationType.COMPONENT_LOGIC_CHANGE,
-        '组件逻辑变更：检测到组件业务逻辑的变化',
-        filePath
-      ));
-    }
-
-    // Props变更
-    if (this.containsPropsChanges(diffContent)) {
-      modifications.push(this.createModification(
-        ModificationType.COMPONENT_PROPS_CHANGE,
-        'Props变更：新增或修改了组件属性',
-        filePath
-      ));
-    }
-
-    // JSX结构变更
-    if (this.containsJsxChanges(diffContent)) {
-      modifications.push(this.createModification(
-        ModificationType.JSX_STRUCTURE_CHANGE,
-        'JSX结构变更',
-        filePath
-      ));
-    }
-    
-    // Vue模板变更
-    if (this.containsVueTemplateChanges(diffContent)) {
-      modifications.push(this.createModification(
-        ModificationType.TEMPLATE_CHANGE,
-        'Vue模板变更',
-        filePath
-      ));
-    }
-    
-    // 样式变更
-    if (this.containsStyleChanges(diffContent)) {
-      modifications.push(this.createModification(
-        ModificationType.CSS_CHANGE,
-        '样式变更',
-        filePath
-      ));
-    }
-    
-    // 注释变更
-    if (this.isCommentOnlyChange(diffContent)) {
-      modifications.push(this.createModification(
-        ModificationType.COMMENT_CHANGE,
-        '注释变更',
-        filePath
-      ));
-    }
-    
-    // 格式化变更
-    if (this.isFormattingChange(diffContent)) {
-      modifications.push(this.createModification(
-        ModificationType.FORMATTING_CHANGE,
-        '格式化变更',
-        filePath
-      ));
-    }
-    
-    // 变量/常量值修改
-    if (this.containsVariableValueChange(diffContent)) {
+    // 基于变更行进行精确分析
+    for (const change of changedLines) {
+      const line = change.line;
+      const isAdded = change.type === '+';
+      const isRemoved = change.type === '-';
+      
+      // React Hook变更检测（基于变更行）
+      const hookChange = this.detectHookChange(line, isAdded, isRemoved);
+      if (hookChange) {
         modifications.push(this.createModification(
-            ModificationType.UTILITY_FUNCTION_CHANGE, // 暂时复用这个类型
-            '变量或常量值发生变化',
-            filePath
+          hookChange.type,
+          hookChange.description,
+          filePath,
+          hookChange.method || null,
+          hookChange.confidence || 0.9,
+          change.lineNumber
         ));
+        continue; // 已识别为Hook变更，跳过其他检测
+      }
+      
+      // JSX结构变更检测
+      if (this.isJSXLine(line)) {
+        const jsxChange = this.detectJSXChange(line, isAdded, isRemoved);
+        if (jsxChange) {
+          modifications.push(this.createModification(
+            ModificationType.JSX_STRUCTURE_CHANGE,
+            jsxChange.description,
+            filePath,
+            null,
+            0.85,
+            change.lineNumber
+          ));
+          continue;
+        }
+      }
+      
+      // 事件绑定变更检测
+      if (this.isEventBindingLine(line)) {
+        const eventChange = this.detectEventChange(line, isAdded, isRemoved);
+        if (eventChange) {
+          modifications.push(this.createModification(
+            ModificationType.EVENT_HANDLER_CHANGE,
+            eventChange.description,
+            filePath,
+            null,
+            0.8,
+            change.lineNumber
+          ));
+          continue;
+        }
+      }
+      
+      // Props变更检测
+      if (this.isPropsLine(line)) {
+        const propsChange = this.detectPropsChange(line, isAdded, isRemoved);
+        if (propsChange) {
+          modifications.push(this.createModification(
+            ModificationType.COMPONENT_PROPS_CHANGE,
+            propsChange.description,
+            filePath,
+            null,
+            0.85,
+            change.lineNumber
+          ));
+          continue;
+        }
+      }
+      
+      // 状态管理变更检测
+      if (this.isStateManagementLine(line)) {
+        modifications.push(this.createModification(
+          ModificationType.STATE_MANAGEMENT_CHANGE,
+          `状态管理变更: ${isAdded ? '新增' : '删除'}状态相关代码`,
+          filePath,
+          null,
+          0.8,
+          change.lineNumber
+        ));
+        continue;
+      }
+      
+      // API调用变更检测
+      if (this.isApiCallLine(line)) {
+        modifications.push(this.createModification(
+          ModificationType.API_CALL_CHANGE,
+          `API调用变更: ${isAdded ? '新增' : '删除'}API调用`,
+          filePath,
+          null,
+          0.75,
+          change.lineNumber
+        ));
+        continue;
+      }
+    }
+    
+    // 如果没有任何精确匹配，进行通用检测（保持向后兼容）
+    if (modifications.length === 0) {
+      // Hook变更检测（全文件扫描，作为fallback）
+      if (this.containsHookChanges(diffContent)) {
+        modifications.push(this.createModification(
+          ModificationType.HOOK_CHANGE,
+          'React Hook变更：检测到useState、useEffect等Hook的使用变化',
+          filePath
+        ));
+      }
+      
+      // JSX结构变更
+      if (this.containsJsxChanges(diffContent)) {
+        modifications.push(this.createModification(
+          ModificationType.JSX_STRUCTURE_CHANGE,
+          'JSX结构变更',
+          filePath
+        ));
+      }
+      
+      // Vue模板变更
+      if (this.containsVueTemplateChanges(diffContent)) {
+        modifications.push(this.createModification(
+          ModificationType.TEMPLATE_CHANGE,
+          'Vue模板变更',
+          filePath
+        ));
+      }
+      
+      // 样式变更
+      if (this.containsStyleChanges(diffContent)) {
+        modifications.push(this.createModification(
+          ModificationType.CSS_CHANGE,
+          '样式变更',
+          filePath
+        ));
+      }
+      
+      // 组件逻辑变更检测
+      if (this.containsComponentLogicChanges(diffContent)) {
+        modifications.push(this.createModification(
+          ModificationType.COMPONENT_LOGIC_CHANGE,
+          '组件逻辑变更：检测到组件业务逻辑的变化',
+          filePath
+        ));
+      }
     }
 
     return modifications;
+  }
+  
+  /**
+   * 解析diff内容，提取变更行
+   */
+  parseDiffLines(diffContent) {
+    const lines = diffContent.split('\n');
+    const changedLines = [];
+    let lineNumber = 0;
+    
+    for (const line of lines) {
+      if (!line) continue;
+      
+      if (line.startsWith('+') && !line.startsWith('+++')) {
+        changedLines.push({
+          type: '+',
+          line: line.substring(1),
+          lineNumber: lineNumber++
+        });
+      } else if (line.startsWith('-') && !line.startsWith('---')) {
+        changedLines.push({
+          type: '-',
+          line: line.substring(1),
+          lineNumber: lineNumber++
+        });
+      } else {
+        lineNumber++; // 未变更的行也计数
+      }
+    }
+    
+    return changedLines;
+  }
+  
+  /**
+   * 检测Hook变更
+   */
+  detectHookChange(line, isAdded, isRemoved) {
+    // useEffect依赖数组变化
+    const useEffectDepMatch = line.match(/useEffect\s*\([^)]*,\s*\[([^\]]*)\]/);
+    if (useEffectDepMatch) {
+      const deps = useEffectDepMatch[1].trim();
+      return {
+        type: ModificationType.HOOK_CHANGE,
+        description: `useEffect依赖数组${isAdded ? '新增' : '删除'}: [${deps}]`,
+        method: 'useEffect',
+        confidence: 0.95
+      };
+    }
+    
+    // useState初始值变化
+    const useStateMatch = line.match(/useState\s*\(([^)]*)\)/);
+    if (useStateMatch) {
+      return {
+        type: ModificationType.HOOK_CHANGE,
+        description: `useState${isAdded ? '新增' : '删除'}或初始值变化`,
+        method: 'useState',
+        confidence: 0.9
+      };
+    }
+    
+    // useCallback/useMemo依赖变化
+    const useCallbackMatch = line.match(/(useCallback|useMemo)\s*\([^)]*,\s*\[([^\]]*)\]/);
+    if (useCallbackMatch) {
+      const hookName = useCallbackMatch[1];
+      const deps = useCallbackMatch[2].trim();
+      return {
+        type: ModificationType.HOOK_CHANGE,
+        description: `${hookName}依赖数组${isAdded ? '新增' : '删除'}: [${deps}]`,
+        method: hookName,
+        confidence: 0.9
+      };
+    }
+    
+    // 通用Hook检测
+    if (/use[A-Z]\w*\s*\(/.test(line)) {
+      const hookMatch = line.match(/(use[A-Z]\w*)\s*\(/);
+      if (hookMatch) {
+        return {
+          type: ModificationType.HOOK_CHANGE,
+          description: `React Hook${isAdded ? '新增' : '删除'}: ${hookMatch[1]}`,
+          method: hookMatch[1],
+          confidence: 0.85
+        };
+      }
+    }
+    
+    return null;
+  }
+  
+  /**
+   * 检测JSX变更
+   */
+  detectJSXChange(line, isAdded, isRemoved) {
+    // JSX元素增删
+    if (/<[A-Z]/.test(line) || /<[a-z]/.test(line)) {
+      const tagMatch = line.match(/<([A-Za-z][A-Za-z0-9]*)/);
+      if (tagMatch) {
+        return {
+          description: `JSX元素${isAdded ? '新增' : '删除'}: <${tagMatch[1]}>`
+        };
+      }
+    }
+    return null;
+  }
+  
+  /**
+   * 检测事件绑定变更
+   */
+  detectEventChange(line, isAdded, isRemoved) {
+    const eventMatch = line.match(/(on[A-Z][A-Za-z]+)\s*=/);
+    if (eventMatch) {
+      return {
+        description: `事件绑定${isAdded ? '新增' : '删除'}: ${eventMatch[1]}`
+      };
+    }
+    return null;
+  }
+  
+  /**
+   * 检测Props变更
+   */
+  detectPropsChange(line, isAdded, isRemoved) {
+    // Props接口定义
+    if (/interface\s+\w+Props|type\s+\w+Props/.test(line)) {
+      return {
+        description: `Props类型定义${isAdded ? '新增' : '删除'}`
+      };
+    }
+    
+    // Props解构
+    if (/\{\s*\w+.*\}\s*=/.test(line) && /props|Props/.test(line)) {
+      return {
+        description: `Props解构${isAdded ? '新增' : '删除'}`
+      };
+    }
+    
+    return null;
+  }
+  
+  /**
+   * 判断是否为JSX行
+   */
+  isJSXLine(line) {
+    return /<[A-Za-z]/.test(line) || /className=|style=/.test(line);
+  }
+  
+  /**
+   * 判断是否为事件绑定行
+   */
+  isEventBindingLine(line) {
+    return /on[A-Z][A-Za-z]+\s*=/.test(line);
+  }
+  
+  /**
+   * 判断是否为Props相关行
+   */
+  isPropsLine(line) {
+    return /props|Props|interface.*Props|type.*Props/.test(line);
+  }
+  
+  /**
+   * 判断是否为状态管理行
+   */
+  isStateManagementLine(line) {
+    return /setState|useState|dispatch|commit|this\.state/.test(line);
+  }
+  
+  /**
+   * 判断是否为API调用行
+   */
+  isApiCallLine(line) {
+    return /fetch\s*\(|axios\.|\.get\s*\(|\.post\s*\(|api\./.test(line);
   }
   
   // ============ 检测方法 ============
@@ -585,8 +809,8 @@ class FrontendGranularAnalyzer {
   /**
    * 创建修改详情对象
    */
-  createModification(type, description, file, method = null, confidence = 1.0) {
-    return {
+  createModification(type, description, file, method = null, confidence = 1.0, lineNumber = null) {
+    const modification = {
       type: type.code,
       typeName: type.displayName,
       description,
@@ -595,6 +819,13 @@ class FrontendGranularAnalyzer {
       confidence,
       indicators: []
     };
+    
+    // 如果提供了行号，添加到结果中
+    if (lineNumber !== null && lineNumber !== undefined) {
+      modification.line = lineNumber;
+    }
+    
+    return modification;
   }
 }
 

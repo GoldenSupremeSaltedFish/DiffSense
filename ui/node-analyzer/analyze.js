@@ -490,10 +490,13 @@ class FrontendAnalyzer {
         if (this.options.includeTypeTags && this.granularAnalyzer) {
           const allModifications = [];
           for (const fileInfo of result.files) {
+            // 获取真实的diff内容
+            const diffContent = await this.getFileDiff(fileInfo.relativePath, fileInfo.content);
+            
             const modifications = this.granularAnalyzer.analyzeFileChanges(
               fileInfo.relativePath,
               fileInfo.methods,
-              null, // diffContent暂时为null，实际使用时需要获取真实diff
+              diffContent || '', // 使用真实diff，如果无法获取则使用空字符串
               fileInfo.content
             );
             allModifications.push(...modifications);
@@ -1281,6 +1284,71 @@ class FrontendAnalyzer {
     console.error(`✅ 分析策略调整完成`);
   }
 
+  /**
+   * 获取文件的diff内容
+   * 优先使用git diff，如果无法获取则使用computeDiff（需要oldContent/newContent）
+   */
+  async getFileDiff(relativePath, newContent) {
+    try {
+      // 如果启用了Git分析，尝试使用git diff获取真实diff
+      if (this.options.enableGitAnalysis && this.gitChanges) {
+        const gitOptions = this.gitChanges.gitOptions;
+        let oldCommit = null;
+        let newCommit = 'HEAD';
+        
+        // 根据Git选项确定要比较的commit
+        if (gitOptions.commits) {
+          oldCommit = `HEAD~${gitOptions.commits}`;
+          newCommit = 'HEAD';
+        } else if (gitOptions.startCommit && gitOptions.endCommit) {
+          oldCommit = gitOptions.startCommit;
+          newCommit = gitOptions.endCommit;
+        } else {
+          // 工作区变更，比较HEAD和工作区
+          oldCommit = 'HEAD';
+          newCommit = 'WORKTREE';
+        }
+        
+        // 尝试使用git diff获取unified diff
+        try {
+          const diffCmd = newCommit === 'WORKTREE' 
+            ? `git diff HEAD -- ${relativePath}`
+            : `git diff ${oldCommit} ${newCommit} -- ${relativePath}`;
+          
+          const gitDiff = execSync(diffCmd, { 
+            cwd: this.targetDir, 
+            encoding: 'utf-8', 
+            stdio: ['pipe', 'pipe', 'ignore'] 
+          });
+          
+          if (gitDiff && gitDiff.trim()) {
+            // 将git diff格式转换为简单格式（只保留+和-行）
+            const lines = gitDiff.split('\n');
+            const simpleDiff = lines
+              .filter(line => line.startsWith('+') || line.startsWith('-'))
+              .filter(line => !line.startsWith('+++') && !line.startsWith('---'))
+              .join('\n');
+            return simpleDiff || '';
+          }
+        } catch (err) {
+          // git diff失败，fallback到computeDiff
+        }
+        
+        // Fallback: 获取oldContent并计算diff
+        const oldContent = getFileContentAtCommit(oldCommit, relativePath, this.targetDir);
+        if (oldContent !== null && newContent) {
+          return computeDiff(oldContent, newContent);
+        }
+      }
+      
+      // 如果没有Git分析或无法获取，返回空字符串（granularAnalyzer会处理）
+      return '';
+    } catch (error) {
+      console.error(`获取diff失败 ${relativePath}:`, error.message);
+      return '';
+    }
+  }
+
   generateSummary(result) {
     const fileCount = result.files.length;
     const methodCount = Object.values(result.methods).reduce((sum, methods) => sum + methods.length, 0);
@@ -1324,26 +1392,103 @@ async function analyze(options) {
 }
 
 /**
- * 计算两个文本之间的差异
+ * 计算两个文本之间的差异（unified diff格式）
  */
 function computeDiff(oldContent, newContent) {
-  // 简单的diff格式：包含删除的行（以-开头）和添加的行（以+开头）
+  if (!oldContent && !newContent) return '';
+  if (!oldContent) {
+    // 新文件，所有行都是新增
+    return newContent.split('\n').map(line => `+${line}`).join('\n');
+  }
+  if (!newContent) {
+    // 删除的文件，所有行都是删除
+    return oldContent.split('\n').map(line => `-${line}`).join('\n');
+  }
+  
   const oldLines = oldContent.split('\n');
   const newLines = newContent.split('\n');
   
+  // 使用简单的行对比算法生成unified diff
   let diff = '';
+  let i = 0, j = 0;
   
-  // 添加删除的行
-  oldLines.forEach(line => {
-    diff += `-${line}\n`;
-  });
-  
-  // 添加新增的行
-  newLines.forEach(line => {
-    diff += `+${line}\n`;
-  });
+  while (i < oldLines.length || j < newLines.length) {
+    if (i >= oldLines.length) {
+      // 只有新行
+      diff += `+${newLines[j]}\n`;
+      j++;
+    } else if (j >= newLines.length) {
+      // 只有旧行
+      diff += `-${oldLines[i]}\n`;
+      i++;
+    } else if (oldLines[i] === newLines[j]) {
+      // 相同行，跳过（不输出）
+      i++;
+      j++;
+    } else {
+      // 检查是否是连续的变化
+      let oldMatch = false, newMatch = false;
+      
+      // 检查旧行是否在后面的新行中出现
+      for (let k = j + 1; k < Math.min(j + 5, newLines.length); k++) {
+        if (oldLines[i] === newLines[k]) {
+          newMatch = true;
+          break;
+        }
+      }
+      
+      // 检查新行是否在后面的旧行中出现
+      for (let k = i + 1; k < Math.min(i + 5, oldLines.length); k++) {
+        if (newLines[j] === oldLines[k]) {
+          oldMatch = true;
+          break;
+        }
+      }
+      
+      if (newMatch && !oldMatch) {
+        // 新行插入
+        diff += `+${newLines[j]}\n`;
+        j++;
+      } else if (oldMatch && !newMatch) {
+        // 旧行删除
+        diff += `-${oldLines[i]}\n`;
+        i++;
+      } else {
+        // 修改：删除旧行，添加新行
+        diff += `-${oldLines[i]}\n`;
+        diff += `+${newLines[j]}\n`;
+        i++;
+        j++;
+      }
+    }
+  }
   
   return diff;
+}
+
+/**
+ * 获取文件在指定commit的内容
+ */
+function getFileContentAtCommit(commit, filePath, targetDir) {
+  if (commit === 'WORKTREE' || !commit) {
+    // 读取工作区文件
+    try {
+      const fullPath = path.isAbsolute(filePath) ? filePath : path.join(targetDir, filePath);
+      return fs.readFileSync(fullPath, 'utf-8');
+    } catch (err) {
+      return null;
+    }
+  }
+  try {
+    const output = execSync(`git show ${commit}:${filePath}`, { 
+      cwd: targetDir, 
+      encoding: 'utf-8', 
+      stdio: ['pipe', 'pipe', 'ignore'] 
+    });
+    return output;
+  } catch (err) {
+    return null; // 文件在该 commit 不存在
+  }
 }
 
 module.exports = {

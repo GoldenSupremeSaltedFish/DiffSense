@@ -1645,7 +1645,8 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         microserviceDetection: frontendResult.microserviceDetection || null,
         totalFilesScanned: frontendResult.files.length,
         importantFilesShown: limitedFiles.length,
-        gitChanges: frontendResult.gitChanges || null
+        gitChanges: frontendResult.gitChanges || null,
+        granularModifications: frontendResult.modifications || [] // 添加granular modifications
       });
     } else {
       // 如果没有文件数据，创建一个说明性的提交
@@ -1673,7 +1674,8 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         frontendDependencies: frontendResult.dependencies,
         totalFilesScanned: 0,
         importantFilesShown: 0,
-        gitChanges: frontendResult.gitChanges || null
+        gitChanges: frontendResult.gitChanges || null,
+        granularModifications: frontendResult.modifications || [] // 添加granular modifications
       });
     }
     
