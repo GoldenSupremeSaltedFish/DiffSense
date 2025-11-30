@@ -111,23 +111,26 @@ class CliAdapter {
         if (options.lang === 'go') {
             const goAnalyzer = new analyzer(standardOptions.targetDir, standardOptions);
             const fullResult = await goAnalyzer.analyze();
+            const callGraph = fullResult.callGraph || { nodes: [], edges: [] };
             result = {
-                callGraph: fullResult.callGraph,
+                callGraph: callGraph,
                 summary: {
-                    totalNodes: fullResult.callGraph.nodes.length,
-                    totalEdges: fullResult.callGraph.edges.length
+                    totalNodes: callGraph.nodes ? callGraph.nodes.length : 0,
+                    totalEdges: callGraph.edges ? callGraph.edges.length : 0
                 }
             };
         } else if (options.lang === 'ts' || options.lang === 'js') {
             const frontendAnalyzer = new analyzer(standardOptions.targetDir, standardOptions);
             const fullResult = await frontendAnalyzer.analyze();
+            const callGraph = fullResult.callGraph || { nodes: [], edges: [] };
+            const dependencies = fullResult.dependencies || { circular: [] };
             result = {
-                callGraph: fullResult.callGraph,
-                dependencies: fullResult.dependencies,
+                callGraph: callGraph,
+                dependencies: dependencies,
                 summary: {
-                    totalNodes: fullResult.callGraph.nodes.length,
-                    totalEdges: fullResult.callGraph.edges.length,
-                    circularDependencies: fullResult.dependencies.circular.length
+                    totalNodes: callGraph.nodes ? callGraph.nodes.length : 0,
+                    totalEdges: callGraph.edges ? callGraph.edges.length : 0,
+                    circularDependencies: dependencies.circular ? dependencies.circular.length : 0
                 }
             };
         }

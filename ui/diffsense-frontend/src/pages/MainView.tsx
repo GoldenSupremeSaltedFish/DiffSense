@@ -8,6 +8,7 @@ const MainView = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [snapshotDiffs, setSnapshotDiffs] = useState<any[]>([]);
+  const [hasAnalyzed, setHasAnalyzed] = useState(false);
 
   // 组件挂载时恢复分析结果
   useEffect(() => {
@@ -15,6 +16,7 @@ const MainView = () => {
     if (savedState.analysisResults) {
       console.log('🔄 恢复分析结果:', savedState.analysisResults);
       setAnalysisResults(savedState.analysisResults);
+      setHasAnalyzed(true);
     }
     if (savedState.snapshotDiffs) {
       console.log('🔄 恢复快照对比结果:', savedState.snapshotDiffs);
@@ -47,6 +49,7 @@ const MainView = () => {
         case 'analysisStarted':
           setIsLoading(true);
           setError(null);
+          setHasAnalyzed(false);
           break;
         case 'snapshotDiffResult':
           if (message.data) {
@@ -56,6 +59,7 @@ const MainView = () => {
         case 'analysisResult':
           setIsLoading(false);
           setError(null);
+          setHasAnalyzed(true);
           if (message.data) {
             setAnalysisResults(message.data);
           }
@@ -63,10 +67,12 @@ const MainView = () => {
         case 'analysisError':
           setIsLoading(false);
           setError(message.error || '分析失败');
+          setHasAnalyzed(true);
           break;
         case 'restoredAnalysisResults':
           if (message.data) {
             setAnalysisResults(message.data);
+            setHasAnalyzed(true);
           }
           break;
       }
@@ -92,7 +98,7 @@ const MainView = () => {
         🔍 DiffSense v1.0 - Debug Mode
       </div>
       <div style={{ padding: "4px", fontSize: "10px", color: "var(--vscode-descriptionForeground)" }}>
-        {isLoading ? '正在分析...' : error ? error : '分析完成'}
+        {isLoading ? '正在分析...' : error ? error : hasAnalyzed ? '分析完成' : '等待分析...'}
       </div>
       <Toolbar />
       <CommitList analysisResults={analysisResults} snapshotDiffs={snapshotDiffs} />
