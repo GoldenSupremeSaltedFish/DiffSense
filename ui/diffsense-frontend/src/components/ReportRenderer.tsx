@@ -711,7 +711,7 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
     <div className="report-renderer react-component" style={{
       display: "flex",
       flexDirection: "column",
-      height: "100%",
+      minHeight: "100%",
       backgroundColor: "var(--vscode-editor-background)"
     }}>
       {/* Tab navigation */}
@@ -753,7 +753,7 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
       </div>
 
       {/* Tab content */}
-      <div style={{ flex: "1", overflow: "auto" }}>
+      <div style={{ flex: "1", overflow: "visible" }}>
         {activeTab === 'overview' && renderOverview()}
         {activeTab === 'classifications' && renderClassifications()}
         {activeTab === 'commits' && renderCommits()}

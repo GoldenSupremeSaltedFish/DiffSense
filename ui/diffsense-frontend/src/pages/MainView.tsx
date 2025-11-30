@@ -98,7 +98,8 @@ const MainView = () => {
         display: "flex",
         flexDirection: "column",
         padding: "0",
-        overflow: "hidden"
+        overflowY: "auto",
+        overflowX: "hidden"
       }}
     >
       <div style={{ padding: "4px", fontSize: "10px", color: "var(--vscode-descriptionForeground)" }}>

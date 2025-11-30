@@ -15,7 +15,7 @@ const CommitList = ({ analysisResults, snapshotDiffs = [], error, hasAnalyzed = 
       flex: 1,
       display: "flex",
       flexDirection: "column",
-      overflow: "auto",
+      overflow: "visible",
       padding: "8px"
     }}>
       {analysisResults && analysisResults.length > 0 ? (
