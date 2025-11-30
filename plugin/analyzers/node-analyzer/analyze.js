@@ -5,7 +5,6 @@
  * 分析JavaScript/TypeScript代码的依赖关系、方法调用等
  */
 
-const madge = require('madge');
 const path = require('path');
 const fs = require('fs');
 const glob = require('glob');
@@ -440,136 +439,179 @@ class FrontendAnalyzer {
         timestamp: new Date().toISOString(),
         targetDir: this.targetDir,
         summary: {},
-        dependencies: {},
         methods: {},
         callGraph: { nodes: [], edges: [] },
         files: [],
         componentSnapshots: [],
         // 添加前端分类结果
         changeClassifications: [],
-        classificationSummary: {}
+        classificationSummary: {},
+        // 添加错误信息
+        errors: []
       };
 
-      // 1. 使用madge分析模块依赖关系
-      const dependencyGraph = await this.analyzeDependencies();
-      result.dependencies = dependencyGraph;
-
-      // 2. 分析TypeScript/JavaScript代码
-      const codeAnalysis = await this.analyzeCode();
-      result.methods = codeAnalysis.methods;
-      result.callGraph = codeAnalysis.callGraph;
-      result.files = codeAnalysis.files;
+      // 前端项目不分析依赖关系，直接分析代码
+      // 1. 分析TypeScript/JavaScript代码
+      try {
+        const codeAnalysis = await this.analyzeCode();
+        result.methods = codeAnalysis.methods;
+        result.callGraph = codeAnalysis.callGraph;
+        result.files = codeAnalysis.files;
+      } catch (error) {
+        console.error('代码分析失败:', error.message);
+        result.errors.push(`代码分析失败: ${error.message}`);
+        // 即使失败也返回部分结果
+        result.methods = result.methods || {};
+        result.callGraph = result.callGraph || { nodes: [], edges: [] };
+        result.files = result.files || [];
+      }
 
       // 3. 应用前端代码分类
       if (result.files && result.files.length > 0) {
-        const { classifications, summary } = FrontendChangeClassifier.classifyChanges(result.files);
-        result.changeClassifications = classifications;
-        result.classificationSummary = summary;
+        try {
+          const { classifications, summary } = FrontendChangeClassifier.classifyChanges(result.files);
+          result.changeClassifications = classifications;
+          result.classificationSummary = summary;
+        } catch (error) {
+          console.error('分类失败:', error.message);
+          result.errors.push(`分类失败: ${error.message}`);
+          result.changeClassifications = [];
+          result.classificationSummary = {};
+        }
       }
 
       // 4. 生成摘要信息
-      result.summary = this.generateSummary(result);
-      result.componentSnapshots = this.componentSnapshots;
+      try {
+        result.summary = this.generateSummary(result);
+        result.componentSnapshots = this.componentSnapshots;
+      } catch (error) {
+        console.error('摘要生成失败:', error.message);
+        result.errors.push(`摘要生成失败: ${error.message}`);
+        result.summary = { totalFiles: result.files.length || 0, totalMethods: 0, averageMethodsPerFile: 0, analysisDate: result.timestamp };
+      }
+
+      // 如果有错误但仍有部分结果，记录警告但不抛出异常
+      if (result.errors.length > 0 && result.files.length === 0) {
+        throw new Error(`分析失败: ${result.errors.join('; ')}`);
+      }
 
       return result;
 
     } catch (error) {
       console.error('❌ 分析失败:', error.message);
-      throw error;
-    }
-  }
-
-  async analyzeDependencies() {
-    console.error('📦 分析模块依赖关系...');
-    
-    try {
-      const res = await madge(this.targetDir, {
-        fileExtensions: ['js', 'jsx', 'ts', 'tsx'],
-        excludeRegExp: this.options.exclude.map(pattern => {
-          // 修复正则表达式构建
-          const regexPattern = pattern.replace(/\*\*/g, '.*').replace(/\*/g, '[^/]*');
-          return new RegExp(regexPattern);
-        }),
-        includeNpm: this.options.includeNodeModules
-      });
-
-      const dependencies = res.obj();
-      const circular = res.circular();
-      
-      console.error(`📊 发现 ${Object.keys(dependencies).length} 个模块`);
-      if (circular.length > 0) {
-        console.error(`⚠️  发现 ${circular.length} 个循环依赖`);
+      if (error.stack) {
+        console.error('堆栈:', error.stack);
       }
-
-      return {
-        graph: dependencies,
-        circular: circular,
-        stats: {
-          totalFiles: Object.keys(dependencies).length,
-          totalDependencies: Object.values(dependencies).reduce((sum, deps) => sum + deps.length, 0),
-          circularCount: circular.length
-        }
-      };
-
-    } catch (error) {
-      console.error('依赖分析失败:', error.message);
-      return { graph: {}, circular: [], stats: { totalFiles: 0, totalDependencies: 0, circularCount: 0 } };
+      throw error;
     }
   }
 
   /**
    * 检查文件是否应该被排除
+   * 严格排除所有依赖、构建产物和测试文件
    */
   shouldExcludeFile(filePath) {
-    const normalizedPath = filePath.replace(/\\/g, '/');
+    const normalizedPath = filePath.replace(/\\/g, '/').toLowerCase();
+    const relativePath = path.relative(this.targetDir, filePath).replace(/\\/g, '/').toLowerCase();
+    
+    // 严格排除模式 - 使用更精确的匹配
     const excludePatterns = [
-      /node_modules/i,
-      /dist[\/\\]/i,
-      /build[\/\\]/i,
-      /out[\/\\]/i,
-      /\.git[\/\\]/i,
-      /\.vscode[\/\\]/i,
-      /\.idea[\/\\]/i,
-      /\.next[\/\\]/i,
-      /\.nuxt[\/\\]/i,
-      /coverage[\/\\]/i,
-      /\.cache[\/\\]/i,
-      /\.turbo[\/\\]/i,
-      /\.parcel-cache[\/\\]/i,
-      /\.vite[\/\\]/i,
-      /test-results[\/\\]/i,
-      /playwright-report[\/\\]/i,
-      /\.nyc_output[\/\\]/i,
-      /logs[\/\\]/i,
-      /tmp[\/\\]/i,
-      /temp[\/\\]/i,
+      // 依赖目录（最严格）
+      /[\/\\]node_modules[\/\\]/i,
+      /^node_modules[\/\\]/i,
+      /[\/\\]node_modules$/i,
+      // 构建产物
+      /[\/\\]dist[\/\\]/i,
+      /[\/\\]build[\/\\]/i,
+      /[\/\\]out[\/\\]/i,
+      /[\/\\]\.next[\/\\]/i,
+      /[\/\\]\.nuxt[\/\\]/i,
+      // 工具和配置目录
+      /[\/\\]\.git[\/\\]/i,
+      /[\/\\]\.vscode[\/\\]/i,
+      /[\/\\]\.idea[\/\\]/i,
+      // 缓存目录
+      /[\/\\]coverage[\/\\]/i,
+      /[\/\\]\.cache[\/\\]/i,
+      /[\/\\]\.turbo[\/\\]/i,
+      /[\/\\]\.parcel-cache[\/\\]/i,
+      /[\/\\]\.vite[\/\\]/i,
+      // 测试相关
+      /[\/\\]test-results[\/\\]/i,
+      /[\/\\]playwright-report[\/\\]/i,
+      /[\/\\]\.nyc_output[\/\\]/i,
+      // 临时目录
+      /[\/\\]logs[\/\\]/i,
+      /[\/\\]tmp[\/\\]/i,
+      /[\/\\]temp[\/\\]/i,
+      // 测试文件
       /\.test\./i,
-      /\.spec\./i
+      /\.spec\./i,
+      // package-lock.json 和 yarn.lock 等依赖锁定文件
+      /package-lock\.json$/i,
+      /yarn\.lock$/i,
+      /pnpm-lock\.yaml$/i
     ];
 
-    return excludePatterns.some(pattern => pattern.test(normalizedPath));
+    // 检查完整路径和相对路径
+    return excludePatterns.some(pattern => 
+      pattern.test(normalizedPath) || pattern.test(relativePath)
+    );
   }
 
   async analyzeCode() {
     console.error('🔬 分析代码结构...');
     
+    // 首先检查是否存在 node_modules，如果存在则明确排除
+    const nodeModulesPath = path.join(this.targetDir, 'node_modules');
+    const hasNodeModules = fs.existsSync(nodeModulesPath);
+    
+    if (hasNodeModules) {
+      console.error('⚠️  检测到 node_modules 目录，将自动排除');
+    }
+    
     const files = glob.sync(this.options.filePattern, {
       cwd: this.targetDir,
       ignore: this.options.exclude,
       absolute: true,
-      maxDepth: this.options.maxDepth // 使用配置的深度
+      maxDepth: this.options.maxDepth, // 使用配置的深度
+      // 添加 nodir 选项，只匹配文件
+      nodir: true
     });
 
-    // 额外的文件过滤，作为双重保障
+    // 严格的文件过滤，确保排除所有依赖和构建产物
     const filteredFiles = files.filter(filePath => {
-      return !this.shouldExcludeFile(filePath);
+      // 转换为统一路径格式
+      const normalizedPath = path.normalize(filePath).replace(/\\/g, '/');
+      const relativePath = path.relative(this.targetDir, filePath).replace(/\\/g, '/');
+      
+      // 严格检查：如果路径中包含 node_modules，直接排除
+      if (normalizedPath.includes('node_modules') || relativePath.includes('node_modules')) {
+        return false;
+      }
+      
+      // 检查其他排除模式
+      if (this.shouldExcludeFile(filePath)) {
+        return false;
+      }
+      
+      // 确保文件在目标目录内（防止符号链接等问题）
+      if (!normalizedPath.startsWith(path.normalize(this.targetDir).replace(/\\/g, '/'))) {
+        return false;
+      }
+      
+      return true;
     });
 
     console.error(`📄 找到 ${files.length} 个文件（过滤前）`);
     console.error(`📄 过滤后剩余 ${filteredFiles.length} 个文件`);
 
-    // 文件数量检查
-    if (filteredFiles.length > 5000) {
+    // 文件数量检查和处理限制
+    const MAX_FILES_TO_PROCESS = 10000; // 限制最大处理文件数
+    if (filteredFiles.length > MAX_FILES_TO_PROCESS) {
+      console.error(`⚠️  警告: 文件数量过多 (${filteredFiles.length})，将限制处理前 ${MAX_FILES_TO_PROCESS} 个文件`);
+      filteredFiles.splice(MAX_FILES_TO_PROCESS);
+    } else if (filteredFiles.length > 5000) {
       console.error(`⚠️  警告: 文件数量过多 (${filteredFiles.length})，分析可能需要较长时间`);
     }
 
@@ -825,13 +867,10 @@ class FrontendAnalyzer {
   generateSummary(result) {
     const fileCount = result.files.length;
     const methodCount = Object.values(result.methods).reduce((sum, methods) => sum + methods.length, 0);
-    const dependencyCount = result.dependencies.stats.totalDependencies;
 
     return {
       totalFiles: fileCount,
       totalMethods: methodCount,
-      totalDependencies: dependencyCount,
-      circularDependencies: result.dependencies.stats.circularCount,
       averageMethodsPerFile: fileCount > 0 ? Math.round(methodCount / fileCount * 100) / 100 : 0,
       analysisDate: result.timestamp
     };
@@ -920,19 +959,44 @@ async function main() {
     const analyzer = new FrontendAnalyzer(targetDir, analyzerOptions);
     const result = await analyzer.analyze();
 
+    // 如果有错误但仍有部分结果，输出警告
+    if (result.errors && result.errors.length > 0) {
+      console.error('⚠️  分析过程中出现错误:', result.errors.join('; '));
+    }
+
     if (outputFormat === 'json') {
+      // 确保输出到 stdout，错误信息输出到 stderr
       console.log(JSON.stringify(result, null, 2));
     } else {
       console.log('📊 分析完成!');
       console.log(`文件数: ${result.summary.totalFiles}`);
       console.log(`方法数: ${result.summary.totalMethods}`);
-      console.log(`依赖数: ${result.summary.totalDependencies}`);
+      if (result.errors && result.errors.length > 0) {
+        console.log(`警告: ${result.errors.length} 个错误`);
+      }
     }
 
   } catch (error) {
     console.error('分析失败:', error.message);
     if (error.stack) {
       console.error('堆栈:', error.stack);
+    }
+    // 即使失败也尝试输出错误信息作为 JSON
+    if (outputFormat === 'json') {
+      const errorResult = {
+        timestamp: new Date().toISOString(),
+        targetDir: targetDir,
+        error: error.message,
+        summary: { totalFiles: 0, totalMethods: 0, averageMethodsPerFile: 0 },
+        methods: {},
+        callGraph: { nodes: [], edges: [] },
+        files: [],
+        componentSnapshots: [],
+        changeClassifications: [],
+        classificationSummary: {},
+        errors: [error.message]
+      };
+      console.log(JSON.stringify(errorResult, null, 2));
     }
     process.exit(1);
   }
