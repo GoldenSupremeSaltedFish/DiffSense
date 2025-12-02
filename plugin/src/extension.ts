@@ -1607,9 +1607,19 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     const commits = [];
     
     // 检查是否有多个提交的分析结果（新格式）
-    if (frontendResult.gitChanges && frontendResult.gitChanges.commits && frontendResult.gitChanges.commits.length > 0) {
+    // 优先检查 result.commits（处理后的提交结果），如果没有则检查 result.gitChanges.commits
+    const hasCommits = (frontendResult.commits && frontendResult.commits.length > 0) || 
+                       (frontendResult.gitChanges && frontendResult.gitChanges.commits && frontendResult.gitChanges.commits.length > 0);
+    
+    if (hasCommits) {
       // 处理多个提交的情况
-      const commitResults = frontendResult.commits || frontendResult.gitChanges.commits;
+      // 优先使用处理后的提交结果（result.commits），如果为空或不存在则使用原始提交信息（result.gitChanges.commits）
+      const commitResults = (frontendResult.commits && frontendResult.commits.length > 0) 
+        ? frontendResult.commits 
+        : (frontendResult.gitChanges?.commits || []);
+      
+      // 添加调试日志
+      this.log(`前端分析结果转换: 找到 ${commitResults.length} 个提交 (result.commits: ${frontendResult.commits?.length || 0}, gitChanges.commits: ${frontendResult.gitChanges?.commits?.length || 0})`);
       
       for (const commitInfo of commitResults) {
         // 处理微服务检测结果

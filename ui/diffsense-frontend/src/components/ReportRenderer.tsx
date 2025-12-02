@@ -717,8 +717,11 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
       {/* Tab navigation */}
       <div style={{
         display: "flex",
+        flexWrap: "wrap",
+        gap: "4px",
         borderBottom: "1px solid var(--vscode-panel-border)",
-        backgroundColor: "var(--vscode-tab-inactiveBackground)"
+        backgroundColor: "var(--vscode-tab-inactiveBackground)",
+        padding: "4px"
       }}>
         {[
           { key: 'overview', label: '📊 概览' },
@@ -728,7 +731,6 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
           { key: 'callgraph', label: '🔗 调用图' },
           { key: 'snapshot', label: '📸 组件变动' }
         ].map(tab => {
-          // 提交tab仅显示文字，避免按钮过于拥挤
           const tabLabel = tab.label;
           
           return (
@@ -736,14 +738,18 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
               key={tab.key}
               onClick={() => setActiveTab(tab.key as any)}
               style={{
-                padding: "8px 12px",
+                padding: "8px 16px",
                 border: "none",
                 backgroundColor: activeTab === tab.key ? "var(--vscode-tab-activeBackground)" : "transparent",
                 color: activeTab === tab.key ? "var(--vscode-tab-activeForeground)" : "var(--vscode-tab-inactiveForeground)",
                 cursor: "pointer",
-                fontSize: "11px",
+                fontSize: "12px",
                 borderBottom: activeTab === tab.key ? "2px solid var(--vscode-focusBorder)" : "none",
-                position: "relative"
+                position: "relative",
+                minWidth: "fit-content",
+                whiteSpace: "nowrap",
+                borderRadius: "4px 4px 0 0",
+                transition: "all 0.2s ease"
               }}
             >
               {tabLabel}
