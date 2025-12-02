@@ -11,6 +11,7 @@ const glob = require('glob');
 const { execSync } = require('child_process');
 const { Project } = require('ts-morph');
 const { extractSnapshotsForFile } = require('./snapshotExtractors');
+const FFISScorer = require('./ffisScorer');
 
 /**
  * 前端代码修改分类器 - 适用于 React / Vue / JS/TS
@@ -544,6 +545,67 @@ class FrontendAnalyzer {
         console.error('摘要生成失败:', error.message);
         result.errors.push(`摘要生成失败: ${error.message}`);
         result.summary = { totalFiles: result.files.length || 0, totalMethods: 0, averageMethodsPerFile: 0, analysisDate: result.timestamp };
+      }
+
+      // 5. 计算FFIS评分
+      try {
+        if (result.files && result.files.length > 0) {
+          // 获取依赖图（如果有）
+          let dependencyGraph = {};
+          try {
+            const madge = require('madge');
+            const res = await madge(this.targetDir, {
+              fileExtensions: ['js', 'jsx', 'ts', 'tsx'],
+              excludeRegExp: this.options.exclude.map(pattern => {
+                const regexPattern = pattern.replace(/\*\*/g, '.*').replace(/\*/g, '[^/]*');
+                return new RegExp(regexPattern);
+              }),
+              includeNpm: false
+            });
+            dependencyGraph = res.obj() || {};
+          } catch (error) {
+            // 依赖图分析失败不影响主流程，使用空依赖图
+            console.error('依赖图分析失败（将使用空依赖图）:', error.message);
+          }
+
+          // 创建快照映射
+          const snapshotMap = new Map();
+          this.componentSnapshots.forEach(snapshot => {
+            snapshotMap.set(snapshot.filePath, snapshot);
+          });
+
+          // 创建分类映射
+          const classificationMap = new Map();
+          if (result.changeClassifications) {
+            result.changeClassifications.forEach(classification => {
+              classificationMap.set(classification.filePath, classification);
+            });
+          }
+
+          // 为每个文件计算FFIS
+          const filesWithFFIS = result.files.map(fileInfo => {
+            const snapshot = snapshotMap.get(fileInfo.relativePath || fileInfo.path);
+            const classification = classificationMap.get(fileInfo.relativePath || fileInfo.path);
+            const ffisResult = FFISScorer.calculateFFIS(fileInfo, dependencyGraph, snapshot, classification);
+            
+            return {
+              ...fileInfo,
+              ffis: ffisResult.ffis,
+              importanceLevel: ffisResult.importanceLevel,
+              importanceStars: ffisResult.importanceStars,
+              ffisBreakdown: ffisResult.breakdown
+            };
+          });
+
+          // 按FFIS降序排序
+          filesWithFFIS.sort((a, b) => (b.ffis || 0) - (a.ffis || 0));
+          result.files = filesWithFFIS;
+          result.ffisEnabled = true;
+        }
+      } catch (error) {
+        console.error('FFIS评分计算失败:', error.message);
+        result.errors.push(`FFIS评分计算失败: ${error.message}`);
+        result.ffisEnabled = false;
       }
 
       // 如果有错误但仍有部分结果，记录警告但不抛出异常
