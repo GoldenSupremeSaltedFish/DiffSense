@@ -41,3 +41,8 @@ dist-ssr
 *.sln
 *.sw?
 *.vsix
+
+# Test files
+**/*.test.js
+**/*.spec.js
+**/run-*-tests.js
