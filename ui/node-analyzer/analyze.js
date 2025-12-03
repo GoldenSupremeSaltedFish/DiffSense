@@ -1251,18 +1251,38 @@ class FrontendAnalyzer {
   }
 
   /**
+   * 获取Git仓库根目录
+   */
+  getRepoRoot() {
+    try {
+      const repoRoot = execSync('git rev-parse --show-toplevel', { 
+        cwd: this.targetDir, 
+        encoding: 'utf-8' 
+      }).trim();
+      console.error(`📁 Git仓库根目录: ${repoRoot}`);
+      return repoRoot;
+    } catch (err) {
+      console.error(`⚠️  无法定位Git仓库根目录，使用当前目录: ${this.targetDir}`);
+      return this.targetDir;
+    }
+  }
+
+  /**
    * 分别分析每个提交
    */
   async analyzeCommitsIndividually() {
     const commits = [];
     const numCommits = parseInt(this.options.commits, 10);
     
+    // 获取Git仓库根目录
+    const repoRoot = this.getRepoRoot();
+    
     console.error(`📝 开始分析最近 ${numCommits} 个提交 (分支: ${this.options.branch || 'HEAD'})`);
     
-    // 获取最近N个提交的信息
+    // 获取最近N个提交的信息（在仓库根目录执行）
     const logCmd = `git log --format="%H|%s|%an|%ae|%ai" -n ${numCommits} ${this.options.branch || 'HEAD'}`;
-    console.error(`📝 执行Git命令: ${logCmd}`);
-    const logOutput = execSync(logCmd, { cwd: this.targetDir, encoding: 'utf-8' });
+    console.error(`📝 执行Git命令: ${logCmd} (工作目录: ${repoRoot})`);
+    const logOutput = execSync(logCmd, { cwd: repoRoot, encoding: 'utf-8' });
     const commitLines = logOutput.trim().split('\n').filter(line => line.length > 0);
     
     console.error(`📝 找到 ${commitLines.length} 个提交，开始分别分析...`);
@@ -1271,27 +1291,27 @@ class FrontendAnalyzer {
       const [commitHash, message, authorName, authorEmail, authorDate] = commitLines[i].split('|');
       
       try {
-        // 获取该提交的变更文件
+        // 获取该提交的变更文件（在仓库根目录执行Git命令）
         let changedFiles = [];
         if (i === 0) {
           // 第一个提交（最新的），与它的父提交比较
           try {
             const parentCmd = `git rev-parse ${commitHash}^`;
             const parentHash = execSync(parentCmd, { 
-              cwd: this.targetDir, 
+              cwd: repoRoot, 
               encoding: 'utf-8',
               stdio: ['pipe', 'pipe', 'ignore']
             }).trim();
             if (parentHash) {
               const diffCmd = `git diff --name-only ${parentHash} ${commitHash}`;
-              const diffOutput = execSync(diffCmd, { cwd: this.targetDir, encoding: 'utf-8' });
+              const diffOutput = execSync(diffCmd, { cwd: repoRoot, encoding: 'utf-8' });
               changedFiles = diffOutput.trim().split('\n').filter(file => file.length > 0);
             }
           } catch (e) {
             // 如果没有父提交（初始提交），获取该提交的所有文件
             try {
               const showCmd = `git show --name-only --format="" ${commitHash}`;
-              const showOutput = execSync(showCmd, { cwd: this.targetDir, encoding: 'utf-8' });
+              const showOutput = execSync(showCmd, { cwd: repoRoot, encoding: 'utf-8' });
               changedFiles = showOutput.trim().split('\n').filter(file => file.length > 0);
             } catch (showError) {
               // 如果获取文件列表也失败，使用空数组
@@ -1304,7 +1324,7 @@ class FrontendAnalyzer {
           if (parentHash) {
             try {
               const diffCmd = `git diff --name-only ${parentHash} ${commitHash}`;
-              const diffOutput = execSync(diffCmd, { cwd: this.targetDir, encoding: 'utf-8' });
+              const diffOutput = execSync(diffCmd, { cwd: repoRoot, encoding: 'utf-8' });
               changedFiles = diffOutput.trim().split('\n').filter(file => file.length > 0);
             } catch (e) {
               // diff失败，使用空数组
@@ -1313,11 +1333,23 @@ class FrontendAnalyzer {
           }
         }
         
-        // 过滤前端相关文件
+        // 计算targetDir相对于repoRoot的路径
+        const targetDirRelative = path.relative(repoRoot, this.targetDir).replace(/\\/g, '/');
+        console.error(`📁 分析目录相对于仓库根目录: ${targetDirRelative || '.'}`);
+        
+        // 过滤前端相关文件，并且只包含在targetDir目录下的文件
         const frontendFiles = changedFiles.filter(file => {
           const ext = path.extname(file).toLowerCase();
-          return ['.js', '.jsx', '.ts', '.tsx', '.vue', '.css', '.scss', '.sass', '.less'].includes(ext);
+          const isFrontendFile = ['.js', '.jsx', '.ts', '.tsx', '.vue', '.css', '.scss', '.sass', '.less'].includes(ext);
+          // 如果targetDirRelative不为空，只包含在该目录下的文件
+          if (targetDirRelative && targetDirRelative !== '.') {
+            const filePath = file.replace(/\\/g, '/');
+            return isFrontendFile && filePath.startsWith(targetDirRelative + '/');
+          }
+          return isFrontendFile;
         });
+        
+        console.error(`📝 提交 ${commitHash.substring(0, 7)}: 总变更文件 ${changedFiles.length}, 前端相关文件 ${frontendFiles.length}`);
         
         // 分析变更的方法
         const changedMethods = await this.analyzeChangedMethodsForCommit(frontendFiles, commitHash);
@@ -1567,16 +1599,18 @@ class FrontendAnalyzer {
    * 分析特定提交的变更文件，返回完整的文件信息
    */
   async analyzeChangedFilesForCommit(changedFiles, commitHash) {
+    // 获取Git仓库根目录
+    const repoRoot = this.getRepoRoot();
     const fileInfos = [];
     
     for (const file of changedFiles) {
       try {
-        // 获取该提交中该文件的内容
+        // 获取该提交中该文件的内容（在仓库根目录执行）
         let fileContent = '';
         try {
           const showCmd = `git show ${commitHash}:${file}`;
           fileContent = execSync(showCmd, { 
-            cwd: this.targetDir, 
+            cwd: repoRoot, 
             encoding: 'utf-8',
             stdio: ['pipe', 'pipe', 'ignore']
           });
@@ -1617,12 +1651,15 @@ class FrontendAnalyzer {
    */
   async getFileDiffForCommit(relativePath, commitHash) {
     try {
-      // 获取该提交的父提交
+      // 获取Git仓库根目录
+      const repoRoot = this.getRepoRoot();
+      
+      // 获取该提交的父提交（在仓库根目录执行）
       let parentHash = '';
       try {
         const parentCmd = `git rev-parse ${commitHash}^`;
         parentHash = execSync(parentCmd, { 
-          cwd: this.targetDir, 
+          cwd: repoRoot, 
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'ignore']
         }).trim();
@@ -1635,11 +1672,11 @@ class FrontendAnalyzer {
         return '';
       }
       
-      // 获取diff
+      // 获取diff（在仓库根目录执行）
       const diffCmd = `git diff ${parentHash} ${commitHash} -- ${relativePath}`;
       try {
         const gitDiff = execSync(diffCmd, { 
-          cwd: this.targetDir, 
+          cwd: repoRoot, 
           encoding: 'utf-8', 
           stdio: ['pipe', 'pipe', 'ignore'] 
         });
