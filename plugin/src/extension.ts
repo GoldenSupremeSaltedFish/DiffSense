@@ -1561,45 +1561,90 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       
       this.log('执行前端分析命令: node ' + analyzerArgs.join(' '));
       
-      // 执行前端分析器
-      const child = execFile('node', analyzerArgs, {
+      // 使用 spawn 实时捕获输出
+      const child = spawn('node', analyzerArgs, {
         cwd: repoPath,
-        timeout: 600000, // 增加超时时间到10分钟，支持大型项目
-        maxBuffer: 1024 * 1024 * 50 // 增加buffer到50MB
-      }, (error, stdout, stderr) => {
-      if (error) {
-          this.log('前端分析器执行错误: ' + (error instanceof Error ? error.message : String(error)), 'error');
-          if (stderr) {
-            this.log('stderr: ' + stderr, 'error');
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      // 实时捕获 stdout（JSON结果）
+      child.stdout?.on('data', (data: Buffer) => {
+        stdout += data.toString();
+      });
+
+      // 实时捕获 stderr（日志输出）并显示到VSCode输出面板
+      child.stderr?.on('data', (data: Buffer) => {
+        const output = data.toString();
+        stderr += output;
+        
+        // 将前端分析器的日志实时输出到VSCode输出面板
+        const lines = output.split('\n').filter(line => line.trim().length > 0);
+        lines.forEach(line => {
+          // 前端分析器使用 console.error 输出，格式为: "📝 执行Git变更分析..."
+          // 直接显示这些日志，不添加额外的前缀
+          if (this._outputChannel) {
+            this._outputChannel.appendLine(line);
           }
-          reject(new Error(`前端分析失败: ${error.message}\n${stderr}`));
-      } else {
-          this.log('前端分析器执行成功');
-          if (stderr) {
-            this.log('stderr信息: ' + stderr);
-          }
-          
-          try {
-            const result = JSON.parse(stdout);
-            this.log('前端分析结果解析成功');
-            
-            // 转换为与后端分析结果兼容的格式
-            // 从analysisData中获取分析模式，默认为'quick'
-            const analysisMode = analysisData.analysisMode || 'quick';
-            const convertedResult = this.convertFrontendResult(result, targetDir, analysisMode);
-            resolve(convertedResult);
-            
-          } catch (parseError) {
-            this.log('前端分析结果JSON解析失败: ' + (parseError instanceof Error ? parseError.message : String(parseError)), 'error');
-            this.log('输出前500字符: ' + stdout.substring(0, 500), 'error');
-            reject(new Error(`前端分析结果解析失败: ${parseError}`));
-          }
-        }
+        });
       });
 
       // 监听进程退出
       child.on('exit', (code) => {
         this.log(`前端分析器进程退出，代码: ${code}`);
+        
+        if (code !== 0) {
+          this.log('前端分析器执行错误，退出代码: ' + code, 'error');
+          if (stderr) {
+            this.log('stderr: ' + stderr, 'error');
+          }
+          reject(new Error(`前端分析失败: 进程退出代码 ${code}\n${stderr}`));
+          return;
+        }
+
+        // 进程成功退出，解析结果
+        try {
+          const result = JSON.parse(stdout);
+          this.log('前端分析结果解析成功');
+          
+          // 添加调试日志，检查返回的数据结构
+          this.log(`前端分析结果结构检查: result.commits=${result.commits?.length || 0}, result.gitChanges.commits=${result.gitChanges?.commits?.length || 0}`);
+          if (result.commits && result.commits.length > 0) {
+            this.log(`找到 ${result.commits.length} 个提交结果`);
+          } else if (result.gitChanges && result.gitChanges.commits && result.gitChanges.commits.length > 0) {
+            this.log(`找到 ${result.gitChanges.commits.length} 个Git变更提交`);
+          }
+          
+          // 转换为与后端分析结果兼容的格式
+          // 从analysisData中获取分析模式，默认为'quick'
+          const analysisMode = analysisData.analysisMode || 'quick';
+          const convertedResult = this.convertFrontendResult(result, targetDir, analysisMode);
+          this.log(`转换后的结果数量: ${convertedResult.length}`);
+          resolve(convertedResult);
+          
+        } catch (parseError) {
+          this.log('前端分析结果JSON解析失败: ' + (parseError instanceof Error ? parseError.message : String(parseError)), 'error');
+          this.log('输出前500字符: ' + stdout.substring(0, 500), 'error');
+          reject(new Error(`前端分析结果解析失败: ${parseError}`));
+        }
+      });
+
+      // 监听进程错误
+      child.on('error', (error) => {
+        this.log('前端分析器进程错误: ' + (error instanceof Error ? error.message : String(error)), 'error');
+        reject(new Error(`前端分析失败: ${error.message}`));
+      });
+
+      // 设置超时
+      const timeout = setTimeout(() => {
+        child.kill();
+        reject(new Error('前端分析超时（10分钟）'));
+      }, 600000); // 10分钟
+
+      child.on('exit', () => {
+        clearTimeout(timeout);
       });
     });
   }
@@ -1613,6 +1658,9 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     const hasCommits = (frontendResult.commits && frontendResult.commits.length > 0) || 
                        (frontendResult.gitChanges && frontendResult.gitChanges.commits && frontendResult.gitChanges.commits.length > 0);
     
+    // 添加详细的调试日志
+    this.log(`前端分析结果检查: hasCommits=${hasCommits}, result.commits=${frontendResult.commits?.length || 0}, result.gitChanges.commits=${frontendResult.gitChanges?.commits?.length || 0}`);
+    
     if (hasCommits) {
       // 处理多个提交的情况
       // 优先使用处理后的提交结果（result.commits），如果为空或不存在则使用原始提交信息（result.gitChanges.commits）
@@ -1622,6 +1670,10 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       
       // 添加调试日志
       this.log(`前端分析结果转换: 找到 ${commitResults.length} 个提交 (result.commits: ${frontendResult.commits?.length || 0}, gitChanges.commits: ${frontendResult.gitChanges?.commits?.length || 0})`);
+      
+      if (commitResults.length === 0) {
+        this.log('警告: commitResults为空，可能前端分析器没有正确返回提交数据');
+      }
       
       for (const commitInfo of commitResults) {
         // 处理微服务检测结果

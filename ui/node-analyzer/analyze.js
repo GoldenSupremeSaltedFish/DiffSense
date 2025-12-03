@@ -472,13 +472,18 @@ class FrontendAnalyzer {
       // 2. Git变更分析
       if (this.options.enableGitAnalysis) {
         console.error(`📝 执行Git变更分析...`);
+        console.error(`📝 Git分析选项: commits=${this.options.commits}, branch=${this.options.branch}`);
         this.gitChanges = await this.analyzeGitChanges();
         result.gitChanges = this.gitChanges;
         
+        console.error(`📝 Git变更分析结果: commits数量=${this.gitChanges?.commits?.length || 0}`);
+        
         // 如果有多个提交，为每个提交分别分析变更的文件
         if (this.gitChanges.commits && this.gitChanges.commits.length > 0) {
+          console.error(`📝 开始分析 ${this.gitChanges.commits.length} 个提交的变更文件...`);
           const commitResults = [];
           for (const commitInfo of this.gitChanges.commits) {
+            console.error(`📝 分析提交 ${commitInfo.commitId?.substring(0, 7) || 'unknown'}: ${commitInfo.changedFiles?.length || 0} 个变更文件`);
             if (commitInfo.changedFiles && commitInfo.changedFiles.length > 0) {
               // 分析该提交的变更文件
               const commitFiles = await this.analyzeChangedFilesForCommit(commitInfo.changedFiles, commitInfo.commitId);
@@ -522,6 +527,9 @@ class FrontendAnalyzer {
           
           // 将提交结果添加到主结果中
           result.commits = commitResults;
+          console.error(`✅ 完成分析，共 ${commitResults.length} 个提交结果`);
+        } else {
+          console.error(`⚠️ 警告: Git变更分析没有返回提交数据 (commits=${this.gitChanges?.commits?.length || 0})`);
         }
       }
 
@@ -1249,8 +1257,11 @@ class FrontendAnalyzer {
     const commits = [];
     const numCommits = parseInt(this.options.commits, 10);
     
+    console.error(`📝 开始分析最近 ${numCommits} 个提交 (分支: ${this.options.branch || 'HEAD'})`);
+    
     // 获取最近N个提交的信息
     const logCmd = `git log --format="%H|%s|%an|%ae|%ai" -n ${numCommits} ${this.options.branch || 'HEAD'}`;
+    console.error(`📝 执行Git命令: ${logCmd}`);
     const logOutput = execSync(logCmd, { cwd: this.targetDir, encoding: 'utf-8' });
     const commitLines = logOutput.trim().split('\n').filter(line => line.length > 0);
     
