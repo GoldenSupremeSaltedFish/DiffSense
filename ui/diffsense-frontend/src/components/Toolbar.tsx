@@ -28,6 +28,8 @@ const Toolbar = () => {
   const [backendLanguage, setBackendLanguage] = useState<'java' | 'golang' | 'unknown'>('unknown');
   const [analysisTypes, setAnalysisTypes] = useState<string[]>([]);
   const [frontendPath, setFrontendPath] = useState<string>('');
+  // 分析模式：快速模式（quick）或深度模式（deep）
+  const [analysisMode, setAnalysisMode] = useState<'quick' | 'deep'>('quick');
   
   // Commit ID范围相关状态
   const [startCommitId, setStartCommitId] = useState<string>('');
@@ -220,6 +222,7 @@ const Toolbar = () => {
       range: selectedRange,
       analysisType: analysisScope, // 新增：分析范围
       analysisOptions: analysisTypes, // 新增：具体分析类型
+      analysisMode: analysisMode, // 新增：分析模式（quick/deep）
       language: currentLanguage, // 传递当前语言
     };
 
@@ -470,7 +473,50 @@ const Toolbar = () => {
         </div>
       </div>
 
-      {/* 第2层：分析类型选择 */}
+      {/* 第2层：分析模式选择（仅在前端或混合模式下显示） */}
+      {(analysisScope === 'frontend' || analysisScope === 'mixed') && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+          <label style={{ fontSize: "10px", fontWeight: "600" }}>分析模式</label>
+          <div style={{ display: "flex", gap: "2px" }}>
+            {[
+              { value: 'quick', label: '快速', title: '快速模式：<100文件全量分析，≥100文件显示FFIS评分最高的100个' },
+              { value: 'deep', label: '深度', title: '深度模式：显示所有文件，完整分析' }
+            ].map(option => (
+              <button
+                key={option.value}
+                onClick={() => setAnalysisMode(option.value as 'quick' | 'deep')}
+                disabled={isAnalyzing}
+                title={option.title}
+                style={{
+                  flex: 1,
+                  padding: "4px 6px",
+                  fontSize: "9px",
+                  border: analysisMode === option.value ? 
+                    '2px solid var(--vscode-button-background)' : 
+                    '1px solid var(--vscode-panel-border)',
+                  borderRadius: "2px",
+                  backgroundColor: analysisMode === option.value ? 
+                    'var(--vscode-button-background)' : 
+                    'var(--vscode-editor-background)',
+                  color: analysisMode === option.value ? 
+                    'var(--vscode-button-foreground)' : 
+                    'var(--vscode-descriptionForeground)',
+                  fontWeight: analysisMode === option.value ? '600' : '400',
+                  opacity: analysisMode === option.value ? 1 : 0.6,
+                  cursor: isAnalyzing ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: analysisMode === option.value ? 
+                    '0 1px 3px rgba(0, 0, 0, 0.2)' : 'none'
+                }}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 第3层：分析类型选择 */}
       <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
         <label style={{ fontSize: "10px", fontWeight: "600" }}>{t('toolbar.analysisTypes')}</label>
         <div style={{ 

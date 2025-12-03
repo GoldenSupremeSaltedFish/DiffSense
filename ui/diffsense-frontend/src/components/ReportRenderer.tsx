@@ -141,11 +141,13 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
   const renderOverview = () => (
     <div style={{ padding: "12px" }}>
       <h3 style={{ margin: "0 0 12px 0", fontSize: "14px" }}>📊 分析概览</h3>
+      
+      {/* 总体统计 */}
       <div style={{ 
         display: "grid", 
         gridTemplateColumns: "1fr 1fr", 
         gap: "8px",
-        marginBottom: "12px"
+        marginBottom: "16px"
       }}>
         <div style={{ 
           padding: "8px", 
@@ -201,7 +203,70 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
         </div>
       </div>
       
-      <h4 style={{ margin: "12px 0 8px 0", fontSize: "12px" }}>🏷️ 变更类型分布</h4>
+      {/* 每个提交的详细统计 */}
+      <h4 style={{ margin: "12px 0 8px 0", fontSize: "12px" }}>📝 各提交统计</h4>
+      <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "12px" }}>
+        {impacts.map((commit, index) => {
+          const commitCategoryStats = commit.classificationSummary?.categoryStats || {};
+          const mainCategory = Object.entries(commitCategoryStats).sort(([,a], [,b]) => (b as number) - (a as number))[0]?.[0] || 'A5';
+          
+          return (
+            <div key={commit.commitId || index} style={{
+              padding: "8px",
+              backgroundColor: "var(--vscode-textBlockQuote-background)",
+              borderRadius: "4px",
+              borderLeft: `3px solid ${getCategoryColor(mainCategory)}`
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                <div style={{ fontSize: "11px", fontWeight: "bold" }}>
+                  {commit.commitId ? commit.commitId.substring(0, 7) : `提交 ${index + 1}`}
+                </div>
+                <div style={{ fontSize: "9px", color: "var(--vscode-descriptionForeground)" }}>
+                  {commit.message ? (commit.message.length > 50 ? commit.message.substring(0, 50) + '...' : commit.message) : '无提交信息'}
+                </div>
+              </div>
+              <div style={{ 
+                display: "grid", 
+                gridTemplateColumns: "1fr 1fr 1fr 1fr", 
+                gap: "4px",
+                fontSize: "9px",
+                color: "var(--vscode-descriptionForeground)"
+              }}>
+                <div>文件: {commit.changedFilesCount || commit.impactedFiles?.length || commit.files?.length || 0}</div>
+                <div>方法: {commit.changedMethodsCount || commit.impactedMethods?.length || 0}</div>
+                <div>影响方法: {commit.impactedMethods?.length || 0}</div>
+                <div>影响测试: {Object.keys(commit.impactedTests || {}).length}</div>
+              </div>
+              {Object.keys(commitCategoryStats).length > 0 && (
+                <div style={{ 
+                  marginTop: "4px", 
+                  padding: "4px", 
+                  backgroundColor: "var(--vscode-editorWidget-background)",
+                  borderRadius: "3px",
+                  fontSize: "8px"
+                }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                    {Object.entries(commitCategoryStats).map(([category, count]) => (
+                      <span key={category} style={{
+                        padding: "2px 4px",
+                        borderRadius: "2px",
+                        backgroundColor: `${getCategoryColor(category)}20`,
+                        color: getCategoryColor(category),
+                        fontWeight: "bold"
+                      }}>
+                        {getCategoryName(category)}: {count}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      
+      {/* 总体变更类型分布 */}
+      <h4 style={{ margin: "12px 0 8px 0", fontSize: "12px" }}>🏷️ 总体变更类型分布</h4>
       <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
         {Object.entries(stats.categoryStats).map(([category, count]) => (
           <div key={category} style={{

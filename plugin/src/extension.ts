@@ -1584,7 +1584,9 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
             this.log('前端分析结果解析成功');
             
             // 转换为与后端分析结果兼容的格式
-            const convertedResult = this.convertFrontendResult(result, targetDir);
+            // 从analysisData中获取分析模式，默认为'quick'
+            const analysisMode = analysisData.analysisMode || 'quick';
+            const convertedResult = this.convertFrontendResult(result, targetDir, analysisMode);
             resolve(convertedResult);
             
           } catch (parseError) {
@@ -1602,7 +1604,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     });
   }
 
-  private convertFrontendResult(frontendResult: any, targetDir: string): any[] {
+  private convertFrontendResult(frontendResult: any, targetDir: string, analysisMode: string = 'quick'): any[] {
     // 将前端分析结果转换为与后端分析结果兼容的格式
     const commits = [];
     
@@ -1639,42 +1641,52 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         const summary = commitInfo.classificationSummary || { totalFiles: 0, categoryStats: {}, averageConfidence: 0 };
         const modifications = commitInfo.modifications || [];
         
-        // 使用FFIS评分筛选重要文件（如果已启用FFIS）
-        let importantFiles = commitFiles;
-        if (commitInfo.ffis !== undefined || (commitFiles.length > 0 && commitFiles[0].ffis !== undefined)) {
-          // 使用FFIS评分筛选：FFIS >= 0.3 的文件，或前20%的文件
-          const minFFIS = 0.3;
-          const topPercent = 20;
-          
-          const ffisFiltered = commitFiles.filter((file: any) => (file.ffis || 0) >= minFFIS);
-          const topPercentCount = Math.max(1, Math.ceil(commitFiles.length * (topPercent / 100)));
-          const topPercentFiles = commitFiles.slice(0, topPercentCount);
-          
-          importantFiles = ffisFiltered.length >= topPercentFiles.length ? ffisFiltered : topPercentFiles;
-          
-          if (importantFiles.length === 0 && commitFiles.length > 0) {
-            importantFiles = commitFiles.slice(0, Math.min(10, commitFiles.length));
-          }
+        // 根据分析模式筛选文件
+        let limitedFiles: any[] = [];
+        
+        if (analysisMode === 'deep') {
+          // Deep模式：显示所有文件
+          limitedFiles = commitFiles;
         } else {
-          // 向后兼容：使用旧的启发式方法
-          importantFiles = commitFiles.filter((file: any) => {
-            const classification = classifications.find((c: any) => c.filePath === file.relativePath);
-            return (
-              (file.methods && file.methods.length > 0) ||
-              (classification && classification.classification && classification.classification.confidence > 50) ||
-              file.relativePath.includes('/src/') ||
-              file.relativePath.includes('/components/') ||
-              file.relativePath.includes('/pages/') ||
-              file.relativePath.includes('/utils/')
-            );
-          });
+          // 快速模式（quick）：根据文件数量决定
+          const totalFiles = commitFiles.length;
+          const QUICK_MODE_THRESHOLD = 100;
           
-          if (importantFiles.length === 0 && commitFiles.length > 0) {
-            importantFiles = commitFiles.slice(0, Math.min(10, commitFiles.length));
+          if (totalFiles < QUICK_MODE_THRESHOLD) {
+            // 文件数 < 100，全量显示
+            limitedFiles = commitFiles;
+          } else {
+            // 文件数 >= 100，只显示FFIS评分最高的100个文件
+            if (commitInfo.ffis !== undefined || (commitFiles.length > 0 && commitFiles[0].ffis !== undefined)) {
+              // 使用FFIS评分排序，取前100个
+              const sortedByFFIS = [...commitFiles].sort((a: any, b: any) => (b.ffis || 0) - (a.ffis || 0));
+              limitedFiles = sortedByFFIS.slice(0, QUICK_MODE_THRESHOLD);
+            } else {
+              // 如果没有FFIS评分，使用旧的启发式方法筛选
+              const importantFiles = commitFiles.filter((file: any) => {
+                const classification = classifications.find((c: any) => c.filePath === file.relativePath);
+                return (
+                  (file.methods && file.methods.length > 0) ||
+                  (classification && classification.classification && classification.classification.confidence > 50) ||
+                  file.relativePath.includes('/src/') ||
+                  file.relativePath.includes('/components/') ||
+                  file.relativePath.includes('/pages/') ||
+                  file.relativePath.includes('/utils/')
+                );
+              });
+              
+              // 如果筛选后的文件数超过100，只取前100个
+              limitedFiles = importantFiles.length > QUICK_MODE_THRESHOLD 
+                ? importantFiles.slice(0, QUICK_MODE_THRESHOLD)
+                : importantFiles;
+              
+              // 如果筛选结果为空，至少显示前100个
+              if (limitedFiles.length === 0 && commitFiles.length > 0) {
+                limitedFiles = commitFiles.slice(0, QUICK_MODE_THRESHOLD);
+              }
+            }
           }
         }
-        
-        const limitedFiles = importantFiles;
         
         // 收集方法和文件路径
         const allMethods: string[] = [];
@@ -1760,45 +1772,54 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         analysisMessage = `前端静态代码分析结果 (扫描${changedFilesCount}个文件)`;
       }
       
-      // 使用FFIS评分筛选重要文件（如果已启用FFIS）
-      let importantFiles = frontendResult.files;
-      if (frontendResult.ffisEnabled && frontendResult.files && frontendResult.files.length > 0) {
-        // 使用FFIS评分筛选：FFIS >= 0.3 的文件，或前20%的文件（取两者中数量较多的）
-        const minFFIS = 0.3;
-        const topPercent = 20;
-        
-        const ffisFiltered = frontendResult.files.filter((file: any) => (file.ffis || 0) >= minFFIS);
-        const topPercentCount = Math.max(1, Math.ceil(frontendResult.files.length * (topPercent / 100)));
-        const topPercentFiles = frontendResult.files.slice(0, topPercentCount);
-        
-        // 取两者中数量较多的，但不超过总文件数
-        importantFiles = ffisFiltered.length >= topPercentFiles.length ? ffisFiltered : topPercentFiles;
-        
-        // 确保至少显示一些文件（如果FFIS筛选结果为空，至少显示前10个）
-        if (importantFiles.length === 0 && frontendResult.files.length > 0) {
-          importantFiles = frontendResult.files.slice(0, Math.min(10, frontendResult.files.length));
-        }
+      // 根据分析模式筛选文件
+      let limitedFiles: any[] = [];
+      const totalFiles = frontendResult.files.length;
+      const QUICK_MODE_THRESHOLD = 100;
+      
+      // 从convertFrontendResult的参数中获取analysisMode，默认为'quick'
+      // analysisMode应该已经在调用convertFrontendResult时传入
+      
+      if (analysisMode === 'deep') {
+        // Deep模式：显示所有文件
+        limitedFiles = frontendResult.files;
       } else {
-        // 如果没有FFIS评分，使用旧的启发式方法（向后兼容）
-        importantFiles = frontendResult.files.filter((file: any) => {
-          const classification = classifications.find(c => c.filePath === file.relativePath);
-          return (
-            (file.methods && file.methods.length > 0) || // 有方法的文件
-            (classification && classification.classification.confidence > 50) || // 高置信度分类
-            file.relativePath.includes('/src/') || // 主要源码目录
-            file.relativePath.includes('/components/') || // 组件目录
-            file.relativePath.includes('/pages/') || // 页面目录
-            file.relativePath.includes('/utils/') // 工具目录
-          );
-        });
-        
-        // 如果没有重要文件，至少显示前10个
-        if (importantFiles.length === 0 && frontendResult.files.length > 0) {
-          importantFiles = frontendResult.files.slice(0, Math.min(10, frontendResult.files.length));
+        // 快速模式（quick）：根据文件数量决定
+        if (totalFiles < QUICK_MODE_THRESHOLD) {
+          // 文件数 < 100，全量显示
+          limitedFiles = frontendResult.files;
+        } else {
+          // 文件数 >= 100，只显示FFIS评分最高的100个文件
+          if (frontendResult.ffisEnabled && frontendResult.files && frontendResult.files.length > 0) {
+            // 使用FFIS评分排序，取前100个
+            const sortedByFFIS = [...frontendResult.files].sort((a: any, b: any) => (b.ffis || 0) - (a.ffis || 0));
+            limitedFiles = sortedByFFIS.slice(0, QUICK_MODE_THRESHOLD);
+          } else {
+            // 如果没有FFIS评分，使用旧的启发式方法筛选
+            const importantFiles = frontendResult.files.filter((file: any) => {
+              const classification = classifications.find(c => c.filePath === file.relativePath);
+              return (
+                (file.methods && file.methods.length > 0) || // 有方法的文件
+                (classification && classification.classification.confidence > 50) || // 高置信度分类
+                file.relativePath.includes('/src/') || // 主要源码目录
+                file.relativePath.includes('/components/') || // 组件目录
+                file.relativePath.includes('/pages/') || // 页面目录
+                file.relativePath.includes('/utils/') // 工具目录
+              );
+            });
+            
+            // 如果筛选后的文件数超过100，只取前100个
+            limitedFiles = importantFiles.length > QUICK_MODE_THRESHOLD 
+              ? importantFiles.slice(0, QUICK_MODE_THRESHOLD)
+              : importantFiles;
+            
+            // 如果筛选结果为空，至少显示前100个
+            if (limitedFiles.length === 0 && frontendResult.files.length > 0) {
+              limitedFiles = frontendResult.files.slice(0, QUICK_MODE_THRESHOLD);
+            }
+          }
         }
       }
-      
-      const limitedFiles = importantFiles;
       
       // 创建单一的前端分析结果，包含重要文件
       const allMethods: string[] = [];
@@ -3362,6 +3383,43 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
                         </div>
                     </div>
                     <div class="commit-content">
+                        <!-- 提交统计信息 -->
+                        <div class="section">
+                            <div class="section-title">📊 提交统计</div>
+                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px;">
+                                <div style="text-align: center; padding: 10px; background: #f7fafc; border-radius: 6px;">
+                                    <div style="font-size: 1.5em; font-weight: bold; color: #667eea;">${commit.changedFilesCount || commit.impactedFiles?.length || commit.files?.length || 0}</div>
+                                    <div style="font-size: 0.9em; color: #718096;">${text.totalFiles}</div>
+                                </div>
+                                <div style="text-align: center; padding: 10px; background: #f7fafc; border-radius: 6px;">
+                                    <div style="font-size: 1.5em; font-weight: bold; color: #667eea;">${commit.changedMethodsCount || commit.impactedMethods?.length || 0}</div>
+                                    <div style="font-size: 0.9em; color: #718096;">${text.totalMethods}</div>
+                                </div>
+                                <div style="text-align: center; padding: 10px; background: #f7fafc; border-radius: 6px;">
+                                    <div style="font-size: 1.5em; font-weight: bold; color: #667eea;">${commit.impactedMethods?.length || 0}</div>
+                                    <div style="font-size: 0.9em; color: #718096;">影响方法</div>
+                                </div>
+                                <div style="text-align: center; padding: 10px; background: #f7fafc; border-radius: 6px;">
+                                    <div style="font-size: 1.5em; font-weight: bold; color: #667eea;">${Object.keys(commit.impactedTests || {}).length}</div>
+                                    <div style="font-size: 0.9em; color: #718096;">影响测试</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 分类统计 -->
+                        ${classificationStats.categoryStats && Object.keys(classificationStats.categoryStats).length > 0 ? `
+                            <div class="section">
+                                <div class="section-title">🏷️ 修改类型摘要</div>
+                                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px;">
+                                    ${Object.entries(classificationStats.categoryStats).map(([category, count]: [string, any]) => `
+                                        <span class="category-tag category-${category}" style="padding: 6px 12px; border-radius: 4px; font-size: 0.9em;">
+                                            ${this.getCategoryDisplayName(category)}: ${count} ${text.filesUnit}
+                                        </span>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                        
                         ${commit.impactedFiles && commit.impactedFiles.length > 0 ? `
                             <div class="section">
                                 <div class="section-title">${text.impactedFiles}</div>
@@ -3376,7 +3434,7 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
                                 <div class="section-title">${text.impactedFiles}</div>
                                 <div class="file-list">
                                     ${commit.files.map((file: any) => `
-                                        <div class="file-item">${file.path || file}</div>
+                                        <div class="file-item">${file.path || file.filePath || file}</div>
                                     `).join('')}
                                 </div>
                             </div>
@@ -3389,6 +3447,29 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
                                     ${commit.impactedMethods.map((method: string) => `
                                         <div class="method-item">${method}</div>
                                     `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                        
+                        <!-- 细粒度修改标签 -->
+                        ${commit.granularModifications && commit.granularModifications.length > 0 ? `
+                            <div class="section">
+                                <div class="section-title">🔍 细粒度修改标签</div>
+                                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                    ${(() => {
+                                        const modStats = commit.granularModifications.reduce((acc: any, mod: any) => {
+                                            if (!acc[mod.type]) {
+                                                acc[mod.type] = { count: 0, typeName: mod.typeName || mod.type };
+                                            }
+                                            acc[mod.type].count++;
+                                            return acc;
+                                        }, {});
+                                        return Object.entries(modStats).map(([type, stats]: [string, any]) => `
+                                            <span style="padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #f7fafc; border: 1px solid #e2e8f0;">
+                                                ${stats.typeName}: ${stats.count}
+                                            </span>
+                                        `).join('');
+                                    })()}
                                 </div>
                             </div>
                         ` : ''}
