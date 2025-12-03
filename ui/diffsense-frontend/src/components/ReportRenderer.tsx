@@ -36,7 +36,9 @@ interface CommitImpact {
   changedFilesCount: number;
   changedMethodsCount: number;
   impactedMethods: string[];
+  impactedFiles?: string[];
   impactedTests: Record<string, string[]>;
+  files?: Array<{ path?: string; filePath?: string; [key: string]: any }>;
   changeClassifications: FileClassification[];
   classificationSummary: {
     totalFiles: number;
