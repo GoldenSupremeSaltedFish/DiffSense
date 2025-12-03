@@ -400,7 +400,7 @@ class FrontendAnalyzer {
       enableBuildToolDetection: true, // 启用构建工具检测
       enableFrameworkDetection: true, // 启用框架检测
       includeTypeTags: options.includeTypeTags || false, // 添加细粒度分析选项
-      // Git变更分析选项
+      // Git变更分析选项（注意：这些值会被传入的options覆盖）
       enableGitAnalysis: false,
       branch: 'master',
       commits: null,
@@ -414,8 +414,14 @@ class FrontendAnalyzer {
       maxFilesToAnalyze: options.maxFilesToAnalyze || 1000, // 最大分析文件数
       enableSampling: options.enableSampling !== false, // 默认启用采样
       samplingRatio: options.samplingRatio || 0.5, // 采样比例（大项目时）
-      ...options
+      ...options  // 传入的options会覆盖上面的默认值
     };
+    
+    // 调试日志：检查Git分析选项是否正确设置
+    if (this.options.commits || this.options.branch !== 'master' || this.options.since || this.options.startCommit) {
+      console.error(`📝 构造函数: 检测到Git分析参数，强制启用Git分析`);
+      this.options.enableGitAnalysis = true;
+    }
     this.project = null;
     // 初始化快照容器
     this.componentSnapshots = [];
@@ -470,6 +476,7 @@ class FrontendAnalyzer {
       }
 
       // 2. Git变更分析
+      console.error(`📝 Git分析检查: enableGitAnalysis=${this.options.enableGitAnalysis}, commits=${this.options.commits}, branch=${this.options.branch}`);
       if (this.options.enableGitAnalysis) {
         console.error(`📝 执行Git变更分析...`);
         console.error(`📝 Git分析选项: commits=${this.options.commits}, branch=${this.options.branch}`);
@@ -2079,7 +2086,9 @@ async function main() {
   }
 
   try {
+    console.error(`📝 命令行选项解析结果: enableGitAnalysis=${options.enableGitAnalysis}, commits=${options.commits}, branch=${options.branch}`);
     const analyzer = new FrontendAnalyzer(targetDir, options);
+    console.error(`📝 分析器选项: enableGitAnalysis=${analyzer.options.enableGitAnalysis}, commits=${analyzer.options.commits}, branch=${analyzer.options.branch}`);
     const result = await analyzer.analyze();
 
     if (outputFormat === 'json') {

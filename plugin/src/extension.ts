@@ -549,6 +549,11 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     const timestamp = new Date().toLocaleTimeString();
     const logMessage = `[${timestamp}] ${message}`;
     
+    // 确保输出通道存在
+    if (!this._outputChannel) {
+      this._outputChannel = vscode.window.createOutputChannel('DiffSense');
+    }
+    
     // 输出到OutputChannel
     if (this._outputChannel) {
       if (type === 'error') {
@@ -1561,6 +1566,11 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
       
       this.log('执行前端分析命令: node ' + analyzerArgs.join(' '));
       
+      // 确保输出通道可见
+      if (this._outputChannel) {
+        this._outputChannel.show(true);
+      }
+      
       // 使用 spawn 实时捕获输出
       const child = spawn('node', analyzerArgs, {
         cwd: repoPath,
@@ -1581,12 +1591,17 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
         stderr += output;
         
         // 将前端分析器的日志实时输出到VSCode输出面板
-        const lines = output.split('\n').filter(line => line.trim().length > 0);
-        lines.forEach(line => {
-          // 前端分析器使用 console.error 输出，格式为: "📝 执行Git变更分析..."
-          // 直接显示这些日志，不添加额外的前缀
-          if (this._outputChannel) {
-            this._outputChannel.appendLine(line);
+        // 注意：data可能包含多行，需要逐行处理
+        const lines = output.split(/\r?\n/);
+        lines.forEach((line, index) => {
+          // 跳过空行（除了最后一行可能是部分数据）
+          if (line.trim().length > 0 || (index === lines.length - 1 && output.endsWith('\n'))) {
+            if (this._outputChannel) {
+              // 直接显示原始日志，保持前端分析器的格式
+              this._outputChannel.appendLine(line);
+            }
+            // 同时输出到控制台（用于调试）
+            console.error(line);
           }
         });
       });
