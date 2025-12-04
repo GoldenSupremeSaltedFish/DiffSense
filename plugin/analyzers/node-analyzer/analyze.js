@@ -465,17 +465,22 @@ class FrontendAnalyzer {
       // 2. Git变更分析（如果启用）
       if (this.options.enableGitAnalysis) {
         console.error(`📝 执行Git变更分析...`);
+        console.error(`📝 Git分析选项: branch=${this.options.branch}, commits=${this.options.commits}`);
         try {
           this.gitChanges = await this.analyzeGitChanges();
           result.gitChanges = this.gitChanges;
+          console.error(`📝 Git分析完成，找到 ${this.gitChanges.commits ? this.gitChanges.commits.length : 0} 个提交`);
           
           // 如果有多个提交，为每个提交分别分析变更的文件
           if (this.gitChanges.commits && this.gitChanges.commits.length > 0) {
+            console.error(`📝 开始分析 ${this.gitChanges.commits.length} 个提交的变更文件...`);
             const commitResults = [];
             for (const commitInfo of this.gitChanges.commits) {
+              console.error(`📝 分析提交 ${commitInfo.commitHash}: ${commitInfo.changedFilesCount} 个文件`);
               if (commitInfo.changedFiles && commitInfo.changedFiles.length > 0) {
                 // 分析该提交的变更文件
                 const commitFiles = await this.analyzeChangedFilesForCommit(commitInfo.changedFiles, commitInfo.commitId);
+                console.error(`📝 提交 ${commitInfo.commitHash} 分析完成: ${commitFiles.length} 个文件`);
                 
                 // 应用前端代码分类
                 const { classifications, summary } = FrontendChangeClassifier.classifyChanges(commitFiles);
@@ -497,12 +502,20 @@ class FrontendAnalyzer {
               }
             }
             result.commits = commitResults;
+            console.error(`📝 所有提交分析完成，共 ${commitResults.length} 个提交结果`);
+          } else {
+            console.error(`⚠️  Git分析未找到提交`);
           }
         } catch (error) {
           console.error('Git变更分析失败:', error.message);
+          if (error.stack) {
+            console.error('堆栈:', error.stack);
+          }
           result.errors.push(`Git变更分析失败: ${error.message}`);
           result.gitChanges = { commits: [], error: error.message };
         }
+      } else {
+        console.error(`⚠️  Git分析未启用 (enableGitAnalysis=${this.options.enableGitAnalysis})`);
       }
 
       // 前端项目不分析依赖关系，直接分析代码
@@ -1028,22 +1041,35 @@ class FrontendAnalyzer {
     
     // 获取仓库根目录（向上查找.git目录）
     let repoRoot = this.targetDir;
+    let foundGit = false;
     while (repoRoot !== path.dirname(repoRoot)) {
       if (fs.existsSync(path.join(repoRoot, '.git'))) {
+        foundGit = true;
         break;
       }
       repoRoot = path.dirname(repoRoot);
     }
     
+    if (!foundGit) {
+      console.error(`❌ 未找到Git仓库（从 ${this.targetDir} 向上查找）`);
+      throw new Error(`未找到Git仓库，请确保在Git仓库目录中运行分析`);
+    }
+    
+    console.error(`📁 Git仓库根目录: ${repoRoot}`);
+    console.error(`📁 分析目标目录: ${this.targetDir}`);
+    
     // 获取最近N个提交的信息
     const branch = this.options.branch || 'HEAD';
     const logCmd = `git log --format="%H|%s|%an|%ae|%ai" -n ${numCommits} ${branch}`;
-    const logOutput = execSync(logCmd, { cwd: repoRoot, encoding: 'utf-8' });
-    const commitLines = logOutput.trim().split('\n').filter(line => line.length > 0);
+    console.error(`📝 执行Git命令: ${logCmd}`);
     
-    console.error(`📝 找到 ${commitLines.length} 个提交，开始分别分析...`);
-    
-    for (let i = 0; i < commitLines.length; i++) {
+    try {
+      const logOutput = execSync(logCmd, { cwd: repoRoot, encoding: 'utf-8' });
+      const commitLines = logOutput.trim().split('\n').filter(line => line.length > 0);
+      
+      console.error(`📝 找到 ${commitLines.length} 个提交，开始分别分析...`);
+      
+      for (let i = 0; i < commitLines.length; i++) {
       const [commitHash, message, authorName, authorEmail, authorDate] = commitLines[i].split('|');
       
       try {
@@ -1138,21 +1164,30 @@ class FrontendAnalyzer {
           error: error.message
         });
       }
-    }
-    
-    console.error(`📝 Git变更分析完成: 共分析 ${commits.length} 个提交`);
-    
-    return {
-      commits: commits,
-      gitOptions: {
-        branch: this.options.branch,
-        commits: this.options.commits,
-        since: this.options.since,
-        until: this.options.until,
-        startCommit: this.options.startCommit,
-        endCommit: this.options.endCommit
+      
+      console.error(`📝 Git变更分析完成: 共分析 ${commits.length} 个提交`);
+      
+      return {
+        commits: commits,
+        gitOptions: {
+          branch: this.options.branch,
+          commits: this.options.commits,
+          since: this.options.since,
+          until: this.options.until,
+          startCommit: this.options.startCommit,
+          endCommit: this.options.endCommit
+        }
+      };
+    } catch (error) {
+      console.error(`❌ Git命令执行失败: ${error.message}`);
+      if (error.stdout) {
+        console.error(`stdout: ${error.stdout}`);
       }
-    };
+      if (error.stderr) {
+        console.error(`stderr: ${error.stderr}`);
+      }
+      throw error;
+    }
   }
 
   /**
@@ -1470,6 +1505,9 @@ async function main() {
       analyzerOptions.until = parsedOptions.until;
       analyzerOptions.startCommit = parsedOptions.startCommit;
       analyzerOptions.endCommit = parsedOptions.endCommit;
+      console.error(`🔧 启用Git分析: branch=${parsedOptions.branch}, commits=${parsedOptions.commits}`);
+    } else {
+      console.error(`⚠️  未检测到Git参数，跳过Git分析`);
     }
 
     const analyzer = new FrontendAnalyzer(targetDir, analyzerOptions);
