@@ -445,6 +445,7 @@ class FrontendAnalyzer {
 
   async analyze() {
     console.error(`🔍 开始分析目录: ${this.targetDir}`);
+    console.error(`🔍 分析器选项: enableGitAnalysis=${this.options.enableGitAnalysis}, branch=${this.options.branch}, commits=${this.options.commits}`);
     
     try {
       const result = {
@@ -1441,6 +1442,7 @@ function parseArgs() {
   }
 
   // 解析所有--参数
+  console.error(`🔍 解析命令行参数，共 ${args.length} 个参数`);
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     
@@ -1449,9 +1451,11 @@ function parseArgs() {
       i++;
     } else if (arg === '--branch' && args[i + 1]) {
       options.branch = args[i + 1];
+      console.error(`✅ 解析到 --branch: ${args[i + 1]}`);
       i++;
     } else if (arg === '--commits' && args[i + 1]) {
       options.commits = parseInt(args[i + 1], 10);
+      console.error(`✅ 解析到 --commits: ${args[i + 1]} (解析为: ${options.commits})`);
       i++;
     } else if (arg === '--since' && args[i + 1]) {
       options.since = args[i + 1];
@@ -1477,6 +1481,7 @@ function parseArgs() {
     }
   }
 
+  console.error(`🔍 参数解析完成: branch=${options.branch}, commits=${options.commits}, since=${options.since}, until=${options.until}`);
   return options;
 }
 
