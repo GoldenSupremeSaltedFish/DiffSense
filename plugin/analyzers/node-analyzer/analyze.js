@@ -452,6 +452,15 @@ class FrontendAnalyzer {
         timestamp: new Date().toISOString(),
         targetDir: this.targetDir,
         summary: {},
+        dependencies: {
+          graph: {},
+          circular: [],
+          stats: {
+            totalFiles: 0,
+            totalDependencies: 0,
+            circularCount: 0
+          }
+        },
         methods: {},
         callGraph: { nodes: [], edges: [] },
         files: [],
@@ -997,12 +1006,16 @@ class FrontendAnalyzer {
   }
 
   generateSummary(result) {
-    const fileCount = result.files.length;
-    const methodCount = Object.values(result.methods).reduce((sum, methods) => sum + methods.length, 0);
+    const fileCount = result.files ? result.files.length : 0;
+    const methodCount = result.methods ? Object.values(result.methods).reduce((sum, methods) => sum + methods.length, 0) : 0;
+    const dependencyCount = (result.dependencies && result.dependencies.stats) ? result.dependencies.stats.totalDependencies : 0;
+    const circularCount = (result.dependencies && result.dependencies.stats) ? result.dependencies.stats.circularCount : 0;
 
     return {
       totalFiles: fileCount,
       totalMethods: methodCount,
+      totalDependencies: dependencyCount,
+      circularDependencies: circularCount,
       averageMethodsPerFile: fileCount > 0 ? Math.round(methodCount / fileCount * 100) / 100 : 0,
       analysisDate: result.timestamp
     };

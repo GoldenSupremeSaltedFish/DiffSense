@@ -2273,8 +2273,51 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
     });
   }
 
+  /**
+   * 检查Java版本是否满足要求（需要Java 17+）
+   */
+  private async checkJavaVersion(): Promise<{version: number, major: number, error?: string}> {
+    return new Promise((resolve) => {
+      execFile('java', ['-version'], { timeout: 5000 }, (error, stdout, stderr) => {
+        // Java版本信息通常在stderr中
+        const versionOutput = stderr || stdout || '';
+        
+        // 尝试解析版本号，格式如：openjdk version "17.0.2" 或 java version "1.8.0_291"
+        const versionMatch = versionOutput.match(/version\s+"?(\d+)(?:\.(\d+))?/);
+        if (versionMatch) {
+          const majorVersion = parseInt(versionMatch[1]);
+          const minorVersion = versionMatch[2] ? parseInt(versionMatch[2]) : 0;
+          
+          // 如果是1.x格式（Java 8及以下），majorVersion是1，需要看minorVersion
+          const actualMajor = majorVersion === 1 ? (versionMatch[2] ? parseInt(versionMatch[2]) : 8) : majorVersion;
+          
+          resolve({ version: actualMajor, major: actualMajor });
+        } else {
+          resolve({ version: 0, major: 0, error: '无法解析Java版本' });
+        }
+      });
+    });
+  }
+
   private executeJarAnalysis(jarPath: string, repoPath: string, analysisData: any): Promise<{stdout: string, reportPath?: string}> {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
+      // 首先检查Java版本
+      try {
+        const javaVersion = await this.checkJavaVersion();
+        if (javaVersion.major < 17) {
+          const errorMsg = `Java版本不兼容：检测到Java ${javaVersion.major}，但JAR文件需要Java 17或更高版本。\n` +
+            `请升级Java运行时环境到Java 17或更高版本。\n` +
+            `当前Java版本信息：${javaVersion.major}.${javaVersion.version}`;
+          this.log(errorMsg, 'error');
+          reject(new Error(errorMsg));
+          return;
+        }
+        this.log(`✅ Java版本检查通过：Java ${javaVersion.major}`);
+      } catch (error) {
+        this.log('⚠️ Java版本检查失败，继续执行（可能无法运行）: ' + (error instanceof Error ? error.message : String(error)), 'error');
+        // 不阻止执行，让JAR自己报错
+      }
+
       // 构建命令参数 - 使用CLI应用期望的参数格式
       const args = ['-jar', jarPath];
       
@@ -2359,6 +2402,22 @@ class DiffSenseViewProvider implements vscode.WebviewViewProvider {
           this.log('JAR执行错误: ' + (error instanceof Error ? error.message : String(error)), 'error');
           if (stderr) {
             this.log('stderr: ' + stderr, 'error');
+            
+            // 检查是否是Java版本不兼容错误
+            if (stderr.includes('UnsupportedClassVersionError') || stderr.includes('class file version')) {
+              const versionMatch = stderr.match(/class file version (\d+\.\d+)/);
+              const requiredVersion = versionMatch ? versionMatch[1] : '未知';
+              const errorMsg = `Java版本不兼容错误：\n` +
+                `JAR文件是用Java 17编译的（class file version 61.0），但当前Java运行时版本较低。\n` +
+                `检测到的class file version: ${requiredVersion}\n` +
+                `请升级Java运行时环境到Java 17或更高版本。\n` +
+                `您可以通过以下方式解决：\n` +
+                `1. 安装Java 17或更高版本\n` +
+                `2. 设置JAVA_HOME环境变量指向Java 17安装目录\n` +
+                `3. 确保PATH环境变量中包含Java 17的bin目录`;
+              reject(new Error(errorMsg));
+              return;
+            }
           }
           reject(new Error(`JAR执行失败: ${error.message}\n${stderr}`));
         } else {

@@ -506,6 +506,19 @@ class FrontendAnalyzer {
           result.changeClassifications = classifications;
           result.classificationSummary = summary;
         }
+      } else {
+        // 当启用Git分析时，初始化dependencies为空结构，避免generateSummary出错
+        if (!result.dependencies || !result.dependencies.stats) {
+          result.dependencies = {
+            graph: {},
+            circular: [],
+            stats: {
+              totalFiles: 0,
+              totalDependencies: 0,
+              circularCount: 0
+            }
+          };
+        }
       }
 
       // 4. 生成摘要信息
@@ -800,15 +813,16 @@ class FrontendAnalyzer {
   }
 
   generateSummary(result) {
-    const fileCount = result.files.length;
-    const methodCount = Object.values(result.methods).reduce((sum, methods) => sum + methods.length, 0);
-    const dependencyCount = result.dependencies ? result.dependencies.stats.totalDependencies : 0;
+    const fileCount = result.files ? result.files.length : 0;
+    const methodCount = result.methods ? Object.values(result.methods).reduce((sum, methods) => sum + methods.length, 0) : 0;
+    const dependencyCount = (result.dependencies && result.dependencies.stats) ? result.dependencies.stats.totalDependencies : 0;
+    const circularCount = (result.dependencies && result.dependencies.stats) ? result.dependencies.stats.circularCount : 0;
 
     return {
       totalFiles: fileCount,
       totalMethods: methodCount,
       totalDependencies: dependencyCount,
-      circularDependencies: result.dependencies ? result.dependencies.stats.circularCount : 0,
+      circularDependencies: circularCount,
       averageMethodsPerFile: fileCount > 0 ? Math.round(methodCount / fileCount * 100) / 100 : 0,
       analysisDate: result.timestamp
     };
