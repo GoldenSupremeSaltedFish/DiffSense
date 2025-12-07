@@ -1,4 +1,4 @@
-import { DatabaseService } from './DatabaseService';
+import { DatabaseService } from '../database/DatabaseService';
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -55,12 +55,11 @@ export class CommitAnalyzer {
       
       console.log(`Commit analysis completed: ${commitInfo.sha}`);
     } catch (error) {
-      await this.databaseService.logError({
-        timestamp: Date.now(),
-        file: 'commit-analysis',
-        action: 'analyze-commit',
-        message: `Failed to analyze commit ${commitInfo.sha}: ${error instanceof Error ? error.message : String(error)}`
-      });
+      await this.databaseService.logError(
+        'analyze-commit',
+        `Failed to analyze commit ${commitInfo.sha}: ${error instanceof Error ? error.message : String(error)}`,
+        'commit-analysis'
+      );
       throw error;
     } finally {
       this.isAnalyzing = false;
@@ -95,12 +94,11 @@ export class CommitAnalyzer {
       });
 
     } catch (error) {
-      await this.databaseService.logError({
-        timestamp: Date.now(),
-        file: filePath,
-        action: 'process-file-change',
-        message: `Failed to process file change: ${error instanceof Error ? error.message : String(error)}`
-      });
+      await this.databaseService.logError(
+        'process-file-change',
+        `Failed to process file change: ${error instanceof Error ? error.message : String(error)}`,
+        filePath
+      );
     }
   }
 
