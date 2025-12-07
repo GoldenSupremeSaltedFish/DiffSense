@@ -259,6 +259,40 @@ const Toolbar = () => {
     });
   };
 
+  const handleHotspotAnalysis = () => {
+    const hotspotData: any = {
+      branch: selectedBranch,
+      range: selectedRange,
+      minChurn: 5,
+      minComplexity: 10,
+      includeLang: backendLanguage !== 'unknown' ? [backendLanguage] : [],
+      excludePatterns: ['*.md', '*.txt', '*.json', '*.yml', '*.yaml'],
+      language: currentLanguage
+    };
+
+    if (selectedRange === 'Commit ID Range') {
+      if (!startCommitId || !endCommitId) {
+        alert(t('messages.enterCommitIdsError'));
+        return;
+      }
+      hotspotData.startCommit = startCommitId;
+      hotspotData.endCommit = endCommitId;
+    } else if (selectedRange === 'Custom Date Range') {
+      if (!customDateFrom) {
+        alert(t('messages.selectStartDateError'));
+        return;
+      }
+      hotspotData.dateFrom = customDateFrom;
+      hotspotData.dateTo = customDateTo;
+    }
+
+    setIsAnalyzing(true);
+    postMessage({
+      command: 'getHotspotAnalysis',
+      data: hotspotData
+    });
+  };
+
   // 分析类型切换处理
   const handleAnalysisTypeToggle = (typeId: string) => {
     setAnalysisTypes(prev => {
@@ -946,41 +980,3 @@ const Toolbar = () => {
 };
 
 export default Toolbar;
-
-  const handleHotspotAnalysis = () => {
-    // 构建热点分析数据
-    const hotspotData = {
-      branch: selectedBranch,
-      range: selectedRange,
-      minChurn: 5, // 最小变更次数
-      minComplexity: 10, // 最小复杂度
-      includeLang: backendLanguage !== 'unknown' ? [backendLanguage] : [],
-      excludePatterns: ['*.md', '*.txt', '*.json', '*.yml', '*.yaml'],
-      language: currentLanguage
-    };
-
-    // 根据选择的范围类型添加额外参数
-    if (selectedRange === 'Commit ID Range') {
-      if (!startCommitId || !endCommitId) {
-        alert(t('messages.enterCommitIdsError'));
-        return;
-      }
-      hotspotData.startCommit = startCommitId;
-      hotspotData.endCommit = endCommitId;
-    } else if (selectedRange === 'Custom Date Range') {
-      if (!customDateFrom) {
-        alert(t('messages.selectStartDateError'));
-        return;
-      }
-      hotspotData.dateFrom = customDateFrom;
-      hotspotData.dateTo = customDateTo;
-    }
-
-    setIsAnalyzing(true);
-    
-    // 发送热点分析请求
-    postMessage({
-      command: 'getHotspotAnalysis',
-      data: hotspotData
-    });
-  };

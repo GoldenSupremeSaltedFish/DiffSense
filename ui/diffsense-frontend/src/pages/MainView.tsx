@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Toolbar from "../components/Toolbar";
+import HotspotAnalysis from "../components/HotspotAnalysis";
 import CommitList from "../components/CommitList";
 import { saveState, getState } from "../utils/vscode";
 
@@ -136,6 +137,11 @@ const MainView = () => {
         </div>
       )}
       <Toolbar />
+      {hasHotspotAnalyzed && hotspotResults && (
+        <div style={{ padding: "4px" }}>
+          <HotspotAnalysis results={hotspotResults} isLoading={isLoading} error={error || undefined} />
+        </div>
+      )}
       <CommitList 
         analysisResults={analysisResults} 
         snapshotDiffs={snapshotDiffs} 
