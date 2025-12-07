@@ -58,6 +58,11 @@
         "command": "diffsense.showOutput",
         "title": "显示输出日志",
         "category": "DiffSense"
+      },
+      {
+        "command": "diffsense.cleanupDatabase",
+        "title": "清理数据库",
+        "category": "DiffSense"
       }
     ],
     "views": {
@@ -86,6 +91,13 @@
           "when": "view == diffsense.analysisView",
           "group": "navigation"
         }
+      ],
+      "commandPalette": [
+        {
+          "command": "diffsense.cleanupDatabase",
+          "when": "true",
+          "title": "DiffSense: 清理数据库"
+        }
       ]
     }
   },
@@ -106,7 +118,9 @@
   },
   "dependencies": {
     "commander": "^14.0.0",
-    "glob": "^10.3.0"
+    "glob": "^10.3.0",
+    "better-sqlite3": "^11.5.0",
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "@types/glob": "^8.1.0",

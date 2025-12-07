@@ -769,6 +769,27 @@ const Toolbar = () => {
           {isAnalyzing ? t('toolbar.analyzing') : t('toolbar.startAnalysis')}
         </button>
         
+        {/* 热点分析按钮 */}
+        <button 
+          onClick={handleHotspotAnalysis}
+          disabled={!selectedBranch || isAnalyzing}
+          style={{ 
+            fontSize: '10px',
+            padding: '6px 8px',
+            backgroundColor: isAnalyzing ? 
+              'var(--vscode-button-secondaryBackground)' : 
+              '#FF6B35',
+            color: 'white',
+            border: 'none',
+            borderRadius: '3px',
+            cursor: isAnalyzing ? 'not-allowed' : 'pointer',
+            fontWeight: '500'
+          }}
+          title="分析代码热点 - 识别高风险文件"
+        >
+          {isAnalyzing ? '分析中...' : '🔥 热点分析'}
+        </button>
+        
         {/* 检测回退按钮 */}
         <button
           onClick={handleDetectRevert}
@@ -924,4 +945,42 @@ const Toolbar = () => {
   );
 };
 
-export default Toolbar; 
+export default Toolbar;
+
+  const handleHotspotAnalysis = () => {
+    // 构建热点分析数据
+    const hotspotData = {
+      branch: selectedBranch,
+      range: selectedRange,
+      minChurn: 5, // 最小变更次数
+      minComplexity: 10, // 最小复杂度
+      includeLang: backendLanguage !== 'unknown' ? [backendLanguage] : [],
+      excludePatterns: ['*.md', '*.txt', '*.json', '*.yml', '*.yaml'],
+      language: currentLanguage
+    };
+
+    // 根据选择的范围类型添加额外参数
+    if (selectedRange === 'Commit ID Range') {
+      if (!startCommitId || !endCommitId) {
+        alert(t('messages.enterCommitIdsError'));
+        return;
+      }
+      hotspotData.startCommit = startCommitId;
+      hotspotData.endCommit = endCommitId;
+    } else if (selectedRange === 'Custom Date Range') {
+      if (!customDateFrom) {
+        alert(t('messages.selectStartDateError'));
+        return;
+      }
+      hotspotData.dateFrom = customDateFrom;
+      hotspotData.dateTo = customDateTo;
+    }
+
+    setIsAnalyzing(true);
+    
+    // 发送热点分析请求
+    postMessage({
+      command: 'getHotspotAnalysis',
+      data: hotspotData
+    });
+  };

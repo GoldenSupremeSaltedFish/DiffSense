@@ -10,6 +10,8 @@ const MainView = () => {
   const [snapshotDiffs, setSnapshotDiffs] = useState<any[]>([]);
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
   const [isAnalyzingProject, setIsAnalyzingProject] = useState(true);
+  const [hotspotResults, setHotspotResults] = useState<any>(null);
+  const [hasHotspotAnalyzed, setHasHotspotAnalyzed] = useState(false);
 
   // 组件挂载时恢复分析结果
   useEffect(() => {
@@ -22,6 +24,11 @@ const MainView = () => {
     if (savedState.snapshotDiffs) {
       console.log('🔄 恢复快照对比结果:', savedState.snapshotDiffs);
       setSnapshotDiffs(savedState.snapshotDiffs);
+    }
+    if (savedState.hotspotResults) {
+      console.log('🔄 恢复热点分析结果:', savedState.hotspotResults);
+      setHotspotResults(savedState.hotspotResults);
+      setHasHotspotAnalyzed(true);
     }
   }, []);
 
@@ -81,6 +88,26 @@ const MainView = () => {
             setAnalysisResults(message.data);
             setHasAnalyzed(true);
           }
+          break;
+        case 'hotspotAnalysisResult':
+          setIsLoading(false);
+          setError(null);
+          if (message.data) {
+            setHotspotResults(message.data);
+            setHasHotspotAnalyzed(true);
+            // 保存热点分析结果
+            const currentState = getState();
+            const newState = {
+              ...currentState,
+              hotspotResults: message.data
+            };
+            saveState(newState);
+            console.log('💾 保存热点分析结果:', message.data);
+          }
+          break;
+        case 'hotspotAnalysisError':
+          setIsLoading(false);
+          setError(message.error || '热点分析失败');
           break;
       }
     };
