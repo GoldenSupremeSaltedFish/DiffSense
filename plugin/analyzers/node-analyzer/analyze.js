@@ -12,6 +12,7 @@ const { execSync } = require('child_process');
 const { Project } = require('ts-morph');
 const { extractSnapshotsForFile } = require('./snapshotExtractors');
 const FFISScorer = require('./ffisScorer');
+const SafeBranchSwitcher = require('../shared/SafeBranchSwitcher');
 
 /**
  * 前端代码修改分类器 - 适用于 React / Vue / JS/TS
@@ -1072,6 +1073,20 @@ class FrontendAnalyzer {
     console.error(`📁 Git仓库根目录: ${repoRoot}`);
     console.error(`📁 分析目标目录: ${this.targetDir}`);
     
+    // 使用安全分支切换器
+    const branchSwitcher = new SafeBranchSwitcher(repoRoot);
+    
+    return await branchSwitcher.safeBranchOperation(this.options.branch || 'HEAD', async () => {
+      return await this.analyzeCommitsInCurrentBranch(numCommits, repoRoot);
+    });
+  }
+
+  /**
+   * 在当前分支中分析提交
+   */
+  async analyzeCommitsInCurrentBranch(numCommits, repoRoot) {
+    const commits = [];
+    
     // 获取最近N个提交的信息
     const branch = this.options.branch || 'HEAD';
     const logCmd = `git log --format="%H|%s|%an|%ae|%ai" -n ${numCommits} ${branch}`;
@@ -1202,6 +1217,7 @@ class FrontendAnalyzer {
       }
       throw error;
     }
+  }
   }
 
   /**

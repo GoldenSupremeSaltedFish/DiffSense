@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.yourorg.gitimpact.ast.DiffToASTMapper;
+import com.yourorg.gitimpact.utils.SafeBranchSwitcher;
 
 public class BranchMonitor {
     private static final Logger logger = LoggerFactory.getLogger(BranchMonitor.class);
@@ -58,30 +59,39 @@ public class BranchMonitor {
             .build();
         
         try (Git git = new Git(repository)) {
-            // 获取需要分析的提交
-            List<RevCommit> commits = getCommitsToAnalyze(git);
-            logger.info("找到 {} 个需要分析的提交", commits.size());
+            // 使用安全分支切换器
+            SafeBranchSwitcher branchSwitcher = new SafeBranchSwitcher(repository);
             
-            // 并行分析每个提交
-            List<Future<CommitImpact>> futures = new ArrayList<>();
-            for (RevCommit commit : commits) {
-                futures.add(analyzeCommitAsync(commit, git));
-            }
-            
-            // 收集结果
-            List<CommitImpact> results = new ArrayList<>();
-            for (Future<CommitImpact> future : futures) {
+            return branchSwitcher.safeBranchOperation(config.getBranch(), () -> {
                 try {
-                    results.add(future.get());
+                    // 获取需要分析的提交
+                    List<RevCommit> commits = getCommitsToAnalyze(git);
+                    logger.info("找到 {} 个需要分析的提交", commits.size());
+                    
+                    // 并行分析每个提交
+                    List<Future<CommitImpact>> futures = new ArrayList<>();
+                    for (RevCommit commit : commits) {
+                        futures.add(analyzeCommitAsync(commit, git));
+                    }
+                    
+                    // 收集结果
+                    List<CommitImpact> results = new ArrayList<>();
+                    for (Future<CommitImpact> future : futures) {
+                        try {
+                            results.add(future.get());
+                        } catch (Exception e) {
+                            logger.error("分析提交时发生错误", e);
+                        }
+                    }
+                    
+                    // 按时间排序
+                    results.sort((a, b) -> b.getTimestamp().compareTo(a.getTimestamp()));
+                    
+                    return results;
                 } catch (Exception e) {
-                    logger.error("分析提交时发生错误", e);
+                    throw new RuntimeException("分支分析失败", e);
                 }
-            }
-            
-            // 按时间排序
-            results.sort((a, b) -> b.getTimestamp().compareTo(a.getTimestamp()));
-            
-            return results;
+            });
         } finally {
             executor.shutdown();
         }

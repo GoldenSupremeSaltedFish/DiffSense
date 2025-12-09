@@ -13,6 +13,7 @@ const { execSync } = require('child_process');
 const { Project } = require('ts-morph');
 const { extractSnapshotsForFile } = require('./snapshotExtractors');
 const FrontendGranularAnalyzer = require('./granularAnalyzer');
+const SafeBranchSwitcher = require('../../../plugin/analyzers/shared/SafeBranchSwitcher');
 
 /**
  * 前端代码修改分类器 - 适用于 React / Vue / JS/TS
@@ -1278,13 +1279,26 @@ class FrontendAnalyzer {
    * 分别分析每个提交
    */
   async analyzeCommitsIndividually() {
-    const commits = [];
     const numCommits = parseInt(this.options.commits, 10);
     
     // 获取Git仓库根目录
     const repoRoot = this.getRepoRoot();
     
     console.error(`📝 开始分析最近 ${numCommits} 个提交 (分支: ${this.options.branch || 'HEAD'})`);
+    
+    // 使用安全分支切换器
+    const branchSwitcher = new SafeBranchSwitcher(repoRoot);
+    
+    return await branchSwitcher.safeBranchOperation(this.options.branch || 'HEAD', async () => {
+      return await this.analyzeCommitsInCurrentBranch(numCommits, repoRoot);
+    });
+  }
+
+  /**
+   * 在当前分支中分析提交
+   */
+  async analyzeCommitsInCurrentBranch(numCommits, repoRoot) {
+    const commits = [];
     
     // 获取最近N个提交的信息（在仓库根目录执行）
     const logCmd = `git log --format="%H|%s|%an|%ae|%ai" -n ${numCommits} ${this.options.branch || 'HEAD'}`;
@@ -1411,6 +1425,7 @@ class FrontendAnalyzer {
         endCommit: this.options.endCommit
       }
     };
+  }
   }
 
   /**
