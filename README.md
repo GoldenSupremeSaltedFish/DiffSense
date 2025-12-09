@@ -6,6 +6,7 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](./LICENSE.txt)
 [![VSCode](https://img.shields.io/badge/VSCode-1.74.0+-blueviolet.svg)](https://code.visualstudio.com/)
 [![Marketplace](https://img.shields.io/badge/Marketplace-DiffSense-orange.svg)](https://marketplace.visualstudio.com/items?itemName=humphreyLi.diffsense)
+[![DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/GoldenSupremeSaltedFish/DiffSense)
 
 ## ✨ Key Features
 
