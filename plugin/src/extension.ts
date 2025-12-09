@@ -1,21 +1,23 @@
-import { path, fs, execFile } from 'path';
-import { vscode } from 'vscode';
+import * as path from 'path';
+import * as fs from 'fs';
+import { execFile } from 'child_process';
+import * as vscode from 'vscode';
 
 export default class DiffSense {
 
   private _extensionUri: vscode.Uri;
-  private _outputChannel: vscode.OutputChannel;
-  private _databaseService: any;
-  private _themeDisposable: vscode.Disposable;
-  private _view: vscode.Webview;
+  private _outputChannel!: vscode.OutputChannel;
+  private _databaseService!: any;
+  private _themeDisposable!: vscode.Disposable;
+  private _view!: vscode.Webview;
 
   constructor(extensionUri: vscode.Uri) {
     this._extensionUri = extensionUri;
   }
 
-  private log(message: string) {
+  private log(message: string, level: 'info' | 'warn' | 'error' = 'info') {
     if (this._outputChannel) {
-      this._outputChannel.appendLine(message);
+      this._outputChannel.appendLine(`[${level}] ${message}`);
     }
   }
 
@@ -1480,14 +1482,14 @@ ${codeBlock(String(errorContext))}`;
       }
 
       // 发送到前端
-      this._view?.webview.postMessage({
+      this._view?.postMessage({
         command: 'snapshotDiffResult',
         data: result
       });
 
     } catch (error) {
       console.error('检测组件回退失败:', error);
-      this._view?.webview.postMessage({
+      this._view?.postMessage({
         command: 'analysisError',
         error: error instanceof Error ? error.message : String(error)
       });
@@ -1561,7 +1563,7 @@ ${codeBlock(String(errorContext))}`;
   }) {
     if (!this._databaseService) {
       this.log('数据库服务未初始化，无法执行热点分析', 'warn');
-      this._view?.webview.postMessage({
+      this._view?.postMessage({
         command: 'hotspotAnalysisResult',
         error: '数据库服务未初始化'
       });
@@ -1590,7 +1592,7 @@ ${codeBlock(String(errorContext))}`;
       this.log(`热点分析完成，发现 ${result.hotspots.length} 个热点文件`);
       this.log(`统计信息: ${JSON.stringify(result.summary, null, 2)}`);
       
-      this._view?.webview.postMessage({
+      this._view?.postMessage({
         command: 'hotspotAnalysisResult',
         data: result.hotspots,
         summary: result.summary,
@@ -1599,7 +1601,7 @@ ${codeBlock(String(errorContext))}`;
       
     } catch (error) {
       this.log(`热点分析失败: ${error instanceof Error ? error.message : String(error)}`, 'error');
-      this._view?.webview.postMessage({
+      this._view?.postMessage({
         command: 'hotspotAnalysisResult',
         error: error instanceof Error ? error.message : String(error)
       });
@@ -1616,7 +1618,11 @@ ${codeBlock(String(errorContext))}`;
     }
   }
 
+  private getCategoryDisplayName(category: string): string {
+    return category;
+  }
 
+}
 export function deactivate() {
   // 清理资源
   if (provider) {
@@ -1631,4 +1637,14 @@ export async function cleanupDatabase() {
   if (provider) {
     await provider.cleanupDatabase();
   }
+}
+
+let provider: DiffSense | undefined;
+
+export function activate(context: vscode.ExtensionContext) {
+  provider = new DiffSense(context.extensionUri);
+}
+
+function getCategoryDisplayName(category: string): string {
+  return category;
 }

@@ -174,7 +174,7 @@ export class DatabaseService extends EventEmitter {
 
   // Database operations with retry mechanism
   private async withRetry<T>(operation: () => Promise<T>, retries = this.config.maxRetries): Promise<T> {
-    let lastError: Error;
+    let lastError: Error = new Error('Unknown error');
     
     for (let i = 0; i <= retries; i++) {
       try {

@@ -1,7 +1,4 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import { AlertTriangle, FileText, TrendingUp } from 'lucide-react';
 
 interface HotspotFile {
   filePath: string;
@@ -58,13 +55,13 @@ const getRiskLevelIcon = (riskLevel: string) => {
   switch (riskLevel) {
     case 'critical':
     case 'high':
-      return <AlertTriangle className="w-4 h-4" />;
+      return <span>⚠️</span>;
     case 'medium':
-      return <TrendingUp className="w-4 h-4" />;
+      return <span>📈</span>;
     case 'low':
-      return <FileText className="w-4 h-4" />;
+      return <span>📄</span>;
     default:
-      return <FileText className="w-4 h-4" />;
+      return <span>📄</span>;
   }
 };
 
@@ -95,60 +92,60 @@ export const HotspotAnalysis: React.FC<HotspotAnalysisProps> = ({
 }) => {
   if (isLoading) {
     return (
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <div className="w-full border rounded-lg">
+        <div className="px-4 py-3 border-b">
+          <div className="flex items-center gap-2 font-semibold">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
             热点分析中...
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </div>
+        </div>
+        <div className="p-4">
           <div className="space-y-4">
             <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
             <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
             <div className="h-4 bg-gray-200 rounded animate-pulse w-1/2"></div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Card className="w-full border-red-200">
-        <CardHeader>
-          <CardTitle className="text-red-700 flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5" />
+      <div className="w-full border rounded-lg border-red-200">
+        <div className="px-4 py-3 border-b">
+          <div className="text-red-700 font-semibold flex items-center gap-2">
+            <span>⚠️</span>
             热点分析失败
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </div>
+        </div>
+        <div className="p-4">
           <div className="text-red-600 bg-red-50 p-4 rounded-lg">
             <p className="font-medium">错误信息：</p>
             <p className="mt-2 text-sm">{error}</p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   if (!results || !results.files || results.files.length === 0) {
     return (
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5" />
+      <div className="w-full border rounded-lg">
+        <div className="px-4 py-3 border-b">
+          <div className="flex items-center gap-2 font-semibold">
+            <span>📄</span>
             热点分析结果
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </div>
+        </div>
+        <div className="p-4">
           <div className="text-gray-500 text-center py-8">
-            <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+            <div className="w-12 h-12 mx-auto mb-4 text-gray-300">📄</div>
             <p>暂无热点分析数据</p>
             <p className="text-sm mt-2">请先运行热点分析来获取文件变更热点信息</p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
@@ -157,14 +154,14 @@ export const HotspotAnalysis: React.FC<HotspotAnalysisProps> = ({
   return (
     <div className="space-y-6">
       {/* 摘要卡片 */}
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5" />
+      <div className="w-full border rounded-lg">
+        <div className="px-4 py-3 border-b">
+          <div className="flex items-center gap-2 font-semibold">
+            <span>📈</span>
             热点分析摘要
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </div>
+        </div>
+        <div className="p-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">{summary.totalFiles}</div>
@@ -190,23 +187,23 @@ export const HotspotAnalysis: React.FC<HotspotAnalysisProps> = ({
               <span>平均复杂度: {summary.averageComplexity.toFixed(1)}</span>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* 热点文件列表 */}
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
+      <div className="w-full border rounded-lg">
+        <div className="px-4 py-3 border-b">
+          <div className="flex items-center justify-between font-semibold">
             <span className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5" />
+              <span>⚠️</span>
               热点文件列表
             </span>
             <span className="text-sm font-normal text-gray-500">
               按风险级别排序
             </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </div>
+        </div>
+        <div className="p-4">
           <div className="space-y-3">
             {files
               .sort((a, b) => {
@@ -221,31 +218,31 @@ export const HotspotAnalysis: React.FC<HotspotAnalysisProps> = ({
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
-                        <Badge className={getRiskLevelColor(file.riskLevel)}>
+                        <span className={`inline-flex items-center px-2 py-1 text-xs rounded border ${getRiskLevelColor(file.riskLevel)}`}>
                           <span className="flex items-center gap-1">
                             {getRiskLevelIcon(file.riskLevel)}
                             {file.riskLevel.toUpperCase()}
                           </span>
-                        </Badge>
+                        </span>
                         <span className="text-sm text-gray-500">{file.fileType}</span>
                       </div>
-                      
+                       
                       <h4 className="font-medium text-gray-900 truncate" title={file.filePath}>
                         {file.filePath}
                       </h4>
-                      
+                       
                       <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
                         <span className="flex items-center gap-1">
-                          <TrendingUp className="w-3 h-3" />
+                          <span>📈</span>
                           {file.changeCount} 次变更
                         </span>
                         <span className="flex items-center gap-1">
-                          <FileText className="w-3 h-3" />
+                          <span>📄</span>
                           {formatFileSize(file.linesOfCode)}
                         </span>
                         <span>{formatDate(file.lastModified)}</span>
                       </div>
-                      
+                       
                       {file.contributors && file.contributors.length > 0 && (
                         <div className="flex items-center gap-2 mt-2">
                           <span className="text-xs text-gray-500">贡献者:</span>
@@ -278,8 +275,8 @@ export const HotspotAnalysis: React.FC<HotspotAnalysisProps> = ({
                 </div>
               ))}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* 分析信息 */}
       <div className="text-xs text-gray-500 text-center">
