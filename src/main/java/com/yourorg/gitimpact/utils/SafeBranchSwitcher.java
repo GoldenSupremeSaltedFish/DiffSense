@@ -110,7 +110,6 @@ public class SafeBranchSwitcher {
                 .setRemote("origin")
                 .setRefSpecs("+refs/heads/" + targetBranch + ":refs/remotes/origin/" + targetBranch)
                 .setRemoveDeletedRefs(true)
-                .setTags(false)
                 .setTimeout(30)
                 .call();
             logger.info("成功获取远程分支: origin/{}", targetBranch);
