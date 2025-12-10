@@ -1,0 +1,1517 @@
+{
+  "fileWorldModel": [
+    {
+      "path": ".gitignore",
+      "ext": "",
+      "size": 575,
+      "languageType": "other",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": []
+    },
+    {
+      "path": "128logo.png",
+      "ext": ".png",
+      "size": 805914,
+      "languageType": "other",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": []
+    },
+    {
+      "path": "ARTIFACTS_REPOSITORY_README.md",
+      "ext": ".md",
+      "size": 6249,
+      "languageType": "other",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": [
+        "html-tags"
+      ]
+    },
+    {
+      "path": "build-all-subtree.bat",
+      "ext": ".bat",
+      "size": 4306,
+      "languageType": "other",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": []
+    },
+    {
+      "path": "build-all.bat",
+      "ext": ".bat",
+      "size": 2892,
+      "languageType": "other",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": []
+    },
+    {
+      "path": "build-artifacts-only.bat",
+      "ext": ".bat",
+      "size": 6299,
+      "languageType": "other",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": []
+    },
+    {
+      "path": "check-build.bat",
+      "ext": ".bat",
+      "size": 2573,
+      "languageType": "other",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": []
+    },
+    {
+      "path": "cn_readme.md",
+      "ext": ".md",
+      "size": 5391,
+      "languageType": "other",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": []
+    },
+    {
+      "path": "diffsense.config.json",
+      "ext": ".json",
+      "size": 5657,
+      "languageType": "other",
+      "frameworkSignal": [],
+      "isConfig": true,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/.npmrc",
+      "ext": "",
+      "size": 40,
+      "languageType": "other",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/.vscodeignore",
+      "ext": "",
+      "size": 484,
+      "languageType": "other",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/analyzers/golang-analyzer/analyze.js",
+      "ext": ".js",
+      "size": 76055,
+      "languageType": "js",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [
+        "path",
+        "fs",
+        "glob",
+        "child_process",
+        "util"
+      ],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/analyzers/golang-analyzer/package-lock.json",
+      "ext": ".json",
+      "size": 17207,
+      "languageType": "other",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/analyzers/golang-analyzer/package.json",
+      "ext": ".json",
+      "size": 700,
+      "languageType": "other",
+      "frameworkSignal": [],
+      "isConfig": true,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/analyzers/node-analyzer/analyze.js",
+      "ext": ".js",
+      "size": 57182,
+      "languageType": "js",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [
+        "path",
+        "fs",
+        "glob",
+        "child_process",
+        "ts-morph",
+        "./snapshotExtractors",
+        "./ffisScorer",
+        "../shared/SafeBranchSwitcher",
+        "madge"
+      ],
+      "uiSignals": [
+        "jsx-attributes",
+        "css-in-js"
+      ]
+    },
+    {
+      "path": "plugin/analyzers/node-analyzer/errorHandler.js",
+      "ext": ".js",
+      "size": 8675,
+      "languageType": "js",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [
+        "fs",
+        "path"
+      ],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/analyzers/node-analyzer/ffisScorer.js",
+      "ext": ".js",
+      "size": 14298,
+      "languageType": "js",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/analyzers/node-analyzer/granularAnalyzer.js",
+      "ext": ".js",
+      "size": 24206,
+      "languageType": "js",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [
+        "./modificationType",
+        "path",
+        "./errorHandler",
+        "../shared/types",
+        "../shared/constants"
+      ],
+      "uiSignals": [
+        "jsx-attributes"
+      ]
+    },
+    {
+      "path": "plugin/analyzers/node-analyzer/mergeImpact.js",
+      "ext": ".js",
+      "size": 3839,
+      "languageType": "js",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [
+        "child_process",
+        "path",
+        "fs",
+        "os",
+        "./snapshotExtractors",
+        "./snapshotDiff"
+      ],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/analyzers/node-analyzer/modificationType.js",
+      "ext": ".js",
+      "size": 4889,
+      "languageType": "js",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": [
+        "css-in-js"
+      ]
+    },
+    {
+      "path": "plugin/analyzers/node-analyzer/package-lock.json",
+      "ext": ".json",
+      "size": 96198,
+      "languageType": "other",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/analyzers/node-analyzer/package.json",
+      "ext": ".json",
+      "size": 933,
+      "languageType": "other",
+      "frameworkSignal": [],
+      "isConfig": true,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/analyzers/node-analyzer/run-tests.js",
+      "ext": ".js",
+      "size": 8351,
+      "languageType": "js",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [
+        "path",
+        "fs",
+        "child_process",
+        "./errorHandler"
+      ],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/analyzers/node-analyzer/snapshotDiff.js",
+      "ext": ".js",
+      "size": 4518,
+      "languageType": "js",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/analyzers/node-analyzer/snapshotExtractors.js",
+      "ext": ".js",
+      "size": 10905,
+      "languageType": "js",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [
+        "path",
+        "fs",
+        "ts-morph",
+        "@vue/compiler-sfc"
+      ],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/analyzers/node-analyzer/tests/errorHandler.test.js",
+      "ext": ".js",
+      "size": 7280,
+      "languageType": "js",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": true,
+      "importGraph": [
+        "../errorHandler"
+      ],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/analyzers/node-analyzer/utils.js",
+      "ext": ".js",
+      "size": 6530,
+      "languageType": "js",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [
+        "path",
+        "fs"
+      ],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/analyzers/shared/classifiers.js",
+      "ext": ".js",
+      "size": 12710,
+      "languageType": "js",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [
+        "../node-analyzer/errorHandler"
+      ],
+      "uiSignals": [
+        "jsx-attributes",
+        "css-in-js"
+      ]
+    },
+    {
+      "path": "plugin/analyzers/shared/constants.js",
+      "ext": ".js",
+      "size": 6578,
+      "languageType": "js",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": [
+        "jsx-attributes"
+      ]
+    },
+    {
+      "path": "plugin/analyzers/shared/SafeBranchSwitcher.js",
+      "ext": ".js",
+      "size": 7216,
+      "languageType": "js",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [
+        "child_process",
+        "fs",
+        "path"
+      ],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/analyzers/shared/types.js",
+      "ext": ".js",
+      "size": 11302,
+      "languageType": "js",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/cli-adapter.js",
+      "ext": ".js",
+      "size": 18567,
+      "languageType": "js",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [
+        "fs",
+        "path",
+        "commander",
+        "./analyzers/node-analyzer/analyze.js",
+        "./analyzers/golang-analyzer/analyze.js",
+        "child_process",
+        "util"
+      ],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/DEBUG_GUIDE_CN.md",
+      "ext": ".md",
+      "size": 4074,
+      "languageType": "other",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/icon.png",
+      "ext": ".png",
+      "size": 805914,
+      "languageType": "other",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/LICENSE.txt",
+      "ext": ".txt",
+      "size": 11557,
+      "languageType": "other",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/package-lock.json",
+      "ext": ".json",
+      "size": 145110,
+      "languageType": "other",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/package.json",
+      "ext": ".json",
+      "size": 3488,
+      "languageType": "other",
+      "frameworkSignal": [],
+      "isConfig": true,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/PLUGIN_DEBUG_GUIDE.md",
+      "ext": ".md",
+      "size": 6206,
+      "languageType": "other",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [
+        "./analyzers/node-analyzer/analyze.js",
+        "./analyzers/node-analyzer/modificationType.js",
+        "./analyzers/node-analyzer/granularAnalyzer.js",
+        "./cli-adapter.js",
+        "./analyzers/node-analyzer/analyze.js"
+      ],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/README.md",
+      "ext": ".md",
+      "size": 3856,
+      "languageType": "other",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/README_EN.md",
+      "ext": ".md",
+      "size": 4505,
+      "languageType": "other",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/scripts/clean-package.js",
+      "ext": ".js",
+      "size": 904,
+      "languageType": "js",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [
+        "fs",
+        "path"
+      ],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/scripts/package-vsix.js",
+      "ext": ".js",
+      "size": 2036,
+      "languageType": "js",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [
+        "child_process",
+        "path"
+      ],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/scripts/prepare-package.js",
+      "ext": ".js",
+      "size": 8853,
+      "languageType": "js",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [
+        "undici",
+        "fs",
+        "path"
+      ],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/scripts/prepare-release.js",
+      "ext": ".js",
+      "size": 5646,
+      "languageType": "js",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [
+        "fs",
+        "path",
+        "child_process"
+      ],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/src/database/database-worker.js",
+      "ext": ".js",
+      "size": 12485,
+      "languageType": "js",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [
+        "worker_threads",
+        "better-sqlite3",
+        "path",
+        "fs"
+      ],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/src/database/DatabaseService.ts",
+      "ext": ".ts",
+      "size": 12409,
+      "languageType": "ts",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [
+        "vscode",
+        "path",
+        "fs",
+        "worker_threads",
+        "events"
+      ],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/src/extension.ts",
+      "ext": ".ts",
+      "size": 64569,
+      "languageType": "ts",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [
+        "path",
+        "fs",
+        "child_process",
+        "vscode",
+        "child_process"
+      ],
+      "uiSignals": [
+        "html-tags"
+      ]
+    },
+    {
+      "path": "plugin/src/services/CommitAnalyzer.ts",
+      "ext": ".ts",
+      "size": 9607,
+      "languageType": "ts",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": false,
+      "importGraph": [
+        "../database/DatabaseService",
+        "vscode",
+        "path",
+        "fs"
+      ],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/src/test/sqlite-integration.test.ts",
+      "ext": ".ts",
+      "size": 6378,
+      "languageType": "ts",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": true,
+      "importGraph": [
+        "assert",
+        "path",
+        "fs",
+        "../database/DatabaseService",
+        "../services/CommitAnalyzer"
+      ],
+      "uiSignals": []
+    },
+    {
+      "path": "plugin/tests/basic.test.js",
+      "ext": ".js",
+      "size": 2226,
+      "languageType": "js",
+      "frameworkSignal": [],
+      "isConfig": false,
+      "isTest": true,
+      "importGraph": [
+        "react",
+        "react",
+        "react",
+        "path",
+        "../analyzers/node-analyzer/analyze"
+      ],
+      "uiSignals": [
+        "html-tags"
+      ]
+    }
+  ],
+  "directoryFeatureGraph": {
+    ".": {
+      "totalFiles": 14,
+      "jsPercent": 0.14285714285714285,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 1,
+      "frameworkSignals": [],
+      "frontendScore": 0.08857142857142858,
+      "importDensity": 0.42857142857142855,
+      "averageDepth": 1
+    },
+    "plugin": {
+      "totalFiles": 52,
+      "jsPercent": 0.7115384615384616,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 10,
+      "frameworkSignals": [],
+      "frontendScore": 0.4423076923076924,
+      "importDensity": 2.6153846153846154,
+      "averageDepth": 1
+    },
+    "plugin/analyzers/golang-analyzer": {
+      "totalFiles": 3,
+      "jsPercent": 0.3333333333333333,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0.13333333333333333,
+      "importDensity": 1.6666666666666667,
+      "averageDepth": 3
+    },
+    "plugin/analyzers": {
+      "totalFiles": 20,
+      "jsPercent": 0.8,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 5,
+      "frameworkSignals": [],
+      "frontendScore": 0.44500000000000006,
+      "importDensity": 2.1,
+      "averageDepth": 2
+    },
+    "plugin/analyzers/node-analyzer": {
+      "totalFiles": 13,
+      "jsPercent": 0.8461538461538461,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 3,
+      "frameworkSignals": [],
+      "frontendScore": 0.4376923076923077,
+      "importDensity": 2.5384615384615383,
+      "averageDepth": 3
+    },
+    "plugin/analyzers/node-analyzer/tests": {
+      "totalFiles": 1,
+      "jsPercent": 1,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0.4,
+      "importDensity": 1,
+      "averageDepth": 4
+    },
+    "plugin/analyzers/shared": {
+      "totalFiles": 4,
+      "jsPercent": 1,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 2,
+      "frameworkSignals": [],
+      "frontendScore": 0.5700000000000001,
+      "importDensity": 1,
+      "averageDepth": 3
+    },
+    "plugin/scripts": {
+      "totalFiles": 4,
+      "jsPercent": 1,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0.4,
+      "importDensity": 2.5,
+      "averageDepth": 2
+    },
+    "plugin/src/database": {
+      "totalFiles": 2,
+      "jsPercent": 1,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0.4,
+      "importDensity": 4.5,
+      "averageDepth": 3
+    },
+    "plugin/src": {
+      "totalFiles": 5,
+      "jsPercent": 1,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 1,
+      "frameworkSignals": [],
+      "frontendScore": 0.47000000000000003,
+      "importDensity": 4.6,
+      "averageDepth": 2
+    },
+    "plugin/src/services": {
+      "totalFiles": 1,
+      "jsPercent": 1,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0.4,
+      "importDensity": 4,
+      "averageDepth": 3
+    },
+    "plugin/src/test": {
+      "totalFiles": 1,
+      "jsPercent": 1,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0.4,
+      "importDensity": 5,
+      "averageDepth": 3
+    },
+    "plugin/tests": {
+      "totalFiles": 5,
+      "jsPercent": 1,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 3,
+      "frameworkSignals": [],
+      "frontendScore": 0.6100000000000001,
+      "importDensity": 5,
+      "averageDepth": 2
+    },
+    "plugin/ui/golang-analyzer": {
+      "totalFiles": 1,
+      "jsPercent": 1,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0.4,
+      "importDensity": 5,
+      "averageDepth": 3
+    },
+    "plugin/ui": {
+      "totalFiles": 6,
+      "jsPercent": 1,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 1,
+      "frameworkSignals": [],
+      "frontendScore": 0.46,
+      "importDensity": 4,
+      "averageDepth": 2
+    },
+    "plugin/ui/node-analyzer": {
+      "totalFiles": 5,
+      "jsPercent": 1,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 1,
+      "frameworkSignals": [],
+      "frontendScore": 0.47000000000000003,
+      "importDensity": 3.8,
+      "averageDepth": 3
+    },
+    "scripts": {
+      "totalFiles": 3,
+      "jsPercent": 0.3333333333333333,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 1,
+      "frameworkSignals": [],
+      "frontendScore": 0.24333333333333335,
+      "importDensity": 0.6666666666666666,
+      "averageDepth": 1
+    },
+    "src": {
+      "totalFiles": 54,
+      "jsPercent": 0.14814814814814814,
+      "tsxPercent": 0.1111111111111111,
+      "vuePercent": 0,
+      "uiCodeSignals": 7,
+      "frameworkSignals": [],
+      "frontendScore": 0.16814814814814816,
+      "importDensity": 0.16666666666666666,
+      "averageDepth": 1
+    },
+    "src/components": {
+      "totalFiles": 4,
+      "jsPercent": 1,
+      "tsxPercent": 1,
+      "vuePercent": 0,
+      "uiCodeSignals": 4,
+      "frameworkSignals": [],
+      "frontendScore": 0.74,
+      "importDensity": 1,
+      "averageDepth": 2
+    },
+    "src/hooks": {
+      "totalFiles": 1,
+      "jsPercent": 1,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0.4,
+      "importDensity": 0,
+      "averageDepth": 2
+    },
+    "src/main/java/com/yourorg/gitimpact/ast": {
+      "totalFiles": 1,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0,
+      "importDensity": 0,
+      "averageDepth": 7
+    },
+    "src/main/java/com/yourorg/gitimpact": {
+      "totalFiles": 44,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 2,
+      "frameworkSignals": [],
+      "frontendScore": 0.03363636363636364,
+      "importDensity": 0,
+      "averageDepth": 6
+    },
+    "src/main/java/com/yourorg": {
+      "totalFiles": 44,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 2,
+      "frameworkSignals": [],
+      "frontendScore": 0.03363636363636364,
+      "importDensity": 0,
+      "averageDepth": 5
+    },
+    "src/main/java/com": {
+      "totalFiles": 44,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 2,
+      "frameworkSignals": [],
+      "frontendScore": 0.03363636363636364,
+      "importDensity": 0,
+      "averageDepth": 4
+    },
+    "src/main/java": {
+      "totalFiles": 44,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 2,
+      "frameworkSignals": [],
+      "frontendScore": 0.03363636363636364,
+      "importDensity": 0,
+      "averageDepth": 3
+    },
+    "src/main": {
+      "totalFiles": 45,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 2,
+      "frameworkSignals": [],
+      "frontendScore": 0.03333333333333334,
+      "importDensity": 0,
+      "averageDepth": 2
+    },
+    "src/main/java/com/yourorg/gitimpact/classification": {
+      "totalFiles": 4,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0,
+      "importDensity": 0,
+      "averageDepth": 7
+    },
+    "src/main/java/com/yourorg/gitimpact/cli": {
+      "totalFiles": 11,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0,
+      "importDensity": 0,
+      "averageDepth": 7
+    },
+    "src/main/java/com/yourorg/gitimpact/config": {
+      "totalFiles": 1,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0,
+      "importDensity": 0,
+      "averageDepth": 7
+    },
+    "src/main/java/com/yourorg/gitimpact/impact": {
+      "totalFiles": 4,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0,
+      "importDensity": 0,
+      "averageDepth": 7
+    },
+    "src/main/java/com/yourorg/gitimpact/inspect": {
+      "totalFiles": 5,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0,
+      "importDensity": 0,
+      "averageDepth": 7
+    },
+    "src/main/java/com/yourorg/gitimpact/microservice": {
+      "totalFiles": 1,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0,
+      "importDensity": 0,
+      "averageDepth": 7
+    },
+    "src/main/java/com/yourorg/gitimpact/report": {
+      "totalFiles": 1,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 1,
+      "frameworkSignals": [],
+      "frontendScore": 0.31,
+      "importDensity": 0,
+      "averageDepth": 7
+    },
+    "src/main/java/com/yourorg/gitimpact/spoon": {
+      "totalFiles": 1,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0,
+      "importDensity": 0,
+      "averageDepth": 7
+    },
+    "src/main/java/com/yourorg/gitimpact/spring": {
+      "totalFiles": 11,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 1,
+      "frameworkSignals": [],
+      "frontendScore": 0.03727272727272728,
+      "importDensity": 0,
+      "averageDepth": 7
+    },
+    "src/main/java/com/yourorg/gitimpact/test": {
+      "totalFiles": 3,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0,
+      "importDensity": 0,
+      "averageDepth": 7
+    },
+    "src/main/java/com/yourorg/gitimpact/utils": {
+      "totalFiles": 1,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0,
+      "importDensity": 0,
+      "averageDepth": 7
+    },
+    "src/main/resources": {
+      "totalFiles": 1,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0,
+      "importDensity": 0,
+      "averageDepth": 3
+    },
+    "src/pages": {
+      "totalFiles": 1,
+      "jsPercent": 1,
+      "tsxPercent": 1,
+      "vuePercent": 0,
+      "uiCodeSignals": 1,
+      "frameworkSignals": [],
+      "frontendScore": 0.71,
+      "importDensity": 3,
+      "averageDepth": 2
+    },
+    "src/test/java/com/yourorg/gitimpact/classification": {
+      "totalFiles": 1,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0,
+      "importDensity": 0,
+      "averageDepth": 7
+    },
+    "src/test/java/com/yourorg/gitimpact": {
+      "totalFiles": 1,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0,
+      "importDensity": 0,
+      "averageDepth": 6
+    },
+    "src/test/java/com/yourorg": {
+      "totalFiles": 1,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0,
+      "importDensity": 0,
+      "averageDepth": 5
+    },
+    "src/test/java/com": {
+      "totalFiles": 1,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0,
+      "importDensity": 0,
+      "averageDepth": 4
+    },
+    "src/test/java": {
+      "totalFiles": 1,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0,
+      "importDensity": 0,
+      "averageDepth": 3
+    },
+    "src/test": {
+      "totalFiles": 1,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0,
+      "importDensity": 0,
+      "averageDepth": 2
+    },
+    "src/utils": {
+      "totalFiles": 1,
+      "jsPercent": 1,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0.4,
+      "importDensity": 0,
+      "averageDepth": 2
+    },
+    "technical_documentation/backend-analyzer": {
+      "totalFiles": 8,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0,
+      "importDensity": 0.5,
+      "averageDepth": 2
+    },
+    "technical_documentation": {
+      "totalFiles": 22,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 4,
+      "frameworkSignals": [],
+      "frontendScore": 0.09454545454545454,
+      "importDensity": 0.5,
+      "averageDepth": 1
+    },
+    "technical_documentation/build-tools": {
+      "totalFiles": 3,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0,
+      "importDensity": 0,
+      "averageDepth": 2
+    },
+    "technical_documentation/frontend-analyzer": {
+      "totalFiles": 5,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 3,
+      "frameworkSignals": [],
+      "frontendScore": 0.21,
+      "importDensity": 0.6,
+      "averageDepth": 2
+    },
+    "technical_documentation/golang-analyzer": {
+      "totalFiles": 1,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0,
+      "importDensity": 1,
+      "averageDepth": 2
+    },
+    "technical_documentation/vscode-plugin": {
+      "totalFiles": 3,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 1,
+      "frameworkSignals": [],
+      "frontendScore": 0.10999999999999999,
+      "importDensity": 1,
+      "averageDepth": 2
+    },
+    "ui": {
+      "totalFiles": 58,
+      "jsPercent": 0.6379310344827587,
+      "tsxPercent": 0.1896551724137931,
+      "vuePercent": 0,
+      "uiCodeSignals": 18,
+      "frameworkSignals": [
+        "react",
+        "vite"
+      ],
+      "frontendScore": 0.6689655172413794,
+      "importDensity": 1.9310344827586208,
+      "averageDepth": 1
+    },
+    "ui/diffsense-frontend": {
+      "totalFiles": 32,
+      "jsPercent": 0.625,
+      "tsxPercent": 0.34375,
+      "vuePercent": 0,
+      "uiCodeSignals": 12,
+      "frameworkSignals": [
+        "react",
+        "vite"
+      ],
+      "frontendScore": 0.7000000000000001,
+      "importDensity": 1.3125,
+      "averageDepth": 2
+    },
+    "ui/diffsense-frontend/public": {
+      "totalFiles": 1,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0,
+      "importDensity": 0,
+      "averageDepth": 3
+    },
+    "ui/diffsense-frontend/scripts": {
+      "totalFiles": 1,
+      "jsPercent": 1,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0.4,
+      "importDensity": 3,
+      "averageDepth": 3
+    },
+    "ui/diffsense-frontend/src": {
+      "totalFiles": 18,
+      "jsPercent": 0.8333333333333334,
+      "tsxPercent": 0.6111111111111112,
+      "vuePercent": 0,
+      "uiCodeSignals": 11,
+      "frameworkSignals": [],
+      "frontendScore": 0.6611111111111111,
+      "importDensity": 1.5555555555555556,
+      "averageDepth": 3
+    },
+    "ui/diffsense-frontend/src/assets": {
+      "totalFiles": 1,
+      "jsPercent": 0,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0,
+      "importDensity": 0,
+      "averageDepth": 4
+    },
+    "ui/diffsense-frontend/src/components": {
+      "totalFiles": 8,
+      "jsPercent": 1,
+      "tsxPercent": 1,
+      "vuePercent": 0,
+      "uiCodeSignals": 8,
+      "frameworkSignals": [],
+      "frontendScore": 0.78,
+      "importDensity": 1.875,
+      "averageDepth": 4
+    },
+    "ui/diffsense-frontend/src/hooks": {
+      "totalFiles": 1,
+      "jsPercent": 1,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0.4,
+      "importDensity": 3,
+      "averageDepth": 4
+    },
+    "ui/diffsense-frontend/src/i18n": {
+      "totalFiles": 1,
+      "jsPercent": 1,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0.4,
+      "importDensity": 0,
+      "averageDepth": 4
+    },
+    "ui/diffsense-frontend/src/pages": {
+      "totalFiles": 1,
+      "jsPercent": 1,
+      "tsxPercent": 1,
+      "vuePercent": 0,
+      "uiCodeSignals": 1,
+      "frameworkSignals": [],
+      "frontendScore": 0.71,
+      "importDensity": 5,
+      "averageDepth": 4
+    },
+    "ui/diffsense-frontend/src/utils": {
+      "totalFiles": 1,
+      "jsPercent": 1,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0.4,
+      "importDensity": 0,
+      "averageDepth": 4
+    },
+    "ui/golang-analyzer": {
+      "totalFiles": 3,
+      "jsPercent": 0.3333333333333333,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 0,
+      "frameworkSignals": [],
+      "frontendScore": 0.13333333333333333,
+      "importDensity": 1.6666666666666667,
+      "averageDepth": 2
+    },
+    "ui/node-analyzer": {
+      "totalFiles": 9,
+      "jsPercent": 0.7777777777777778,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 3,
+      "frameworkSignals": [],
+      "frontendScore": 0.4411111111111111,
+      "importDensity": 2.5555555555555554,
+      "averageDepth": 2
+    },
+    "ui/regression-analyzer": {
+      "totalFiles": 9,
+      "jsPercent": 0.6666666666666666,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 1,
+      "frameworkSignals": [],
+      "frontendScore": 0.31,
+      "importDensity": 2,
+      "averageDepth": 2
+    },
+    "ui/regression-analyzer/modules": {
+      "totalFiles": 5,
+      "jsPercent": 1,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 1,
+      "frameworkSignals": [],
+      "frontendScore": 0.47000000000000003,
+      "importDensity": 1.8,
+      "averageDepth": 3
+    },
+    "ui/tests": {
+      "totalFiles": 2,
+      "jsPercent": 1,
+      "tsxPercent": 0,
+      "vuePercent": 0,
+      "uiCodeSignals": 2,
+      "frameworkSignals": [],
+      "frontendScore": 0.72,
+      "importDensity": 7.5,
+      "averageDepth": 2
+    }
+  },
+  "semanticClassification": {
+    ".": "misc",
+    "plugin": "misc",
+    "plugin/analyzers/golang-analyzer": "misc",
+    "plugin/analyzers": "misc",
+    "plugin/analyzers/node-analyzer": "misc",
+    "plugin/analyzers/node-analyzer/tests": "misc",
+    "plugin/analyzers/shared": "misc",
+    "plugin/scripts": "misc",
+    "plugin/src/database": "misc",
+    "plugin/src": "misc",
+    "plugin/src/services": "misc",
+    "plugin/src/test": "misc",
+    "plugin/tests": "frontend",
+    "plugin/ui/golang-analyzer": "misc",
+    "plugin/ui": "misc",
+    "plugin/ui/node-analyzer": "misc",
+    "scripts": "misc",
+    "src": "backend",
+    "src/components": "frontend",
+    "src/hooks": "misc",
+    "src/main/java/com/yourorg/gitimpact/ast": "backend",
+    "src/main/java/com/yourorg/gitimpact": "backend",
+    "src/main/java/com/yourorg": "backend",
+    "src/main/java/com": "backend",
+    "src/main/java": "backend",
+    "src/main": "backend",
+    "src/main/java/com/yourorg/gitimpact/classification": "backend",
+    "src/main/java/com/yourorg/gitimpact/cli": "backend",
+    "src/main/java/com/yourorg/gitimpact/config": "backend",
+    "src/main/java/com/yourorg/gitimpact/impact": "backend",
+    "src/main/java/com/yourorg/gitimpact/inspect": "backend",
+    "src/main/java/com/yourorg/gitimpact/microservice": "backend",
+    "src/main/java/com/yourorg/gitimpact/report": "backend",
+    "src/main/java/com/yourorg/gitimpact/spoon": "backend",
+    "src/main/java/com/yourorg/gitimpact/spring": "backend",
+    "src/main/java/com/yourorg/gitimpact/test": "backend",
+    "src/main/java/com/yourorg/gitimpact/utils": "backend",
+    "src/main/resources": "misc",
+    "src/pages": "frontend",
+    "src/test/java/com/yourorg/gitimpact/classification": "backend",
+    "src/test/java/com/yourorg/gitimpact": "backend",
+    "src/test/java/com/yourorg": "backend",
+    "src/test/java/com": "backend",
+    "src/test/java": "backend",
+    "src/test": "backend",
+    "src/utils": "misc",
+    "technical_documentation/backend-analyzer": "misc",
+    "technical_documentation": "misc",
+    "technical_documentation/build-tools": "misc",
+    "technical_documentation/frontend-analyzer": "misc",
+    "technical_documentation/golang-analyzer": "misc",
+    "technical_documentation/vscode-plugin": "misc",
+    "ui": "frontend",
+    "ui/diffsense-frontend": "frontend",
+    "ui/diffsense-frontend/public": "misc",
+    "ui/diffsense-frontend/scripts": "misc",
+    "ui/diffsense-frontend/src": "frontend",
+    "ui/diffsense-frontend/src/assets": "misc",
+    "ui/diffsense-frontend/src/components": "frontend",
+    "ui/diffsense-frontend/src/hooks": "misc",
+    "ui/diffsense-frontend/src/i18n": "misc",
+    "ui/diffsense-frontend/src/pages": "frontend",
+    "ui/diffsense-frontend/src/utils": "misc",
+    "ui/golang-analyzer": "misc",
+    "ui/node-analyzer": "misc",
+    "ui/regression-analyzer": "misc",
+    "ui/regression-analyzer/modules": "misc",
+    "ui/tests": "frontend"
+  },
+  "frontendRoots": [
+    "ui",
+    "src/components"
+  ]
+}
