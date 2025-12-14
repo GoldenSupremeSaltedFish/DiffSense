@@ -207,6 +207,30 @@ function preparePackage() {
     console.warn('⚠️ Java target目录不存在:', targetDir);
   }
   
+  // ============ 4. 复制数据库Worker ============
+  console.log('🔄 准备数据库资源...');
+  const dbSrc = path.join(pluginDir, 'src', 'database');
+  const dbDest = path.join(pluginDir, 'dist', 'database');
+  
+  if (fs.existsSync(dbSrc)) {
+    if (!fs.existsSync(dbDest)) {
+      fs.mkdirSync(dbDest, { recursive: true });
+    }
+    
+    const workerFile = 'database-worker.js';
+    const workerSrcPath = path.join(dbSrc, workerFile);
+    const workerDestPath = path.join(dbDest, workerFile);
+    
+    if (fs.existsSync(workerSrcPath)) {
+      fs.copyFileSync(workerSrcPath, workerDestPath);
+      console.log(`✅ 复制数据库Worker: ${workerFile}`);
+    } else {
+      console.warn(`⚠️ 数据库Worker未找到: ${workerSrcPath}`);
+    }
+  } else {
+    console.warn(`⚠️ 数据库源码目录未找到: ${dbSrc}`);
+  }
+
   // 验证analyzers目录
   if (fs.existsSync(analyzersDestDir)) {
     const analyzersContents = fs.readdirSync(analyzersDestDir);
