@@ -79,6 +79,18 @@ export class DatabaseService extends EventEmitter {
     }
   }
 
+  public async cleanupData(cutoffTime: number): Promise<void> {
+    await this.withRetry(async () => {
+      if (this.config.enableWorker) {
+        // Send a custom cleanup command if needed, or just use the standard cleanup mechanism
+        // For now, we'll reuse the cleanup mechanism but force a specific cutoff
+        // Since the worker has its own cleanup logic, we might need to add a new message type
+        // or just rely on the initialization cleanup.
+        // Let's add a specific cleanup message type to the worker.
+        await this.sendWorkerMessage('cleanupData', { cutoffTime });
+      }
+    });
+  }
   public async initialize(): Promise<void> {
     if (this.isInitialized) {
       return;

@@ -391,6 +391,16 @@ if (parentPort) {
           result = analyzeHotspots(data.workspacePath, data.options);
           break;
 
+        case 'cleanupData':
+          // Custom cleanup with specific cutoff
+          const { cutoffTime } = data;
+          db.prepare('DELETE FROM file_metrics WHERE last_modified < ?').run(cutoffTime);
+          db.prepare('DELETE FROM error_log WHERE timestamp < ?').run(cutoffTime);
+          // Vacuum to reclaim space
+          db.exec('VACUUM');
+          result = { success: true };
+          break;
+
         case 'close':
           if (db) {
             db.close();

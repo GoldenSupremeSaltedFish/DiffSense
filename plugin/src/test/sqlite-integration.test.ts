@@ -32,12 +32,16 @@ suite('SQLite Integration Test Suite', () => {
   teardown(async () => {
     // 清理资源
     if (databaseService) {
-      databaseService.dispose();
+      await databaseService.dispose();
     }
 
     // 清理测试数据库文件
     if (fs.existsSync(testDbPath)) {
-      fs.unlinkSync(testDbPath);
+      try {
+        fs.unlinkSync(testDbPath);
+      } catch (e) {
+        // Ignore
+      }
     }
   });
 

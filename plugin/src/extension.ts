@@ -13,8 +13,10 @@ export default class DiffSense {
   private _themeDisposable!: vscode.Disposable;
   private _view!: vscode.Webview;
   private inferenceEngine: any;
+  private context: vscode.ExtensionContext;
 
   constructor(context: vscode.ExtensionContext) {
+    this.context = context;
     this._extensionUri = context.extensionUri;
     this._outputChannel = vscode.window.createOutputChannel('DiffSense');
     this._databaseService = DatabaseService.getInstance(context);
@@ -61,6 +63,37 @@ export default class DiffSense {
     } catch (error) {
         this.log(`Refresh failed: ${error}`, 'error');
         vscode.window.showErrorMessage(`DiffSense Refresh Failed: ${error}`);
+    }
+  }
+
+  /**
+   * 处理扩展更新
+   * 当检测到版本变更时调用，用于重置资源或迁移数据
+   */
+  public async handleUpdate(oldVersion: string | undefined, newVersion: string) {
+    this.log(`检测到扩展更新: ${oldVersion || '首次安装'} -> ${newVersion}`);
+    this.log('正在执行资源重置...');
+
+    try {
+      // 1. 关闭现有数据库连接（如果已打开）
+      if (this._databaseService) {
+        await this._databaseService.dispose();
+      }
+
+      // 2. 重新初始化数据库服务（这会自动处理潜在的损坏）
+      this._databaseService = DatabaseService.getInstance(this.context);
+      await this._databaseService.initialize();
+
+      // 3. 执行深度清理
+      await this._databaseService.cleanupData(Date.now() - (30 * 24 * 60 * 60 * 1000)); // 清理30天前的数据
+
+      vscode.window.showInformationMessage(
+        `DiffSense 已更新至 v${newVersion}，资源已重置以确保最佳性能。`
+      );
+      
+      this.log('资源重置完成');
+    } catch (error) {
+      this.log(`资源重置失败: ${error}`, 'error');
     }
   }
 
@@ -1687,6 +1720,16 @@ let provider: DiffSense | undefined;
 export function activate(context: vscode.ExtensionContext) {
   provider = new DiffSense(context);
   
+  // 检查版本更新
+  const currentVersion = context.extension.packageJSON.version;
+  const previousVersion = context.globalState.get<string>('diffsenseVersion');
+
+  if (currentVersion !== previousVersion) {
+    provider.handleUpdate(previousVersion, currentVersion).then(() => {
+      context.globalState.update('diffsenseVersion', currentVersion);
+    });
+  }
+
   context.subscriptions.push(
     vscode.commands.registerCommand('diffsense.refresh', () => provider?.refresh()),
     vscode.commands.registerCommand('diffsense.showOutput', () => provider?.showOutput()),
