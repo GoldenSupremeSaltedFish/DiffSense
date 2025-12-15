@@ -391,6 +391,14 @@ if (parentPort) {
           result = analyzeHotspots(data.workspacePath, data.options);
           break;
 
+        case 'close':
+          if (db) {
+            db.close();
+            db = null;
+          }
+          result = { success: true };
+          break;
+
         default:
           throw new Error(`Unknown action: ${action}`);
       }

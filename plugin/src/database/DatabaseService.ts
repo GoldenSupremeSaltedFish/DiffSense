@@ -146,7 +146,7 @@ export class DatabaseService extends EventEmitter {
     throw new Error('Direct initialization not implemented yet');
   }
 
-  private sendWorkerMessage(action: string, data?: any): Promise<any> {
+  private async sendWorkerMessage(action: string, data: any = {}, timeout: number = 30000): Promise<any> {
     if (!this.worker) {
       throw new Error('Worker not initialized');
     }
@@ -162,13 +162,13 @@ export class DatabaseService extends EventEmitter {
         data
       });
       
-      // Timeout after 30 seconds
+      // Timeout
       setTimeout(() => {
         if (this.pendingRequests.has(id)) {
           this.pendingRequests.delete(id);
           reject(new Error('Database operation timeout'));
         }
-      }, 30000);
+      }, timeout);
     });
   }
 
@@ -428,6 +428,12 @@ export class DatabaseService extends EventEmitter {
 
   public async dispose(): Promise<void> {
     if (this.worker) {
+      try {
+        // Try to close database gracefully
+        await this.sendWorkerMessage('close', {}, 1000);
+      } catch (e) {
+        // Ignore errors during close
+      }
       await this.worker.terminate();
       this.worker = null;
     }

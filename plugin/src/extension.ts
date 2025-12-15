@@ -1542,7 +1542,7 @@ ${codeBlock(String(errorContext))}`;
   /**
    * 清理资源
    */
-  public dispose() {
+  public async dispose() {
     // 清理输出通道
     if (this._outputChannel) {
       this._outputChannel.dispose();
@@ -1551,7 +1551,7 @@ ${codeBlock(String(errorContext))}`;
     // 清理数据库服务
     if (this._databaseService) {
       this.log('正在关闭数据库服务...');
-      this._databaseService.dispose();
+      await this._databaseService.dispose();
     }
     
     // 清理主题监听器
@@ -1666,10 +1666,10 @@ ${codeBlock(String(errorContext))}`;
   }
 
 }
-export function deactivate() {
+export async function deactivate() {
   // 清理资源
   if (provider) {
-    provider.dispose();
+    await provider.dispose();
   }
 }
 
