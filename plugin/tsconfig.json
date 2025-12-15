@@ -12,7 +12,7 @@
 
     /* Language and Environment */
     "target": "es2020",                                  /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */
-    "lib": ["ES2020"],
+    "lib": ["ES2020", "DOM"],
     // "jsx": "preserve",                                /* Specify what JSX code is generated. */
     // "libReplacement": true,                           /* Enable lib replacement. */
     // "experimentalDecorators": true,                   /* Enable experimental support for legacy experimental decorators. */
