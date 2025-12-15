@@ -1,9 +1,18 @@
 import * as path from 'path';
 import * as fs from 'fs';
+// @ts-ignore
 import { execFile } from 'child_process';
 import * as vscode from 'vscode';
 import { DatabaseService } from './database/DatabaseService';
-const ProjectInferenceEngine = require('../../analyzers/project-inference/engine');
+
+// 手动声明缺失的全局变量类型，绕过环境构建限制
+declare var require: any;
+declare var console: any;
+declare var setTimeout: any;
+declare var process: any;
+
+// Lazy load ProjectInferenceEngine to speed up activation
+let ProjectInferenceEngine: any;
 
 export default class DiffSense implements vscode.WebviewViewProvider {
 
@@ -26,18 +35,12 @@ export default class DiffSense implements vscode.WebviewViewProvider {
 
     this._databaseService = DatabaseService.getInstance(context);
     
-    // Pass logger to inference engine
-    const logger = {
-        log: (msg: string) => this.log(msg, 'info'),
-        error: (msg: string) => this.log(msg, 'error'),
-        warn: (msg: string) => this.log(msg, 'warn')
-    };
-    this.inferenceEngine = new ProjectInferenceEngine(logger);
-    
     // Initialize database in background
     this._databaseService.initialize().catch((err: any) => {
         this.log(`Database initialization failed: ${err}`, 'error');
     });
+
+    this.log('DiffSense initialized. Waiting for view to resolve...', 'info');
   }
 
   public resolveWebviewView(
@@ -46,6 +49,7 @@ export default class DiffSense implements vscode.WebviewViewProvider {
     _token: vscode.CancellationToken,
   ) {
     this._view = webviewView.webview;
+    this.log('WebviewView resolving...', 'info');
 
     webviewView.webview.options = {
       enableScripts: true,
@@ -56,6 +60,7 @@ export default class DiffSense implements vscode.WebviewViewProvider {
 
     // Set initial HTML with loading state
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+    this.log('Webview HTML set. Waiting for content...', 'info');
 
     // Handle messages from the webview
     webviewView.webview.onDidReceiveMessage(data => {
@@ -70,7 +75,7 @@ export default class DiffSense implements vscode.WebviewViewProvider {
     });
 
     // Start background analysis once UI is ready
-    this.log('Webview resolved, starting background analysis...');
+    this.log('Webview resolved, scheduling background analysis...', 'info');
     
     // Delay slightly to ensure UI is rendered
     setTimeout(() => {
@@ -90,6 +95,27 @@ export default class DiffSense implements vscode.WebviewViewProvider {
 
   public async refresh() {
     this.log('Refreshing DiffSense Project Analysis...');
+
+    // Lazy initialize inference engine
+    if (!this.inferenceEngine) {
+        this.log('Initializing Inference Engine...', 'info');
+        try {
+            if (!ProjectInferenceEngine) {
+                ProjectInferenceEngine = require('../analyzers/project-inference/engine');
+            }
+            const logger = {
+                log: (msg: string) => this.log(msg, 'info'),
+                error: (msg: string) => this.log(msg, 'error'),
+                warn: (msg: string) => this.log(msg, 'warn')
+            };
+            this.inferenceEngine = new ProjectInferenceEngine(logger);
+        } catch (e) {
+            this.log(`Failed to load inference engine: ${e}`, 'error');
+            this._view?.postMessage({ command: 'error', text: `Engine load failed: ${e}` });
+            return;
+        }
+    }
+
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders) {
         this._view?.postMessage({ command: 'statusUpdate', text: 'No workspace opened' });
@@ -128,47 +154,68 @@ export default class DiffSense implements vscode.WebviewViewProvider {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>DiffSense</title>
         <style>
-            body { font-family: sans-serif; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; }
-            .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-bottom: 20px; }
+            body { font-family: 'Segoe UI', sans-serif; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; color: var(--vscode-foreground); background-color: var(--vscode-editor-background); }
+            .spinner { border: 3px solid var(--vscode-widget-border); border-top: 3px solid var(--vscode-progressBar-background); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; display: inline-block; margin-right: 10px; vertical-align: middle; }
             @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
             .hidden { display: none; }
             #content { width: 100%; text-align: left; }
-            pre { background: #f4f4f4; padding: 10px; border-radius: 5px; overflow: auto; max-height: 400px; }
+            .status-container { text-align: left; width: 100%; max-width: 300px; margin: 0 auto; }
+            .status-step { display: flex; align-items: center; margin-bottom: 12px; opacity: 0.5; transition: opacity 0.3s; }
+            .status-step.active { opacity: 1; font-weight: 600; }
+            .status-step.completed { opacity: 1; color: var(--vscode-testing-iconPassed); }
+            .status-icon { margin-right: 10px; width: 20px; text-align: center; }
+            .sub-status { font-size: 0.85em; color: var(--vscode-descriptionForeground); margin-left: 30px; margin-top: -8px; margin-bottom: 12px; min-height: 1.2em; }
         </style>
     </head>
     <body>
-        <div id="status-container">
-            <div class="spinner"></div>
-            <h3 id="status-text">Initializing DiffSense...</h3>
+        <div id="status-container" class="status-container">
+            <div class="status-step completed">
+                <span class="status-icon">✅</span>
+                <span>DiffSense Activated</span>
+            </div>
+            <div class="status-step active" id="init-step">
+                <span class="status-icon"><div class="spinner"></div></span>
+                <span id="status-text">Initializing Project...</span>
+            </div>
+            <div id="detailed-status" class="sub-status">Waiting for background tasks...</div>
         </div>
+
         <div id="content" class="hidden">
             <h3>Analysis Result</h3>
             <pre id="result-data"></pre>
         </div>
         <script>
             const vscode = acquireVsCodeApi();
+            const statusText = document.getElementById('status-text');
+            const detailedStatus = document.getElementById('detailed-status');
+            const initStep = document.getElementById('init-step');
+            const content = document.getElementById('content');
+            const statusContainer = document.getElementById('status-container');
+            const resultData = document.getElementById('result-data');
+
             window.addEventListener('message', event => {
                 const message = event.data;
-                const statusText = document.getElementById('status-text');
-                const spinner = document.querySelector('.spinner');
-                const content = document.getElementById('content');
-                const resultData = document.getElementById('result-data');
 
                 switch (message.command) {
                     case 'statusUpdate':
-                        statusText.innerText = message.text;
-                        spinner.style.display = 'block';
+                        detailedStatus.innerText = message.text;
                         break;
                     case 'projectInferenceResult':
-                        statusText.innerText = 'Analysis Complete ✅';
-                        spinner.style.display = 'none';
-                        content.classList.remove('hidden');
-                        resultData.innerText = JSON.stringify(message.data, null, 2);
+                        initStep.classList.remove('active');
+                        initStep.classList.add('completed');
+                        initStep.innerHTML = '<span class="status-icon">✅</span><span>Analysis Complete</span>';
+                        detailedStatus.innerText = 'Ready to detect changes.';
+                        
+                        setTimeout(() => {
+                            statusContainer.style.display = 'none';
+                            content.classList.remove('hidden');
+                            resultData.innerText = JSON.stringify(message.data, null, 2);
+                        }, 1000);
                         break;
                     case 'error':
-                        statusText.innerText = 'Error: ' + message.text;
-                        spinner.style.display = 'none';
-                        statusText.style.color = 'red';
+                        initStep.innerHTML = '<span class="status-icon">❌</span><span>Error</span>';
+                        detailedStatus.innerText = message.text;
+                        detailedStatus.style.color = 'var(--vscode-errorForeground)';
                         break;
                 }
             });
@@ -1835,6 +1882,7 @@ export async function cleanupDatabase() {
 let provider: DiffSense | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
+  console.log('[DiffSense] Activation started');
   provider = new DiffSense(context);
   
   // Register WebviewViewProvider immediately
