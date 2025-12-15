@@ -1812,18 +1812,6 @@ ${codeBlock(String(errorContext))}`;
     }
   }
 
-  public async dispose() {
-    if (this._databaseService) {
-        await this._databaseService.dispose();
-    }
-    if (this._outputChannel) {
-        this._outputChannel.dispose();
-    }
-  }
-
-  private getCategoryDisplayName(category: string): string {
-    return category;
-  }
 
 }
 export async function deactivate() {
