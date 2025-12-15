@@ -1812,7 +1812,9 @@ ${codeBlock(String(errorContext))}`;
     }
   }
 
-
+  private getCategoryDisplayName(category: string): string {
+    return category;
+  }
 }
 export async function deactivate() {
   // 清理资源
@@ -1883,6 +1885,4 @@ export function activate(context: vscode.ExtensionContext) {
   );
 }
 
-function getCategoryDisplayName(category: string): string {
-  return category;
-}
+
