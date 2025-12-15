@@ -2,9 +2,9 @@ name: DiffSense CI
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "release/**"]
   pull_request:
-    branches: ["main"]
+    branches: ["main", "release/**"]
 
 jobs:
   build:
@@ -127,7 +127,7 @@ jobs:
           
             # 构建完成，准备同步产物到子仓库
       - name: Build Complete
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/'))
         run: |
           echo "✅ 构建完成，版本: ${{ env.VERSION }}"
           echo "📦 产物位置: ${{ env.PLUGIN_DIR }}/release/"
@@ -146,7 +146,7 @@ jobs:
 
       # 同步产物到子仓库
       - name: Sync Artifacts to Sub Repository
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/'))
         working-directory: plugin
         env:
           ARTIFACTS_TOKEN: ${{ secrets.ARTIFACTS_TOKEN }}
