@@ -230,12 +230,21 @@ export default class DiffSense implements vscode.WebviewViewProvider {
       // ✅ 更新 UI 状态为就绪
       this.updateUIState(PluginState.READY, '项目分析完成，可以开始检测变更');
       
-      // 发送结果到 UI
+      // ✅ 发送结果到 React 前端应用
       if (this._view) {
+        // 发送项目分析完成消息（React 应用会监听）
+        this._view.postMessage({
+          command: 'projectAnalysisCompleted',
+          data: result
+        });
+        
+        // 同时发送推理结果（兼容旧代码）
         this._view.postMessage({
           command: 'projectInferenceResult',
           data: result
         });
+        
+        this.log('[UI] ✅ 已发送项目分析结果到前端', 'info');
       }
 
       // 清理取消令牌
@@ -259,7 +268,100 @@ export default class DiffSense implements vscode.WebviewViewProvider {
     this.startBackgroundAnalysis();
   }
 
+  /**
+   * ✅ 获取 React 前端 HTML（如果存在）
+   */
+  private _getReactFrontendHtml(webview: vscode.Webview): string | null {
+    try {
+      // 尝试加载 dist/index.html（前端构建产物）
+      const indexPath = path.join(this.context.extensionPath, 'dist', 'index.html');
+      if (fs.existsSync(indexPath)) {
+        this.log('[UI] ✅ 找到 React 前端构建产物，加载中...', 'info');
+        let html = fs.readFileSync(indexPath, 'utf8');
+        
+        // 获取扩展 URI
+        const extensionUri = this._extensionUri;
+        
+        // ✅ 替换所有资源路径为 webview URI
+        // 处理 script 标签
+        html = html.replace(
+          /(<script[^>]*src=["'])([^"']+)(["'])/gi,
+          (match, prefix, src, suffix) => {
+            if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('data:')) {
+              return match; // 外部资源不处理
+            }
+            // 处理相对路径（去掉开头的 /）
+            const cleanSrc = src.startsWith('/') ? src.substring(1) : src;
+            const uri = webview.asWebviewUri(
+              vscode.Uri.joinPath(extensionUri, 'dist', cleanSrc)
+            );
+            return prefix + uri.toString() + suffix;
+          }
+        );
+        
+        // 处理 link 标签（CSS）
+        html = html.replace(
+          /(<link[^>]*href=["'])([^"']+\.css)(["'])/gi,
+          (match, prefix, href, suffix) => {
+            if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('data:')) {
+              return match;
+            }
+            const cleanHref = href.startsWith('/') ? href.substring(1) : href;
+            const uri = webview.asWebviewUri(
+              vscode.Uri.joinPath(extensionUri, 'dist', cleanHref)
+            );
+            return prefix + uri.toString() + suffix;
+          }
+        );
+        
+        // 处理其他资源（如 favicon）
+        html = html.replace(
+          /(<link[^>]*href=["'])([^"']+)(["'])/gi,
+          (match, prefix, href, suffix) => {
+            if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('data:') || href.includes('#')) {
+              return match;
+            }
+            const cleanHref = href.startsWith('/') ? href.substring(1) : href;
+            const uri = webview.asWebviewUri(
+              vscode.Uri.joinPath(extensionUri, 'dist', cleanHref)
+            );
+            return prefix + uri.toString() + suffix;
+          }
+        );
+        
+        // ✅ 注入 VSCode API（如果 HTML 中没有）
+        if (!html.includes('acquireVsCodeApi')) {
+          const vscodeApiScript = `
+            <script>
+              (function() {
+                const vscode = acquireVsCodeApi();
+                window.vscode = vscode;
+              })();
+            </script>
+          `;
+          html = html.replace('</head>', vscodeApiScript + '</head>');
+        }
+        
+        this.log('[UI] ✅ React 前端 HTML 已加载并处理', 'info');
+        return html;
+      } else {
+        this.log(`[UI] ⚠️ React 前端未找到: ${indexPath}`, 'warn');
+      }
+    } catch (error) {
+      this.log(`[UI] ❌ 加载 React 前端失败: ${error}`, 'error');
+    }
+    return null;
+  }
+
   private _getHtmlForWebview(webview: vscode.Webview) {
+    // ✅ 优先尝试加载 React 前端应用
+    const reactHtml = this._getReactFrontendHtml(webview);
+    if (reactHtml) {
+      return reactHtml;
+    }
+    
+    // ✅ 如果 React 前端不存在，显示加载状态和提示
+    this.log('[UI] React 前端未找到，使用临时加载界面', 'warn');
     return `<!DOCTYPE html>
     <html lang="en">
     <head>
@@ -278,9 +380,14 @@ export default class DiffSense implements vscode.WebviewViewProvider {
             .status-step.completed { opacity: 1; color: var(--vscode-testing-iconPassed); }
             .status-icon { margin-right: 10px; width: 20px; text-align: center; }
             .sub-status { font-size: 0.85em; color: var(--vscode-descriptionForeground); margin-left: 30px; margin-top: -8px; margin-bottom: 12px; min-height: 1.2em; }
+            .warning-box { background: var(--vscode-inputValidation-warningBackground); border: 1px solid var(--vscode-inputValidation-warningBorder); padding: 12px; border-radius: 4px; margin: 20px; font-size: 12px; }
         </style>
     </head>
     <body>
+        <div class="warning-box">
+            <strong>⚠️ React 前端未构建</strong><br>
+            请运行构建脚本生成前端应用，或检查 dist/index.html 是否存在。
+        </div>
         <div id="status-container" class="status-container">
             <div class="status-step completed">
                 <span class="status-icon">✅</span>
