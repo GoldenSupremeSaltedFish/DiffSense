@@ -225,6 +225,17 @@ export default class DiffSense implements vscode.WebviewViewProvider {
       this.log(`[Background] [结果] 项目类型: ${result.projectType}`, 'info');
       this.log(`[Background] [结果] 源根目录: ${JSON.stringify(result.sourceRoots)}`, 'info');
       this.log(`[Background] [结果] 检测详情: ${JSON.stringify(result.detectionDetails)}`, 'info');
+      
+      // ✅ 阶段 3: 检测项目类型和后端语言
+      this.log('[Background] [阶段 3] 开始检测项目类型和后端语言...', 'info');
+      const projectTypeInfo = await this.detectProjectType(rootPath, result);
+      this.log(`[Background] [阶段 3] ✅ 项目类型检测完成: ${projectTypeInfo.projectType} (后端语言: ${projectTypeInfo.backendLanguage})`, 'info');
+      
+      // ✅ 阶段 4: 加载 Git 分支
+      this.log('[Background] [阶段 4] 开始加载 Git 分支...', 'info');
+      const branches = await this.loadGitBranches(rootPath);
+      this.log(`[Background] [阶段 4] ✅ 加载完成，找到 ${branches.length} 个分支`, 'info');
+      
       this.log(`[Background] ========== 后台分析完成 ==========`, 'info');
 
       // ✅ 更新 UI 状态为就绪
@@ -238,13 +249,29 @@ export default class DiffSense implements vscode.WebviewViewProvider {
           data: result
         });
         
+        // ✅ 发送项目类型检测结果（Toolbar 需要）
+        this._view.postMessage({
+          command: 'projectTypeDetected',
+          projectType: projectTypeInfo.projectType,
+          backendLanguage: projectTypeInfo.backendLanguage,
+          frontendPaths: result.sourceRoots || []
+        });
+        
+        // ✅ 发送分支列表（Toolbar 需要）
+        if (branches.length > 0) {
+          this._view.postMessage({
+            command: 'branchesLoaded',
+            branches: branches
+          });
+        }
+        
         // 同时发送推理结果（兼容旧代码）
         this._view.postMessage({
           command: 'projectInferenceResult',
           data: result
         });
         
-        this.log('[UI] ✅ 已发送项目分析结果到前端', 'info');
+        this.log('[UI] ✅ 已发送项目分析结果、类型检测和分支列表到前端', 'info');
       }
 
       // 清理取消令牌
@@ -259,6 +286,124 @@ export default class DiffSense implements vscode.WebviewViewProvider {
       this.log(`[Background] [错误堆栈] ${error instanceof Error ? error.stack : 'N/A'}`, 'error');
       this.updateUIState(PluginState.ERROR, `分析失败: ${errorMsg}`);
     }
+  }
+
+  /**
+   * ✅ 检测项目类型和后端语言
+   */
+  private async detectProjectType(rootPath: string, inferenceResult: any): Promise<{
+    projectType: 'backend' | 'frontend' | 'mixed' | 'unknown',
+    backendLanguage: 'java' | 'golang' | 'unknown'
+  }> {
+    try {
+      let hasBackend = false;
+      let hasFrontend = false;
+      let backendLanguage: 'java' | 'golang' | 'unknown' = 'unknown';
+      
+      // 检查文件系统以确定项目类型
+      const checkPath = (relativePath: string): boolean => {
+        return fs.existsSync(path.join(rootPath, relativePath));
+      };
+      
+      // 检测后端语言
+      if (checkPath('pom.xml') || checkPath('build.gradle') || checkPath('build.gradle.kts')) {
+        hasBackend = true;
+        backendLanguage = 'java';
+        this.log('[Detect] 检测到 Java 项目 (Maven/Gradle)', 'info');
+      } else if (checkPath('go.mod') || checkPath('Gopkg.toml') || checkPath('glide.yaml')) {
+        hasBackend = true;
+        backendLanguage = 'golang';
+        this.log('[Detect] 检测到 Golang 项目', 'info');
+      }
+      
+      // 检测前端
+      const frontendIndicators = [
+        'package.json',
+        'vite.config.js', 'vite.config.ts',
+        'next.config.js', 'next.config.ts',
+        'webpack.config.js', 'webpack.config.ts',
+        'angular.json',
+        'vue.config.js'
+      ];
+      
+      for (const indicator of frontendIndicators) {
+        if (checkPath(indicator)) {
+          hasFrontend = true;
+          this.log(`[Detect] 检测到前端项目 (${indicator})`, 'info');
+          break;
+        }
+      }
+      
+      // 检查源根目录（从推理结果）
+      if (inferenceResult.sourceRoots && inferenceResult.sourceRoots.length > 0) {
+        hasFrontend = true; // 如果有前端根目录，说明有前端代码
+        this.log('[Detect] 从推理结果检测到前端根目录', 'info');
+      }
+      
+      // 确定项目类型
+      let projectType: 'backend' | 'frontend' | 'mixed' | 'unknown' = 'unknown';
+      if (hasBackend && hasFrontend) {
+        projectType = 'mixed';
+      } else if (hasBackend) {
+        projectType = 'backend';
+      } else if (hasFrontend) {
+        projectType = 'frontend';
+      }
+      
+      this.log(`[Detect] 最终项目类型: ${projectType}, 后端语言: ${backendLanguage}`, 'info');
+      
+      return { projectType, backendLanguage };
+    } catch (error) {
+      this.log(`[Detect] 项目类型检测失败: ${error}`, 'error');
+      return { projectType: 'unknown', backendLanguage: 'unknown' };
+    }
+  }
+
+  /**
+   * ✅ 加载 Git 分支列表
+   */
+  private async loadGitBranches(rootPath: string): Promise<string[]> {
+    return new Promise((resolve) => {
+      try {
+        execFile('git', ['branch', '-a'], { cwd: rootPath, timeout: 5000 }, (error, stdout, stderr) => {
+          if (error) {
+            this.log(`[Git] 加载分支失败: ${error.message}`, 'warn');
+            resolve([]);
+            return;
+          }
+          
+          // 解析分支列表
+          const branches: string[] = [];
+          const lines = stdout.split('\n');
+          
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith('*')) continue;
+            
+            // 处理远程分支 (remotes/origin/xxx)
+            if (trimmed.startsWith('remotes/')) {
+              const branchName = trimmed.replace(/^remotes\/[^/]+\//, '');
+              if (branchName && !branches.includes(branchName) && branchName !== 'HEAD') {
+                branches.push(branchName);
+              }
+            } else {
+              // 本地分支
+              if (!branches.includes(trimmed)) {
+                branches.push(trimmed);
+              }
+            }
+          }
+          
+          // 排序并去重
+          const uniqueBranches = Array.from(new Set(branches)).sort();
+          this.log(`[Git] 找到 ${uniqueBranches.length} 个分支: ${uniqueBranches.slice(0, 5).join(', ')}${uniqueBranches.length > 5 ? '...' : ''}`, 'info');
+          resolve(uniqueBranches);
+        });
+      } catch (error) {
+        this.log(`[Git] 加载分支异常: ${error}`, 'error');
+        resolve([]);
+      }
+    });
   }
 
   /**
