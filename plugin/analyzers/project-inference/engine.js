@@ -15,6 +15,10 @@ class ProjectInferenceEngine {
             new ViteProvider(),
             new DefaultProvider()
         ];
+        // ✅ 将 logger 传递给所有 providers
+        this.providers.forEach(provider => {
+            provider.logger = this.logger;
+        });
     }
 
     /**
@@ -23,22 +27,26 @@ class ProjectInferenceEngine {
      * @param {function(string)} [onProgress] - Optional progress callback
      */
     async infer(rootDir, preScannedFileTree, onProgress) {
-        this.logger.log(`Starting project inference for ${rootDir}`);
+        this.logger.log(`[阶段 2] 开始项目推理: ${rootDir}`);
         
+        // ✅ 阶段 2.1: 文件扫描（如果未提供）
         const fileTree = preScannedFileTree || await this.scanFilesAsync(rootDir, onProgress);
+        const fileCount = fileTree.files ? fileTree.files.length : 0;
+        this.logger.log(`[阶段 2.1] ✅ 文件扫描完成，共 ${fileCount} 个文件`);
         
-        // 1. Detect Providers
+        // ✅ 阶段 2.2: 检测 Providers
+        this.logger.log(`[阶段 2.2] 开始检测项目类型提供者...`);
         const detectionResults = [];
         for (const provider of this.providers) {
             const score = await provider.detect(rootDir, fileTree);
-            this.logger.log(`Provider ${provider.name} score: ${score}`);
+            this.logger.log(`[阶段 2.2] Provider ${provider.name} 得分: ${score}`);
             if (score > 0) {
                 detectionResults.push({ provider, score });
             }
         }
+        this.logger.log(`[阶段 2.2] ✅ 检测完成，找到 ${detectionResults.length} 个匹配的提供者`);
 
-        // 2. Select Best Provider
-        // Sort by score descending
+        // ✅ 阶段 2.3: 选择最佳 Provider
         detectionResults.sort((a, b) => b.score - a.score);
         
         const bestMatch = detectionResults[0];
@@ -46,24 +54,32 @@ class ProjectInferenceEngine {
         
         if (bestMatch) {
             selectedProvider = bestMatch.provider;
+            this.logger.log(`[阶段 2.3] 选择最佳提供者: ${selectedProvider.name} (得分: ${bestMatch.score})`);
+        } else {
+            this.logger.log(`[阶段 2.3] 使用默认提供者: ${selectedProvider.name}`);
         }
 
-        this.logger.log(`Selected Provider: ${selectedProvider.name}`);
-
-        // 3. Infer Roots
+        // ✅ 阶段 2.4: 推断源根目录
+        this.logger.log(`[阶段 2.4] 开始推断源根目录...`);
         const sourceRoots = await selectedProvider.inferSourceRoots(rootDir, fileTree);
+        this.logger.log(`[阶段 2.4] ✅ 推断完成，找到 ${sourceRoots.length} 个源根目录: ${JSON.stringify(sourceRoots)}`);
 
-        return {
+        const result = {
             projectType: selectedProvider.name,
             sourceRoots,
             detectionDetails: detectionResults.map(d => ({ name: d.provider.name, score: d.score }))
         };
+        
+        this.logger.log(`[阶段 2] ✅ 项目推理完成`);
+        return result;
     }
 
     async scanFilesAsync(rootDir, onProgress) {
+        this.logger.log(`[阶段 1] 开始文件扫描: ${rootDir}`);
         const fileWorldModel = [];
         const IGNORE_DIRS = new Set(['.git', 'node_modules', 'dist', 'build', 'coverage', '.idea', '.vscode', 'target', 'out']);
         let scannedCount = 0;
+        let skippedCount = 0;
 
         const scanDir = async (dir) => {
             try {
@@ -72,18 +88,16 @@ class ProjectInferenceEngine {
                 for (const entry of entries) {
                     const fullPath = path.join(dir, entry.name);
                     if (entry.isDirectory()) {
-                        if (IGNORE_DIRS.has(entry.name) || entry.name.startsWith('.')) continue;
+                        if (IGNORE_DIRS.has(entry.name) || entry.name.startsWith('.')) {
+                            skippedCount++;
+                            continue;
+                        }
                         tasks.push(scanDir(fullPath));
                     } else {
                         const relativePath = path.relative(rootDir, fullPath).replace(/\\/g, '/');
                         const ext = path.extname(fullPath).toLowerCase();
                         
-                        // Async processing
-                        // We push a promise to tasks if we want to parallelize file reading too, 
-                        // but let's keep it simple for now to avoid too many open files.
-                        // Actually, reading files in parallel might hit ulimit.
-                        // So we await file reading here, but directories are scanned in parallel.
-                        
+                        // ✅ 检测 UI 信号（React/Vue 等）
                         const uiSignals = await this.detectUISignalsAsync(fullPath);
 
                         fileWorldModel.push({
@@ -96,8 +110,11 @@ class ProjectInferenceEngine {
                         });
                         
                         scannedCount++;
+                        // ✅ 每 50 个文件报告一次进度
                         if (onProgress && scannedCount % 50 === 0) {
-                             onProgress(`Scanned ${scannedCount} files...`);
+                             const msg = `[Scan] 已扫描 ${scannedCount} 个文件...`;
+                             onProgress(msg);
+                             this.logger.log(msg);
                         }
                     }
                 }
@@ -112,6 +129,36 @@ class ProjectInferenceEngine {
         };
 
         await scanDir(rootDir);
+        
+        // ✅ 扫描完成，输出统计信息
+        const fileCount = fileWorldModel.length;
+        const langStats = {};
+        fileWorldModel.forEach(file => {
+            const lang = file.languageType || 'unknown';
+            langStats[lang] = (langStats[lang] || 0) + 1;
+        });
+        const topLangs = Object.entries(langStats)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([lang, count]) => `${lang}: ${count}`)
+            .join(', ');
+        
+        this.logger.log(`[阶段 1] ✅ 文件扫描完成`);
+        this.logger.log(`[阶段 1] 统计: 共扫描 ${fileCount} 个文件，跳过 ${skippedCount} 个目录`);
+        this.logger.log(`[阶段 1] 语言分布 (Top 5): ${topLangs}`);
+        
+        // ✅ 检测 React 信号
+        const reactSignals = fileWorldModel.filter(f => 
+            f.uiSignals && (f.uiSignals.includes('react') || f.uiSignals.includes('jsx'))
+        ).length;
+        if (reactSignals > 0) {
+            this.logger.log(`[阶段 1] React 信号检测: 发现 ${reactSignals} 个文件包含 React 特征`);
+        }
+        
+        if (onProgress) {
+            onProgress(`[Scan] 扫描完成: ${fileCount} 个文件`);
+        }
+        
         return { files: fileWorldModel };
     }
 
