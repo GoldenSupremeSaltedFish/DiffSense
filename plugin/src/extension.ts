@@ -267,12 +267,12 @@ export default class DiffSense implements vscode.WebviewViewProvider {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>DiffSense</title>
         <style>
-            body { font-family: 'Segoe UI', sans-serif; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; color: var(--vscode-foreground); background-color: var(--vscode-editor-background); }
+            body { font-family: 'Segoe UI', sans-serif; padding: 0; margin: 0; display: flex; flex-direction: column; height: 100vh; color: var(--vscode-foreground); background-color: var(--vscode-editor-background); overflow: hidden; }
             .spinner { border: 3px solid var(--vscode-widget-border); border-top: 3px solid var(--vscode-progressBar-background); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; display: inline-block; margin-right: 10px; vertical-align: middle; }
             @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
             .hidden { display: none; }
             #content { width: 100%; text-align: left; }
-            .status-container { text-align: left; width: 100%; max-width: 300px; margin: 0 auto; }
+            .status-container { text-align: left; width: 100%; max-width: 400px; margin: 40px auto; padding: 20px; }
             .status-step { display: flex; align-items: center; margin-bottom: 12px; opacity: 0.5; transition: opacity 0.3s; }
             .status-step.active { opacity: 1; font-weight: 600; }
             .status-step.completed { opacity: 1; color: var(--vscode-testing-iconPassed); }
@@ -294,9 +294,31 @@ export default class DiffSense implements vscode.WebviewViewProvider {
             <div id="progress-status" class="sub-status" style="display: none;"></div>
         </div>
 
-        <div id="content" class="hidden">
-            <h3>Analysis Result</h3>
-            <pre id="result-data"></pre>
+        <!-- ✅ 主界面容器（分析完成后显示） -->
+        <div id="main-content" class="hidden" style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+            <div style="padding: 12px; border-bottom: 1px solid var(--vscode-panel-border);">
+                <h3 style="margin: 0; font-size: 14px; font-weight: 600;">DiffSense - 代码影响分析</h3>
+                <div id="project-info" style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-top: 4px;"></div>
+            </div>
+            <div style="flex: 1; padding: 12px; overflow-y: auto;">
+                <div id="ready-message" style="text-align: center; padding: 40px 20px;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
+                    <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">项目分析完成</div>
+                    <div style="font-size: 12px; color: var(--vscode-descriptionForeground); margin-bottom: 24px;">
+                        项目结构已识别，可以开始检测代码变更影响
+                    </div>
+                    <div style="font-size: 11px; color: var(--vscode-descriptionForeground); padding: 12px; background: var(--vscode-input-background); border-radius: 4px; text-align: left; max-width: 500px; margin: 0 auto;">
+                        <div style="margin-bottom: 8px;"><strong>提示：</strong></div>
+                        <div>• 使用工具栏开始分析代码变更</div>
+                        <div>• 查看输出面板获取详细日志</div>
+                        <div>• 分析结果将显示在下方</div>
+                    </div>
+                </div>
+                <div id="analysis-results" style="display: none;">
+                    <h4 style="font-size: 13px; margin-bottom: 12px;">分析结果</h4>
+                    <pre id="result-data" style="background: var(--vscode-textCodeBlock-background); padding: 12px; border-radius: 4px; font-size: 11px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;"></pre>
+                </div>
+            </div>
         </div>
         <script>
             const vscode = acquireVsCodeApi();
@@ -305,9 +327,8 @@ export default class DiffSense implements vscode.WebviewViewProvider {
             const progressStatus = document.getElementById('progress-status');
             const stateStep = document.getElementById('state-step');
             const stateIcon = document.getElementById('state-icon');
-            const content = document.getElementById('content');
             const statusContainer = document.getElementById('status-container');
-            const resultData = document.getElementById('result-data');
+            const mainContent = document.getElementById('main-content');
 
             // ✅ 状态驱动 UI 更新
             function updateState(state, message, details) {
@@ -369,14 +390,71 @@ export default class DiffSense implements vscode.WebviewViewProvider {
                     case 'projectInferenceResult':
                         updateState('ready', '分析完成', '项目结构已识别');
                         
+                        // ✅ 显示主界面，而不是只显示 JSON
                         setTimeout(() => {
                             statusContainer.style.display = 'none';
-                            content.classList.remove('hidden');
-                            resultData.innerText = JSON.stringify(message.data, null, 2);
+                            const mainContent = document.getElementById('main-content');
+                            if (mainContent) {
+                                mainContent.classList.remove('hidden');
+                                
+                                // 显示项目信息
+                                const projectInfo = document.getElementById('project-info');
+                                if (projectInfo && message.data) {
+                                    const roots = message.data.sourceRoots || [];
+                                    const projectType = message.data.projectType || 'unknown';
+                                    let infoHtml = '<span>项目类型: <strong>' + projectType + '</strong></span>';
+                                    if (roots.length > 0) {
+                                        infoHtml += ' | 源根目录: <strong>' + roots.join(', ') + '</strong>';
+                                    }
+                                    projectInfo.innerHTML = infoHtml;
+                                }
+                                
+                                // 可选：在调试模式下显示 JSON（默认隐藏）
+                                const analysisResults = document.getElementById('analysis-results');
+                                const resultData = document.getElementById('result-data');
+                                if (analysisResults && resultData) {
+                                    // 默认隐藏 JSON，只在需要时显示
+                                    // analysisResults.style.display = 'block';
+                                    // resultData.innerText = JSON.stringify(message.data, null, 2);
+                                }
+                            }
+                            
+                            // ✅ 通知 React 应用（如果存在）项目分析已完成
+                            if (window.vscode) {
+                                window.vscode.postMessage({
+                                    command: 'projectAnalysisCompleted',
+                                    data: message.data
+                                });
+                            }
                         }, 1000);
                         break;
                     case 'error':
                         updateState('error', message.text, '请查看输出面板获取详细信息');
+                        
+                        // ✅ 即使失败也显示主界面
+                        setTimeout(() => {
+                            statusContainer.style.display = 'none';
+                            const mainContent = document.getElementById('main-content');
+                            if (mainContent) {
+                                mainContent.classList.remove('hidden');
+                                const readyMessage = document.getElementById('ready-message');
+                                if (readyMessage) {
+                                    const errorText = message.text || '发生未知错误';
+                                    readyMessage.innerHTML = 
+                                        '<div style="font-size: 48px; margin-bottom: 16px;">❌</div>' +
+                                        '<div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">分析失败</div>' +
+                                        '<div style="font-size: 12px; color: var(--vscode-errorForeground); margin-bottom: 24px;">' +
+                                            errorText.replace(/</g, '&lt;').replace(/>/g, '&gt;') +
+                                        '</div>' +
+                                        '<div style="font-size: 11px; color: var(--vscode-descriptionForeground); padding: 12px; background: var(--vscode-input-background); border-radius: 4px; text-align: left; max-width: 500px; margin: 0 auto;">' +
+                                            '<div style="margin-bottom: 8px;"><strong>建议：</strong></div>' +
+                                            '<div>• 查看输出面板获取详细错误信息</div>' +
+                                            '<div>• 检查项目结构是否正确</div>' +
+                                            '<div>• 尝试重新加载插件</div>' +
+                                        '</div>';
+                                }
+                            }
+                        }, 1000);
                         break;
                 }
             });
