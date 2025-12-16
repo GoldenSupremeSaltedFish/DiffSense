@@ -76,8 +76,10 @@ export default class DiffSense implements vscode.WebviewViewProvider {
     // ✅ 立即通知 UI 插件已激活
     this.updateUIState(PluginState.IDLE, 'DiffSense 已激活，准备分析项目...');
 
-    // Handle messages from the webview
-    webviewView.webview.onDidReceiveMessage(data => {
+    // ✅ Handle messages from the webview
+    webviewView.webview.onDidReceiveMessage(async (data) => {
+      this.log(`[Message] 收到前端消息: ${data.command}`, 'info');
+      
       switch (data.command) {
         case 'refresh':
           this.startBackgroundAnalysis();
@@ -88,6 +90,61 @@ export default class DiffSense implements vscode.WebviewViewProvider {
         case 'cancelAnalysis':
           this.cancelBackgroundAnalysis();
           break;
+        case 'analyze':
+          // ✅ 处理分析请求
+          this.log('[Analysis] 收到分析请求', 'info');
+          this.handleAnalysisRequest(data.data).catch((error) => {
+            this.log(`[Analysis] 分析请求处理失败: ${error}`, 'error');
+            this._view?.postMessage({
+              command: 'analysisError',
+              error: error instanceof Error ? error.message : String(error)
+            });
+          });
+          break;
+        case 'getHotspotAnalysis':
+          // ✅ 处理热点分析请求
+          this.log('[Analysis] 收到热点分析请求', 'info');
+          this.handleGetHotspotAnalysis(data.data).catch((error) => {
+            this.log(`[Analysis] 热点分析失败: ${error}`, 'error');
+            this._view?.postMessage({
+              command: 'hotspotAnalysisError',
+              error: error instanceof Error ? error.message : String(error)
+            });
+          });
+          break;
+        case 'detectRevert':
+          // ✅ 处理组件回退检测
+          this.log('[Analysis] 收到组件回退检测请求', 'info');
+          this.handleDetectRevert(data.data).catch((error) => {
+            this.log(`[Analysis] 组件回退检测失败: ${error}`, 'error');
+            this._view?.postMessage({
+              command: 'analysisError',
+              error: error instanceof Error ? error.message : String(error)
+            });
+          });
+          break;
+        case 'reportBug':
+          // ✅ 处理 Bug 汇报
+          this.log('[BugReport] 收到 Bug 汇报请求', 'info');
+          this.handleReportBug(data.data).catch((error) => {
+            this.log(`[BugReport] Bug 汇报处理失败: ${error}`, 'error');
+            vscode.window.showErrorMessage(`Bug 汇报失败: ${error instanceof Error ? error.message : String(error)}`);
+          });
+          break;
+        case 'validateCommitIds':
+          // ✅ 处理 Commit ID 验证
+          this.log('[Validation] 收到 Commit ID 验证请求', 'info');
+          this.handleValidateCommitIds(data.data).catch((error) => {
+            this.log(`[Validation] Commit ID 验证失败: ${error}`, 'error');
+            this._view?.postMessage({
+              command: 'commitValidationResult',
+              valid: false,
+              error: error instanceof Error ? error.message : String(error)
+            });
+          });
+          break;
+        default:
+          this.log(`[Message] 未知命令: ${data.command}`, 'warn');
       }
     });
 
@@ -1774,15 +1831,59 @@ export default class DiffSense implements vscode.WebviewViewProvider {
   }
 
   private getNodeAnalyzerPath(): string {
-    return this.getAnalyzerPath('node-analyzer/analyze.js');
+    // 尝试多个可能的路径
+    const possiblePaths = [
+      path.join(this._extensionUri.fsPath, 'analyzers', 'node-analyzer', 'analyze.js'),
+      path.join(this._extensionUri.fsPath, 'ui', 'node-analyzer', 'analyze.js'),
+      this.getAnalyzerPath('node-analyzer/analyze.js')
+    ];
+    
+    for (const analyzerPath of possiblePaths) {
+      if (fs.existsSync(analyzerPath)) {
+        this.log(`[Path] 找到前端分析器: ${analyzerPath}`, 'info');
+        return analyzerPath;
+      }
+    }
+    
+    // 如果都不存在，返回第一个作为默认值（会在运行时报错）
+    this.log(`[Path] ⚠️ 前端分析器未找到，使用默认路径: ${possiblePaths[0]}`, 'warn');
+    return possiblePaths[0];
   }
 
   private getGolangAnalyzerPath(): string {
-    return this.getAnalyzerPath('golang-analyzer/analyze.js');
+    const possiblePaths = [
+      path.join(this._extensionUri.fsPath, 'analyzers', 'golang-analyzer', 'analyze.js'),
+      path.join(this._extensionUri.fsPath, 'ui', 'golang-analyzer', 'analyze.js'),
+      this.getAnalyzerPath('golang-analyzer/analyze.js')
+    ];
+    
+    for (const analyzerPath of possiblePaths) {
+      if (fs.existsSync(analyzerPath)) {
+        this.log(`[Path] 找到 Golang 分析器: ${analyzerPath}`, 'info');
+        return analyzerPath;
+      }
+    }
+    
+    this.log(`[Path] ⚠️ Golang 分析器未找到，使用默认路径: ${possiblePaths[0]}`, 'warn');
+    return possiblePaths[0];
   }
 
   private getJavaAnalyzerPath(): string {
-    return this.getAnalyzerPath('gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar');
+    const possiblePaths = [
+      path.join(this._extensionUri.fsPath, 'analyzers', 'gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar'),
+      path.join(this._extensionUri.fsPath, 'target', 'gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar'),
+      this.getAnalyzerPath('gitimpact-1.0-SNAPSHOT-jar-with-dependencies.jar')
+    ];
+    
+    for (const analyzerPath of possiblePaths) {
+      if (fs.existsSync(analyzerPath)) {
+        this.log(`[Path] 找到 Java 分析器: ${analyzerPath}`, 'info');
+        return analyzerPath;
+      }
+    }
+    
+    this.log(`[Path] ⚠️ Java 分析器未找到，使用默认路径: ${possiblePaths[0]}`, 'warn');
+    return possiblePaths[0];
   }
 
   private diagnoseJarEnvironment(): void {
@@ -2287,7 +2388,398 @@ ${codeBlock(String(errorContext))}`;
   }
 
   /**
-   * 处理hotspot分析请求
+   * ✅ 处理分析请求（主要入口）
+   */
+  private async handleAnalysisRequest(data: any) {
+    this.log('[Analysis] ========== 开始代码分析 ==========', 'info');
+    this.log(`[Analysis] 分析参数: ${JSON.stringify(data, null, 2)}`, 'info');
+    
+    // ✅ 发送分析开始消息
+    this._view?.postMessage({
+      command: 'analysisStarted'
+    });
+    
+    try {
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      if (!workspaceFolder) {
+        throw new Error('未找到工作区文件夹');
+      }
+      const repoPath = workspaceFolder.uri.fsPath;
+      
+      const analysisType = data.analysisType || 'backend';
+      const branch = data.branch || 'HEAD';
+      const range = data.range || 'Last 3 commits';
+      
+      this.log(`[Analysis] 工作区: ${repoPath}`, 'info');
+      this.log(`[Analysis] 分析类型: ${analysisType}`, 'info');
+      this.log(`[Analysis] 分支: ${branch}`, 'info');
+      this.log(`[Analysis] 范围: ${range}`, 'info');
+      
+      let result: any;
+      
+      // 根据分析类型选择分析器
+      if (analysisType === 'frontend' || analysisType === 'mixed') {
+        this.log('[Analysis] 使用前端分析器...', 'info');
+        result = await this.runFrontendAnalysis(repoPath, data);
+      } else if (analysisType === 'backend') {
+        // 根据后端语言选择分析器
+        const backendLang = data.backendLanguage || 'java';
+        if (backendLang === 'golang') {
+          this.log('[Analysis] 使用 Golang 分析器...', 'info');
+          result = await this.runGolangAnalysis(repoPath, data);
+        } else {
+          this.log('[Analysis] 使用 Java 分析器...', 'info');
+          result = await this.runJavaAnalysis(repoPath, data);
+        }
+      } else {
+        throw new Error(`不支持的分析类型: ${analysisType}`);
+      }
+      
+      this.log(`[Analysis] ✅ 分析完成，结果包含 ${result.commits?.length || 0} 个提交`, 'info');
+      
+      // ✅ 发送分析结果
+      this._view?.postMessage({
+        command: 'analysisResult',
+        data: result.commits || result
+      });
+      
+      // ✅ 保存分析结果到数据库
+      if (this._databaseService) {
+        await this._databaseService.saveAnalysisResult(
+          repoPath,
+          analysisType,
+          result,
+          data,
+          `分析了 ${result.commits?.length || 0} 个提交`
+        );
+      }
+      
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.log(`[Analysis] ❌ 分析失败: ${errorMsg}`, 'error');
+      this.log(`[Analysis] [错误堆栈] ${error instanceof Error ? error.stack : 'N/A'}`, 'error');
+      
+      // ✅ 记录错误
+      this.addErrorToLog(errorMsg, 'analysis');
+      
+      // ✅ 发送错误消息
+      this._view?.postMessage({
+        command: 'analysisError',
+        error: errorMsg
+      });
+      
+      throw error;
+    }
+  }
+
+  /**
+   * ✅ 执行前端分析
+   */
+  private async runFrontendAnalysis(repoPath: string, options: any): Promise<any> {
+    const nodeAnalyzerPath = this.getNodeAnalyzerPath();
+    if (!fs.existsSync(nodeAnalyzerPath)) {
+      throw new Error(`前端分析器不存在: ${nodeAnalyzerPath}`);
+    }
+    
+    this.log(`[Analysis] 前端分析器路径: ${nodeAnalyzerPath}`, 'info');
+    
+    // 构建命令行参数
+    const args: string[] = [nodeAnalyzerPath, repoPath, '--format', 'json'];
+    
+    if (options.branch) {
+      args.push('--branch', options.branch);
+    }
+    
+    if (options.range) {
+      if (options.range.startsWith('Last ')) {
+        const count = parseInt(options.range.replace('Last ', '').replace(' commits', ''));
+        args.push('--commits', count.toString());
+      } else if (options.range === 'Today') {
+        args.push('--since', 'today');
+      } else if (options.range === 'This week') {
+        args.push('--since', '1 week ago');
+      }
+    }
+    
+    if (options.startCommit && options.endCommit) {
+      args.push('--start-commit', options.startCommit);
+      args.push('--end-commit', options.endCommit);
+    }
+    
+    if (options.frontendPath) {
+      args.push('--frontend-path', options.frontendPath);
+    }
+    
+    this.log(`[Analysis] 执行命令: node ${args.join(' ')}`, 'info');
+    
+    return new Promise((resolve, reject) => {
+      execFile('node', args, {
+        cwd: repoPath,
+        timeout: 300000, // 5分钟超时
+        maxBuffer: 1024 * 1024 * 10 // 10MB
+      }, (error, stdout, stderr) => {
+        if (error) {
+          this.log(`[Analysis] 前端分析器执行错误: ${error.message}`, 'error');
+          if (stderr) {
+            this.log(`[Analysis] stderr: ${stderr}`, 'error');
+          }
+          reject(error);
+          return;
+        }
+        
+        // ✅ 所有输出都记录日志
+        if (stderr) {
+          this.log(`[Analysis] [前端分析器输出] ${stderr}`, 'info');
+        }
+        
+        try {
+          const result = JSON.parse(stdout);
+          this.log(`[Analysis] ✅ 前端分析完成`, 'info');
+          resolve(result);
+        } catch (parseError) {
+          this.log(`[Analysis] ❌ 解析分析结果失败: ${parseError}`, 'error');
+          this.log(`[Analysis] [原始输出] ${stdout.substring(0, 500)}`, 'error');
+          reject(new Error(`解析分析结果失败: ${parseError}`));
+        }
+      });
+    });
+  }
+
+  /**
+   * ✅ 执行 Golang 分析
+   */
+  private async runGolangAnalysis(repoPath: string, options: any): Promise<any> {
+    const golangAnalyzerPath = this.getGolangAnalyzerPath();
+    if (!fs.existsSync(golangAnalyzerPath)) {
+      throw new Error(`Golang 分析器不存在: ${golangAnalyzerPath}`);
+    }
+    
+    this.log(`[Analysis] Golang 分析器路径: ${golangAnalyzerPath}`, 'info');
+    
+    // 类似前端分析的实现
+    const args: string[] = [golangAnalyzerPath, repoPath, '--format', 'json'];
+    
+    if (options.branch) {
+      args.push('--branch', options.branch);
+    }
+    
+    this.log(`[Analysis] 执行命令: node ${args.join(' ')}`, 'info');
+    
+    return new Promise((resolve, reject) => {
+      execFile('node', args, {
+        cwd: repoPath,
+        timeout: 300000,
+        maxBuffer: 1024 * 1024 * 10
+      }, (error, stdout, stderr) => {
+        if (error) {
+          this.log(`[Analysis] Golang 分析器执行错误: ${error.message}`, 'error');
+          if (stderr) {
+            this.log(`[Analysis] stderr: ${stderr}`, 'error');
+          }
+          reject(error);
+          return;
+        }
+        
+        if (stderr) {
+          this.log(`[Analysis] [Golang分析器输出] ${stderr}`, 'info');
+        }
+        
+        try {
+          const result = JSON.parse(stdout);
+          this.log(`[Analysis] ✅ Golang 分析完成`, 'info');
+          resolve(result);
+        } catch (parseError) {
+          this.log(`[Analysis] ❌ 解析分析结果失败: ${parseError}`, 'error');
+          reject(new Error(`解析分析结果失败: ${parseError}`));
+        }
+      });
+    });
+  }
+
+  /**
+   * ✅ 执行 Java 分析
+   */
+  private async runJavaAnalysis(repoPath: string, options: any): Promise<any> {
+    const javaAnalyzerPath = this.getJavaAnalyzerPath();
+    if (!fs.existsSync(javaAnalyzerPath)) {
+      throw new Error(`Java 分析器不存在: ${javaAnalyzerPath}`);
+    }
+    
+    this.log(`[Analysis] Java 分析器路径: ${javaAnalyzerPath}`, 'info');
+    
+    // Java 分析器使用 JAR 文件
+    const args: string[] = [
+      '-jar', javaAnalyzerPath,
+      '--target-dir', repoPath,
+      '--format', 'json'
+    ];
+    
+    if (options.branch) {
+      args.push('--branch', options.branch);
+    }
+    
+    this.log(`[Analysis] 执行命令: java ${args.join(' ')}`, 'info');
+    
+    return new Promise((resolve, reject) => {
+      execFile('java', args, {
+        cwd: repoPath,
+        timeout: 300000,
+        maxBuffer: 1024 * 1024 * 10
+      }, (error, stdout, stderr) => {
+        if (error) {
+          this.log(`[Analysis] Java 分析器执行错误: ${error.message}`, 'error');
+          if (stderr) {
+            this.log(`[Analysis] stderr: ${stderr}`, 'error');
+          }
+          reject(error);
+          return;
+        }
+        
+        if (stderr) {
+          this.log(`[Analysis] [Java分析器输出] ${stderr}`, 'info');
+        }
+        
+        try {
+          const result = JSON.parse(stdout);
+          this.log(`[Analysis] ✅ Java 分析完成`, 'info');
+          resolve(result);
+        } catch (parseError) {
+          this.log(`[Analysis] ❌ 解析分析结果失败: ${parseError}`, 'error');
+          reject(new Error(`解析分析结果失败: ${parseError}`));
+        }
+      });
+    });
+  }
+
+  /**
+   * ✅ 处理 Bug 汇报
+   */
+  private async handleReportBug(reportData: any) {
+    this.log('[BugReport] ========== 处理 Bug 汇报 ==========', 'info');
+    
+    try {
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      const workspacePath = workspaceFolder?.uri.fsPath || '未知路径';
+      
+      // ✅ 收集系统信息
+      const systemInfo = {
+        os: process.platform,
+        arch: process.arch,
+        nodeVersion: process.version,
+        vscodeVersion: vscode.version,
+        extensionVersion: this.context.extension.packageJSON.version
+      };
+      
+      // ✅ 收集 Git 信息
+      const gitInfo = await this.collectGitInfo(workspacePath);
+      
+      // ✅ 收集最近的错误
+      const recentErrors = this.getRecentErrors();
+      
+      // ✅ 构建完整的报告数据
+      const fullReportData = {
+        ...reportData,
+        systemInfo,
+        gitInfo,
+        recentErrors,
+        commitInfo: gitInfo,
+        analysisParams: {
+          projectType: reportData.projectType,
+          analysisScope: reportData.analysisScope,
+          backendLanguage: reportData.backendLanguage
+        }
+      };
+      
+      // ✅ 生成 Issue 标题和正文
+      const title = this.generateIssueTitle(fullReportData, systemInfo);
+      const body = this.generateIssueBody(fullReportData);
+      
+      this.log(`[BugReport] Issue 标题: ${title}`, 'info');
+      this.log(`[BugReport] Issue 正文长度: ${body.length} 字符`, 'info');
+      
+      // ✅ 获取仓库 URL（从 Git 信息）
+      let repoUrl = gitInfo.remoteUrl || '';
+      if (!repoUrl || repoUrl.includes('Error:')) {
+        // 尝试从其他来源获取
+        repoUrl = 'https://github.com/yourorg/diffsense'; // 默认仓库
+        this.log('[BugReport] ⚠️ 无法获取仓库 URL，使用默认值', 'warn');
+      }
+      
+      // ✅ 构建 GitHub Issue URL
+      const issueUrl = this.buildGitHubIssueUrl(repoUrl, title, body);
+      
+      this.log(`[BugReport] ✅ Issue URL 已生成: ${issueUrl.substring(0, 100)}...`, 'info');
+      
+      // ✅ 打开浏览器
+      vscode.env.openExternal(vscode.Uri.parse(issueUrl));
+      
+      // ✅ 显示成功消息
+      vscode.window.showInformationMessage('Bug 汇报页面已在浏览器中打开');
+      
+      this.log('[BugReport] ✅ Bug 汇报处理完成', 'info');
+      
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.log(`[BugReport] ❌ Bug 汇报处理失败: ${errorMsg}`, 'error');
+      throw error;
+    }
+  }
+
+  /**
+   * ✅ 验证 Commit ID
+   */
+  private async handleValidateCommitIds(data: { branch: string, startCommit: string, endCommit: string }) {
+    try {
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      if (!workspaceFolder) {
+        throw new Error('未找到工作区文件夹');
+      }
+      const repoPath = workspaceFolder.uri.fsPath;
+      
+      this.log(`[Validation] 验证 Commit ID: ${data.startCommit} -> ${data.endCommit}`, 'info');
+      
+      // 验证两个 commit 是否存在
+      const validateCommit = (commitId: string): Promise<boolean> => {
+        return new Promise((resolve) => {
+          execFile('git', ['rev-parse', '--verify', commitId], { cwd: repoPath, timeout: 5000 }, (error) => {
+            resolve(!error);
+          });
+        });
+      };
+      
+      const [startValid, endValid] = await Promise.all([
+        validateCommit(data.startCommit),
+        validateCommit(data.endCommit)
+      ]);
+      
+      if (startValid && endValid) {
+        this.log('[Validation] ✅ Commit ID 验证通过', 'info');
+        this._view?.postMessage({
+          command: 'commitValidationResult',
+          valid: true
+        });
+      } else {
+        const errorMsg = `无效的 Commit ID: ${!startValid ? data.startCommit : ''} ${!endValid ? data.endCommit : ''}`;
+        this.log(`[Validation] ❌ ${errorMsg}`, 'error');
+        this._view?.postMessage({
+          command: 'commitValidationResult',
+          valid: false,
+          error: errorMsg
+        });
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.log(`[Validation] ❌ 验证失败: ${errorMsg}`, 'error');
+      this._view?.postMessage({
+        command: 'commitValidationResult',
+        valid: false,
+        error: errorMsg
+      });
+    }
+  }
+
+  /**
+   * ✅ 处理hotspot分析请求
    */
   private async handleGetHotspotAnalysis(data: { 
     limit?: number;
@@ -2320,12 +2812,12 @@ ${codeBlock(String(errorContext))}`;
         excludePatterns: data.excludePatterns || []
       };
 
-      this.log(`执行热点分析，参数: ${JSON.stringify(options)}`);
+      this.log(`[Hotspot] 执行热点分析，参数: ${JSON.stringify(options)}`, 'info');
       
       const result = await this._databaseService.analyzeHotspots(repoPath, options);
       
-      this.log(`热点分析完成，发现 ${result.hotspots.length} 个热点文件`);
-      this.log(`统计信息: ${JSON.stringify(result.summary, null, 2)}`);
+      this.log(`[Hotspot] ✅ 热点分析完成，发现 ${result.hotspots.length} 个热点文件`, 'info');
+      this.log(`[Hotspot] 统计信息: ${JSON.stringify(result.summary, null, 2)}`, 'info');
       
       this._view?.postMessage({
         command: 'hotspotAnalysisResult',
@@ -2335,20 +2827,20 @@ ${codeBlock(String(errorContext))}`;
       });
       
     } catch (error) {
-      this.log(`热点分析失败: ${error instanceof Error ? error.message : String(error)}`, 'error');
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.log(`[Hotspot] ❌ 热点分析失败: ${errorMsg}`, 'error');
       this._view?.postMessage({
-        command: 'hotspotAnalysisResult',
-        error: error instanceof Error ? error.message : String(error)
+        command: 'hotspotAnalysisError',
+        error: errorMsg
       });
       
       // 记录错误到数据库
       if (this._databaseService) {
-        await this._databaseService.logError({
-          timestamp: Date.now(),
-          file: 'hotspot-analysis',
-          action: 'get-hotspot-analysis',
-          message: `Failed to get hotspot analysis: ${error instanceof Error ? error.message : String(error)}`
-        });
+        await this._databaseService.logError(
+          'get-hotspot-analysis',
+          `Failed to get hotspot analysis: ${errorMsg}`,
+          'hotspot-analysis'
+        );
       }
     }
   }
