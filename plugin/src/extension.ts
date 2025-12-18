@@ -110,7 +110,15 @@ export default class DiffSense implements vscode.WebviewViewProvider {
             this.log('[Message] 处理 cancelAnalysis 命令', 'info');
             this.cancelBackgroundAnalysis();
             break;
-          case 'analyze':
+          case 'test':
+          // ✅ 测试消息处理
+          this.log('[Message] ✅ 收到测试消息，VSCode API 通信正常', 'info');
+          this._view?.postMessage({
+            command: 'testResponse',
+            data: '后端收到测试消息'
+          });
+          break;
+        case 'analyze':
             // ✅ 处理分析请求
             this.log('[Message] ========== 开始处理分析请求 ==========', 'info');
             this.log(`[Message] 分析数据: ${JSON.stringify(data.data, null, 2)}`, 'info');
@@ -577,18 +585,40 @@ export default class DiffSense implements vscode.WebviewViewProvider {
           }
         );
         
-        // ✅ 注入 VSCode API（如果 HTML 中没有）
-        if (!html.includes('acquireVsCodeApi')) {
-          const vscodeApiScript = `
+        // ✅ 注入 VSCode API（确保总是注入，即使 HTML 中已有）
+        // 移除旧的脚本（如果有）
+        html = html.replace(/<script[^>]*>[\s\S]*?acquireVsCodeApi[\s\S]*?<\/script>/gi, '');
+        
+        const vscodeApiScript = `
             <script>
               (function() {
-                const vscode = acquireVsCodeApi();
-                window.vscode = vscode;
+                try {
+                  console.log('[VSCode API] 正在初始化 VSCode API...');
+                  const vscode = acquireVsCodeApi();
+                  window.vscode = vscode;
+                  window.acquireVsCodeApi = function() { return vscode; };
+                  console.log('[VSCode API] ✅ VSCode API 初始化成功', vscode);
+                  
+                  // 测试消息发送
+                  setTimeout(() => {
+                    console.log('[VSCode API] 发送测试消息...');
+                    vscode.postMessage({ command: 'test', data: 'VSCode API 测试' });
+                  }, 1000);
+                } catch (error) {
+                  console.error('[VSCode API] ❌ 初始化失败:', error);
+                  // 提供 Mock API 用于开发
+                  window.vscode = {
+                    postMessage: (message) => {
+                      console.warn('[VSCode API] Mock postMessage:', message);
+                    },
+                    getState: () => ({}),
+                    setState: () => {}
+                  };
+                }
               })();
             </script>
           `;
-          html = html.replace('</head>', vscodeApiScript + '</head>');
-        }
+        html = html.replace('</head>', vscodeApiScript + '</head>');
         
         this.log('[UI] ✅ React 前端 HTML 已加载并处理', 'info');
         return html;
