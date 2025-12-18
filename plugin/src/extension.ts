@@ -2483,65 +2483,133 @@ ${codeBlock(String(errorContext))}`;
     
     this.log(`[Analysis] 前端分析器路径: ${nodeAnalyzerPath}`, 'info');
     
-    // 构建命令行参数
-    const args: string[] = [nodeAnalyzerPath, repoPath, '--format', 'json'];
+    // ✅ 确定目标目录：如果指定了 frontendPath，使用它；否则使用仓库根目录
+    const targetDir = options.frontendPath 
+      ? path.join(repoPath, options.frontendPath)
+      : repoPath;
     
-    if (options.branch) {
-      args.push('--branch', options.branch);
+    this.log(`[Analysis] 目标目录: ${targetDir}`, 'info');
+    if (options.frontendPath) {
+      this.log(`[Analysis] 前端路径: ${options.frontendPath}`, 'info');
     }
     
+    // 构建命令行参数（第一个参数是目标目录）
+    const args: string[] = [nodeAnalyzerPath, targetDir, '--format', 'json'];
+    
+    // ✅ 传递分支参数
+    if (options.branch) {
+      args.push('--branch', options.branch);
+      this.log(`[Analysis] 分支参数: ${options.branch}`, 'info');
+    }
+    
+    // ✅ 处理范围参数
     if (options.range) {
       if (options.range.startsWith('Last ')) {
         const count = parseInt(options.range.replace('Last ', '').replace(' commits', ''));
-        args.push('--commits', count.toString());
+        if (!isNaN(count)) {
+          args.push('--commits', count.toString());
+          this.log(`[Analysis] 提交数量参数: ${count}`, 'info');
+        }
       } else if (options.range === 'Today') {
         args.push('--since', 'today');
+        this.log(`[Analysis] 日期范围: today`, 'info');
       } else if (options.range === 'This week') {
         args.push('--since', '1 week ago');
+        this.log(`[Analysis] 日期范围: 1 week ago`, 'info');
+      } else if (options.range === 'Custom Date Range') {
+        // ✅ 处理自定义日期范围
+        if (options.dateFrom) {
+          args.push('--since', options.dateFrom);
+          this.log(`[Analysis] 自定义日期范围开始: ${options.dateFrom}`, 'info');
+        }
+        if (options.dateTo) {
+          args.push('--until', options.dateTo);
+          this.log(`[Analysis] 自定义日期范围结束: ${options.dateTo}`, 'info');
+        }
       }
     }
     
+    // ✅ 处理提交ID范围
     if (options.startCommit && options.endCommit) {
       args.push('--start-commit', options.startCommit);
       args.push('--end-commit', options.endCommit);
+      this.log(`[Analysis] 提交范围: ${options.startCommit}..${options.endCommit}`, 'info');
     }
     
-    if (options.frontendPath) {
-      args.push('--frontend-path', options.frontendPath);
-    }
+    // ✅ 注意：前端路径已经作为第一个参数（targetDir）传递，不需要单独传递
     
     this.log(`[Analysis] 执行命令: node ${args.join(' ')}`, 'info');
     
     return new Promise((resolve, reject) => {
-      execFile('node', args, {
+      this.log(`[Analysis] 开始执行前端分析器...`, 'info');
+      
+      const childProcess = execFile('node', args, {
         cwd: repoPath,
         timeout: 300000, // 5分钟超时
         maxBuffer: 1024 * 1024 * 10 // 10MB
       }, (error, stdout, stderr) => {
         if (error) {
-          this.log(`[Analysis] 前端分析器执行错误: ${error.message}`, 'error');
+          this.log(`[Analysis] ❌ 前端分析器执行错误: ${error.message}`, 'error');
+          if (error.code) {
+            this.log(`[Analysis] 错误代码: ${error.code}`, 'error');
+          }
           if (stderr) {
-            this.log(`[Analysis] stderr: ${stderr}`, 'error');
+            this.log(`[Analysis] [stderr] ${stderr}`, 'error');
+          }
+          if (stdout) {
+            this.log(`[Analysis] [stdout] ${stdout.substring(0, 1000)}`, 'error');
           }
           reject(error);
           return;
         }
         
-        // ✅ 所有输出都记录日志
-        if (stderr) {
-          this.log(`[Analysis] [前端分析器输出] ${stderr}`, 'info');
+        // ✅ 所有输出都记录日志（分析器使用 console.error 输出到 stderr）
+        if (stderr && stderr.trim()) {
+          // 将 stderr 按行分割，逐行记录日志
+          const stderrLines = stderr.trim().split('\n');
+          for (const line of stderrLines) {
+            if (line.trim()) {
+              this.log(`[Analysis] [前端分析器] ${line}`, 'info');
+            }
+          }
         }
         
         try {
+          if (!stdout || !stdout.trim()) {
+            throw new Error('分析器没有返回任何输出');
+          }
+          
           const result = JSON.parse(stdout);
-          this.log(`[Analysis] ✅ 前端分析完成`, 'info');
+          this.log(`[Analysis] ✅ 前端分析完成，结果包含 ${result.commits?.length || 0} 个提交`, 'info');
           resolve(result);
         } catch (parseError) {
           this.log(`[Analysis] ❌ 解析分析结果失败: ${parseError}`, 'error');
-          this.log(`[Analysis] [原始输出] ${stdout.substring(0, 500)}`, 'error');
+          this.log(`[Analysis] [原始输出长度] ${stdout ? stdout.length : 0} 字符`, 'error');
+          if (stdout) {
+            this.log(`[Analysis] [原始输出前500字符] ${stdout.substring(0, 500)}`, 'error');
+          }
           reject(new Error(`解析分析结果失败: ${parseError}`));
         }
       });
+      
+      // ✅ 实时捕获子进程的输出（如果可能）
+      if (childProcess.stdout) {
+        childProcess.stdout.on('data', (data) => {
+          const output = data.toString();
+          if (output.trim()) {
+            this.log(`[Analysis] [stdout] ${output.trim()}`, 'info');
+          }
+        });
+      }
+      
+      if (childProcess.stderr) {
+        childProcess.stderr.on('data', (data) => {
+          const output = data.toString();
+          if (output.trim()) {
+            this.log(`[Analysis] [stderr] ${output.trim()}`, 'info');
+          }
+        });
+      }
     });
   }
 
@@ -2607,48 +2675,150 @@ ${codeBlock(String(errorContext))}`;
     
     this.log(`[Analysis] Java 分析器路径: ${javaAnalyzerPath}`, 'info');
     
-    // Java 分析器使用 JAR 文件
+    // ✅ Java 分析器使用 inspect 命令（InspectCommand）
     const args: string[] = [
       '-jar', javaAnalyzerPath,
-      '--target-dir', repoPath,
-      '--format', 'json'
+      'inspect',  // 使用 inspect 子命令
+      '--branch', options.branch || 'HEAD',
+      '--output', 'json'
     ];
     
-    if (options.branch) {
-      args.push('--branch', options.branch);
+    // ✅ 处理范围参数
+    if (options.range) {
+      if (options.range.startsWith('Last ')) {
+        const count = parseInt(options.range.replace('Last ', '').replace(' commits', ''));
+        if (!isNaN(count)) {
+          args.push('--commits', count.toString());
+          this.log(`[Analysis] 提交数量参数: ${count}`, 'info');
+        }
+      } else if (options.range === 'Today') {
+        // 转换为日期格式 yyyy-MM-dd
+        const today = new Date().toISOString().split('T')[0];
+        args.push('--since', today);
+        this.log(`[Analysis] 日期范围: ${today}`, 'info');
+      } else if (options.range === 'This week') {
+        // 计算一周前的日期
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const weekAgoStr = weekAgo.toISOString().split('T')[0];
+        args.push('--since', weekAgoStr);
+        this.log(`[Analysis] 日期范围: ${weekAgoStr}`, 'info');
+      }
+    }
+    
+    // ✅ 处理自定义日期范围
+    if (options.range === 'Custom Date Range') {
+      if (options.dateFrom) {
+        // 确保日期格式为 yyyy-MM-dd
+        const dateFrom = this.formatDateForJava(options.dateFrom);
+        args.push('--since', dateFrom);
+        this.log(`[Analysis] 自定义日期范围开始: ${dateFrom}`, 'info');
+      }
+      // Java 分析器不支持 --until，只支持 --since
+    }
+    
+    // ✅ 处理提交ID范围（Java分析器不支持，但可以尝试使用 --baseline）
+    if (options.startCommit && options.endCommit) {
+      // 使用 --baseline 参数指定起始提交
+      args.push('--baseline', options.startCommit);
+      this.log(`[Analysis] 基准提交: ${options.startCommit}`, 'info');
+    }
+    
+    // ✅ 添加深度参数（如果有）
+    if (options.maxDepth) {
+      args.push('--depth', options.maxDepth.toString());
     }
     
     this.log(`[Analysis] 执行命令: java ${args.join(' ')}`, 'info');
     
     return new Promise((resolve, reject) => {
-      execFile('java', args, {
+      this.log(`[Analysis] 开始执行 Java 分析器...`, 'info');
+      
+      const childProcess = execFile('java', args, {
         cwd: repoPath,
         timeout: 300000,
         maxBuffer: 1024 * 1024 * 10
       }, (error, stdout, stderr) => {
         if (error) {
-          this.log(`[Analysis] Java 分析器执行错误: ${error.message}`, 'error');
+          this.log(`[Analysis] ❌ Java 分析器执行错误: ${error.message}`, 'error');
+          if (error.code) {
+            this.log(`[Analysis] 错误代码: ${error.code}`, 'error');
+          }
           if (stderr) {
-            this.log(`[Analysis] stderr: ${stderr}`, 'error');
+            this.log(`[Analysis] [stderr] ${stderr}`, 'error');
+          }
+          if (stdout) {
+            this.log(`[Analysis] [stdout] ${stdout.substring(0, 1000)}`, 'error');
           }
           reject(error);
           return;
         }
         
-        if (stderr) {
-          this.log(`[Analysis] [Java分析器输出] ${stderr}`, 'info');
+        // ✅ 所有输出都记录日志
+        if (stderr && stderr.trim()) {
+          const stderrLines = stderr.trim().split('\n');
+          for (const line of stderrLines) {
+            if (line.trim()) {
+              this.log(`[Analysis] [Java分析器] ${line}`, 'info');
+            }
+          }
         }
         
         try {
+          if (!stdout || !stdout.trim()) {
+            throw new Error('Java 分析器没有返回任何输出');
+          }
+          
           const result = JSON.parse(stdout);
-          this.log(`[Analysis] ✅ Java 分析完成`, 'info');
+          this.log(`[Analysis] ✅ Java 分析完成，结果包含 ${Array.isArray(result) ? result.length : 0} 个提交`, 'info');
           resolve(result);
         } catch (parseError) {
           this.log(`[Analysis] ❌ 解析分析结果失败: ${parseError}`, 'error');
+          this.log(`[Analysis] [原始输出长度] ${stdout ? stdout.length : 0} 字符`, 'error');
+          if (stdout) {
+            this.log(`[Analysis] [原始输出前500字符] ${stdout.substring(0, 500)}`, 'error');
+          }
           reject(new Error(`解析分析结果失败: ${parseError}`));
         }
       });
+      
+      // ✅ 实时捕获子进程的输出
+      if (childProcess.stdout) {
+        childProcess.stdout.on('data', (data) => {
+          const output = data.toString();
+          if (output.trim()) {
+            this.log(`[Analysis] [stdout] ${output.trim()}`, 'info');
+          }
+        });
+      }
+      
+      if (childProcess.stderr) {
+        childProcess.stderr.on('data', (data) => {
+          const output = data.toString();
+          if (output.trim()) {
+            this.log(`[Analysis] [stderr] ${output.trim()}`, 'info');
+          }
+        });
+      }
     });
+  }
+
+  /**
+   * ✅ 格式化日期为 Java 分析器需要的格式 (yyyy-MM-dd)
+   */
+  private formatDateForJava(dateStr: string): string {
+    try {
+      // 尝试解析各种日期格式
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) {
+        // 如果解析失败，尝试其他格式
+        return dateStr;
+      }
+      return date.toISOString().split('T')[0];
+    } catch (error) {
+      // 如果格式化失败，返回原始字符串
+      return dateStr;
+    }
   }
 
   /**
