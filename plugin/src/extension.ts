@@ -2414,6 +2414,8 @@ ${codeBlock(String(errorContext))}`;
       this.log(`[Analysis] 分析类型: ${analysisType}`, 'info');
       this.log(`[Analysis] 分支: ${branch}`, 'info');
       this.log(`[Analysis] 范围: ${range}`, 'info');
+      this.log(`[Analysis] 前端路径: ${data.frontendPath || '(未指定)'}`, 'info');
+      this.log(`[Analysis] 完整参数: ${JSON.stringify(data, null, 2)}`, 'info');
       
       let result: any;
       
@@ -2482,49 +2484,70 @@ ${codeBlock(String(errorContext))}`;
     }
     
     this.log(`[Analysis] 前端分析器路径: ${nodeAnalyzerPath}`, 'info');
+    this.log(`[Analysis] 仓库根目录: ${repoPath}`, 'info');
+    this.log(`[Analysis] 接收到的前端路径参数: ${options.frontendPath || '(未指定)'}`, 'info');
     
     // ✅ 确定目标目录：如果指定了 frontendPath，使用它；否则使用仓库根目录
-    const targetDir = options.frontendPath 
-      ? path.join(repoPath, options.frontendPath)
-      : repoPath;
-    
-    this.log(`[Analysis] 目标目录: ${targetDir}`, 'info');
+    let targetDir: string;
     if (options.frontendPath) {
-      this.log(`[Analysis] 前端路径: ${options.frontendPath}`, 'info');
+      // 如果 frontendPath 是绝对路径，直接使用；否则与 repoPath 组合
+      if (path.isAbsolute(options.frontendPath)) {
+        targetDir = options.frontendPath;
+      } else {
+        targetDir = path.join(repoPath, options.frontendPath);
+      }
+      this.log(`[Analysis] ✅ 使用前端路径作为目标目录: ${targetDir}`, 'info');
+    } else {
+      targetDir = repoPath;
+      this.log(`[Analysis] ⚠️  未指定前端路径，使用仓库根目录: ${targetDir}`, 'warn');
+    }
+    
+    // 验证目标目录是否存在
+    if (!fs.existsSync(targetDir)) {
+      this.log(`[Analysis] ❌ 目标目录不存在: ${targetDir}`, 'error');
+      throw new Error(`目标目录不存在: ${targetDir}`);
     }
     
     // 构建命令行参数（第一个参数是目标目录）
     const args: string[] = [nodeAnalyzerPath, targetDir, '--format', 'json'];
     
-    // ✅ 传递分支参数
+    // ✅ 传递分支参数（必需，用于Git分析）
     if (options.branch) {
       args.push('--branch', options.branch);
-      this.log(`[Analysis] 分支参数: ${options.branch}`, 'info');
+      this.log(`[Analysis] ✅ 分支参数: ${options.branch}`, 'info');
+    } else {
+      this.log(`[Analysis] ⚠️  未指定分支，Git分析可能失败`, 'warn');
     }
     
-    // ✅ 处理范围参数
+    // ✅ 处理范围参数（必需，用于启用Git分析）
+    let hasGitParams = false;
     if (options.range) {
       if (options.range.startsWith('Last ')) {
         const count = parseInt(options.range.replace('Last ', '').replace(' commits', ''));
         if (!isNaN(count)) {
           args.push('--commits', count.toString());
-          this.log(`[Analysis] 提交数量参数: ${count}`, 'info');
+          hasGitParams = true;
+          this.log(`[Analysis] ✅ 提交数量参数: ${count}`, 'info');
         }
       } else if (options.range === 'Today') {
         args.push('--since', 'today');
-        this.log(`[Analysis] 日期范围: today`, 'info');
+        hasGitParams = true;
+        this.log(`[Analysis] ✅ 日期范围: today`, 'info');
       } else if (options.range === 'This week') {
         args.push('--since', '1 week ago');
-        this.log(`[Analysis] 日期范围: 1 week ago`, 'info');
+        hasGitParams = true;
+        this.log(`[Analysis] ✅ 日期范围: 1 week ago`, 'info');
       } else if (options.range === 'Custom Date Range') {
         // ✅ 处理自定义日期范围
         if (options.dateFrom) {
           args.push('--since', options.dateFrom);
-          this.log(`[Analysis] 自定义日期范围开始: ${options.dateFrom}`, 'info');
+          hasGitParams = true;
+          this.log(`[Analysis] ✅ 自定义日期范围开始: ${options.dateFrom}`, 'info');
         }
         if (options.dateTo) {
           args.push('--until', options.dateTo);
-          this.log(`[Analysis] 自定义日期范围结束: ${options.dateTo}`, 'info');
+          hasGitParams = true;
+          this.log(`[Analysis] ✅ 自定义日期范围结束: ${options.dateTo}`, 'info');
         }
       }
     }
@@ -2533,12 +2556,24 @@ ${codeBlock(String(errorContext))}`;
     if (options.startCommit && options.endCommit) {
       args.push('--start-commit', options.startCommit);
       args.push('--end-commit', options.endCommit);
-      this.log(`[Analysis] 提交范围: ${options.startCommit}..${options.endCommit}`, 'info');
+      hasGitParams = true;
+      this.log(`[Analysis] ✅ 提交范围: ${options.startCommit}..${options.endCommit}`, 'info');
+    }
+    
+    // ✅ 验证Git参数
+    if (!hasGitParams && !options.branch) {
+      this.log(`[Analysis] ⚠️  警告：未提供Git参数，Git分析可能不会启用`, 'warn');
+    } else {
+      this.log(`[Analysis] ✅ Git参数已设置，分析器将启用Git分析`, 'info');
     }
     
     // ✅ 注意：前端路径已经作为第一个参数（targetDir）传递，不需要单独传递
     
-    this.log(`[Analysis] 执行命令: node ${args.join(' ')}`, 'info');
+    this.log(`[Analysis] ========== 前端分析器命令 ==========`, 'info');
+    this.log(`[Analysis] 完整命令: node ${args.join(' ')}`, 'info');
+    this.log(`[Analysis] 工作目录: ${repoPath}`, 'info');
+    this.log(`[Analysis] 目标目录: ${targetDir}`, 'info');
+    this.log(`[Analysis] ====================================`, 'info');
     
     return new Promise((resolve, reject) => {
       this.log(`[Analysis] 开始执行前端分析器...`, 'info');
