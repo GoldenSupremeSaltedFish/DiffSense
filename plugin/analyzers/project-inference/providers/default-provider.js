@@ -12,15 +12,27 @@ class DefaultProvider extends BaseProvider {
     }
 
     async inferSourceRoots(dir, fileTree) {
-        // Implement Plan C logic here
-        // 1. Feature Aggregation
+        // ✅ 阶段 2.4.1: 特征聚合
+        if (this.logger && this.logger.log) {
+            this.logger.log(`[阶段 2.4.1] 开始特征聚合...`);
+        }
         const directoryFeatureGraph = this.aggregateFeatures(fileTree);
+        const dirCount = Object.keys(directoryFeatureGraph).length;
+        if (this.logger && this.logger.log) {
+            this.logger.log(`[阶段 2.4.1] ✅ 特征聚合完成，分析了 ${dirCount} 个目录`);
+        }
         
-        // 2. Semantic Classification (Internal Step)
+        // ✅ 阶段 2.4.2: 语义分类（内部步骤）
         // We really just need to find the top frontend directories
         
-        // 3. Root Inference
+        // ✅ 阶段 2.4.3: 根目录推断
+        if (this.logger && this.logger.log) {
+            this.logger.log(`[阶段 2.4.3] 开始推断前端根目录...`);
+        }
         const roots = this.inferRootsFromGraph(directoryFeatureGraph);
+        if (this.logger && this.logger.log) {
+            this.logger.log(`[阶段 2.4.3] ✅ 推断完成，找到 ${roots.length} 个候选根目录`);
+        }
         return roots;
     }
 
@@ -111,10 +123,26 @@ class DefaultProvider extends BaseProvider {
         const MAX_DEPTH = 4;
         const validRoots = [];
 
+        // ✅ 记录候选目录信息
+        if (this.logger && this.logger.log && topCandidates.length > 0) {
+            const top3 = topCandidates.slice(0, 3).map(c => 
+                `${c.dir} (score: ${c.frontendScore.toFixed(2)})`
+            ).join(', ');
+            this.logger.log(`[阶段 2.4.3] Top 3 候选目录: ${top3}`);
+        }
+
         for (const cand of topCandidates) {
-            if (cand.averageDepth > MAX_DEPTH) continue;
+            if (cand.averageDepth > MAX_DEPTH) {
+                if (this.logger && this.logger.log) {
+                    this.logger.log(`[阶段 2.4.3] 跳过 ${cand.dir}: 深度 ${cand.averageDepth} > ${MAX_DEPTH}`);
+                }
+                continue;
+            }
             if (cand.frontendScore > 0.5) {
                 validRoots.push(cand.dir);
+                if (this.logger && this.logger.log) {
+                    this.logger.log(`[阶段 2.4.3] 有效根目录: ${cand.dir} (score: ${cand.frontendScore.toFixed(2)})`);
+                }
             }
         }
 
@@ -133,7 +161,11 @@ class DefaultProvider extends BaseProvider {
             }
         }
 
-        return [...new Set(finalRoots)].slice(0, 2);
+        const result = [...new Set(finalRoots)].slice(0, 2);
+        if (this.logger && this.logger.log) {
+            this.logger.log(`[阶段 2.4.3] 最终根目录 (过滤子目录后): ${JSON.stringify(result)}`);
+        }
+        return result;
     }
 }
 

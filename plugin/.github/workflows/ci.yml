@@ -2,7 +2,7 @@ name: Plugin CI/CD
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, 'release/**' ]
   pull_request:
     branches: [ main ]
 
@@ -31,7 +31,7 @@ jobs:
   build-and-deploy-artifacts:
     needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/')
     
     # 添加必要的权限
     permissions:

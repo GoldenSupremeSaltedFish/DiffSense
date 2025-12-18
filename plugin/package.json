@@ -35,7 +35,13 @@
     "Testing",
     "Visualization"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onView:diffsense.analysisView",
+    "onCommand:diffsense.runAnalysis",
+    "onCommand:diffsense.refresh",
+    "onCommand:diffsense.showOutput",
+    "onCommand:diffsense.cleanupDatabase"
+  ],
   "main": "dist/extension.js",
   "icon": "icon.png",
   "galleryBanner": {
