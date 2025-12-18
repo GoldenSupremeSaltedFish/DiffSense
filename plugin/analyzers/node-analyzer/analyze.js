@@ -1073,10 +1073,23 @@ class FrontendAnalyzer {
     console.error(`📁 Git仓库根目录: ${repoRoot}`);
     console.error(`📁 分析目标目录: ${this.targetDir}`);
     
+    // ✅ 清理分支名称
+    let branch = this.options.branch || 'HEAD';
+    branch = branch.replace(/^HEAD\s*->\s*/i, '').trim();
+    branch = branch.replace(/[<>|]/g, '').trim();
+    
+    // 如果清理后为空或无效，使用 HEAD
+    if (!branch || branch === '' || branch.includes('->')) {
+      console.error(`⚠️  分支名称无效，使用 HEAD: ${this.options.branch}`);
+      branch = 'HEAD';
+    }
+    
+    console.error(`📝 使用分支: ${branch} (原始: ${this.options.branch || 'HEAD'})`);
+    
     // 使用安全分支切换器
     const branchSwitcher = new SafeBranchSwitcher(repoRoot);
     
-    return await branchSwitcher.safeBranchOperation(this.options.branch || 'HEAD', async () => {
+    return await branchSwitcher.safeBranchOperation(branch, async () => {
       return await this.analyzeCommitsInCurrentBranch(numCommits, repoRoot);
     });
   }
@@ -1087,10 +1100,23 @@ class FrontendAnalyzer {
   async analyzeCommitsInCurrentBranch(numCommits, repoRoot) {
     const commits = [];
     
-    // 获取最近N个提交的信息
-    const branch = this.options.branch || 'HEAD';
+    // ✅ 获取最近N个提交的信息
+    // ✅ 清理分支名称，确保是有效的 Git 引用
+    let branch = this.options.branch || 'HEAD';
+    
+    // 移除 "HEAD -> " 前缀和其他无效字符
+    branch = branch.replace(/^HEAD\s*->\s*/i, '').trim();
+    branch = branch.replace(/[<>|]/g, '').trim();
+    
+    // 如果清理后为空或无效，使用 HEAD
+    if (!branch || branch === '' || branch.includes('->')) {
+      console.error(`⚠️  分支名称无效，使用 HEAD: ${this.options.branch}`);
+      branch = 'HEAD';
+    }
+    
     const logCmd = `git log --format="%H|%s|%an|%ae|%ai" -n ${numCommits} ${branch}`;
     console.error(`📝 执行Git命令: ${logCmd}`);
+    console.error(`📝 分支名称: ${branch} (原始: ${this.options.branch || 'HEAD'})`);
     
     try {
       const logOutput = execSync(logCmd, { cwd: repoRoot, encoding: 'utf-8' });
