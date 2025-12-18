@@ -471,6 +471,43 @@ export default class DiffSense implements vscode.WebviewViewProvider {
   }
 
   /**
+   * ✅ 清理分支名称，移除 "HEAD ->" 前缀和无效字符
+   */
+  private cleanBranchName(branchName: string): string {
+    if (!branchName) return '';
+    
+    // 移除 "HEAD -> " 前缀（Git branch 输出格式）
+    let cleaned = branchName.replace(/^HEAD\s*->\s*/i, '').trim();
+    
+    // 移除 "* " 前缀（当前分支标记）
+    cleaned = cleaned.replace(/^\*\s+/, '').trim();
+    
+    // 移除 "remotes/" 前缀（远程分支）
+    cleaned = cleaned.replace(/^remotes\/[^/]+\//, '');
+    
+    // 移除其他无效字符
+    cleaned = cleaned.replace(/[<>|]/g, '').trim();
+    
+    return cleaned;
+  }
+
+  /**
+   * ✅ 验证分支名称是否为有效的 Git 引用
+   */
+  private isValidBranchName(branchName: string): boolean {
+    if (!branchName || branchName.length === 0) return false;
+    
+    // 排除无效的分支名称
+    const invalidNames = ['HEAD', '->', 'origin', 'remotes'];
+    if (invalidNames.includes(branchName)) return false;
+    
+    // 检查是否包含箭头或其他无效字符
+    if (branchName.includes('->') || branchName.includes('|')) return false;
+    
+    return true;
+  }
+
+  /**
    * ✅ 加载 Git 分支列表
    */
   private async loadGitBranches(rootPath: string): Promise<string[]> {
@@ -489,18 +526,35 @@ export default class DiffSense implements vscode.WebviewViewProvider {
           
           for (const line of lines) {
             const trimmed = line.trim();
-            if (!trimmed || trimmed.startsWith('*')) continue;
+            if (!trimmed) continue;
+            
+            // 清理分支名称
+            let branchName = this.cleanBranchName(trimmed);
+            
+            // 验证分支名称
+            if (!this.isValidBranchName(branchName)) {
+              continue;
+            }
             
             // 处理远程分支 (remotes/origin/xxx)
             if (trimmed.startsWith('remotes/')) {
-              const branchName = trimmed.replace(/^remotes\/[^/]+\//, '');
-              if (branchName && !branches.includes(branchName) && branchName !== 'HEAD') {
+              // 已经通过 cleanBranchName 处理了
+              if (branchName && !branches.includes(branchName)) {
                 branches.push(branchName);
               }
             } else {
-              // 本地分支
-              if (!branches.includes(trimmed)) {
-                branches.push(trimmed);
+              // 本地分支（跳过当前分支标记）
+              if (trimmed.startsWith('*')) {
+                // 当前分支，需要清理
+                branchName = this.cleanBranchName(trimmed);
+                if (this.isValidBranchName(branchName) && !branches.includes(branchName)) {
+                  branches.push(branchName);
+                }
+              } else {
+                // 普通本地分支
+                if (!branches.includes(branchName)) {
+                  branches.push(branchName);
+                }
               }
             }
           }
@@ -2491,13 +2545,23 @@ ${codeBlock(String(errorContext))}`;
       const repoPath = workspaceFolder.uri.fsPath;
       
       const analysisType = data.analysisType || 'backend';
-      const branch = data.branch || 'HEAD';
+      // ✅ 清理分支名称，移除 "HEAD ->" 等无效前缀
+      const rawBranch = data.branch || 'HEAD';
+      const branch = this.cleanBranchName(rawBranch) || 'HEAD';
       const range = data.range || 'Last 3 commits';
       
       this.log(`[Analysis] 工作区: ${repoPath}`, 'info');
       this.log(`[Analysis] 分析类型: ${analysisType}`, 'info');
-      this.log(`[Analysis] 分支: ${branch}`, 'info');
+      this.log(`[Analysis] 分支: ${branch} (原始: ${rawBranch})`, 'info');
       this.log(`[Analysis] 范围: ${range}`, 'info');
+      
+      // ✅ 验证分支名称
+      if (!this.isValidBranchName(branch)) {
+        this.log(`[Analysis] ⚠️  分支名称无效，使用默认值 HEAD: ${branch}`, 'warn');
+        data.branch = 'HEAD';
+      } else {
+        data.branch = branch;
+      }
       this.log(`[Analysis] 前端路径: ${data.frontendPath || '(未指定)'}`, 'info');
       this.log(`[Analysis] 完整参数: ${JSON.stringify(data, null, 2)}`, 'info');
       
@@ -2604,10 +2668,19 @@ ${codeBlock(String(errorContext))}`;
     
     // ✅ 传递分支参数（必需，用于Git分析）
     if (options.branch) {
-      args.push('--branch', options.branch);
-      this.log(`[Analysis] ✅ 分支参数: ${options.branch}`, 'info');
+      // ✅ 清理分支名称，确保是有效的 Git 引用
+      const cleanedBranch = this.cleanBranchName(options.branch);
+      if (this.isValidBranchName(cleanedBranch)) {
+        args.push('--branch', cleanedBranch);
+        this.log(`[Analysis] ✅ 分支参数: ${cleanedBranch} (原始: ${options.branch})`, 'info');
+      } else {
+        // 如果清理后无效，使用默认值
+        this.log(`[Analysis] ⚠️  分支名称无效，使用默认值 HEAD: ${options.branch}`, 'warn');
+        args.push('--branch', 'HEAD');
+      }
     } else {
-      this.log(`[Analysis] ⚠️  未指定分支，Git分析可能失败`, 'warn');
+      this.log(`[Analysis] ⚠️  未指定分支，使用默认值 HEAD`, 'warn');
+      args.push('--branch', 'HEAD');
     }
     
     // ✅ 处理范围参数（必需，用于启用Git分析）
@@ -2754,7 +2827,14 @@ ${codeBlock(String(errorContext))}`;
     const args: string[] = [golangAnalyzerPath, repoPath, '--format', 'json'];
     
     if (options.branch) {
-      args.push('--branch', options.branch);
+      // ✅ 清理分支名称
+      const cleanedBranch = this.cleanBranchName(options.branch);
+      const validBranch = this.isValidBranchName(cleanedBranch) ? cleanedBranch : 'HEAD';
+      args.push('--branch', validBranch);
+      this.log(`[Analysis] ✅ Golang 分析器分支参数: ${validBranch} (原始: ${options.branch})`, 'info');
+    } else {
+      args.push('--branch', 'HEAD');
+      this.log(`[Analysis] ⚠️  未指定分支，使用默认值 HEAD`, 'warn');
     }
     
     this.log(`[Analysis] 执行命令: node ${args.join(' ')}`, 'info');
@@ -2802,12 +2882,19 @@ ${codeBlock(String(errorContext))}`;
     this.log(`[Analysis] Java 分析器路径: ${javaAnalyzerPath}`, 'info');
     
     // ✅ Java 分析器使用 inspect 命令（InspectCommand）
+    // ✅ 清理分支名称
+    const rawBranch = options.branch || 'HEAD';
+    const cleanedBranch = this.cleanBranchName(rawBranch);
+    const validBranch = this.isValidBranchName(cleanedBranch) ? cleanedBranch : 'HEAD';
+    
     const args: string[] = [
       '-jar', javaAnalyzerPath,
       'inspect',  // 使用 inspect 子命令
-      '--branch', options.branch || 'HEAD',
+      '--branch', validBranch,
       '--output', 'json'
     ];
+    
+    this.log(`[Analysis] ✅ Java 分析器分支参数: ${validBranch} (原始: ${rawBranch})`, 'info');
     
     // ✅ 处理范围参数
     if (options.range) {
