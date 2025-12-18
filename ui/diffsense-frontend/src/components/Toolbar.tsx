@@ -259,11 +259,24 @@ const Toolbar = () => {
 
     setIsAnalyzing(true);
     
-    // 使用新的postMessage函数
-    postMessage({
+    // ✅ 添加调试日志
+    console.log('[Toolbar] 准备发送分析请求:', {
       command: 'analyze',
       data: analysisData
     });
+    
+    // 使用新的postMessage函数
+    try {
+      postMessage({
+        command: 'analyze',
+        data: analysisData
+      });
+      console.log('[Toolbar] ✅ 分析请求已发送');
+    } catch (error) {
+      console.error('[Toolbar] ❌ 发送分析请求失败:', error);
+      setIsAnalyzing(false);
+      alert(t('messages.analysisRequestFailed') || '发送分析请求失败，请查看控制台获取详细信息');
+    }
   };
 
   const handleHotspotAnalysis = () => {

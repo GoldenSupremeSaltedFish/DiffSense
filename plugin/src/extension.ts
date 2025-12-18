@@ -61,6 +61,7 @@ export default class DiffSense implements vscode.WebviewViewProvider {
   ) {
     this._view = webviewView.webview;
     this.log('[UI] WebviewView 正在解析...', 'info');
+    this.log(`[UI] Webview 对象: ${this._view ? '已创建' : '未创建'}`, 'info');
 
     webviewView.webview.options = {
       enableScripts: true,
@@ -77,10 +78,23 @@ export default class DiffSense implements vscode.WebviewViewProvider {
     this.updateUIState(PluginState.IDLE, 'DiffSense 已激活，准备分析项目...');
 
     // ✅ Handle messages from the webview
+    // ✅ 确保消息监听器已正确设置
+    this.log('[UI] 设置消息监听器...', 'info');
     webviewView.webview.onDidReceiveMessage(async (data) => {
       this.log(`[Message] ========== 收到前端消息 ==========`, 'info');
-      this.log(`[Message] 命令: ${data.command}`, 'info');
-      this.log(`[Message] 数据: ${JSON.stringify(data, null, 2)}`, 'info');
+      this.log(`[Message] 命令: ${data ? data.command : '(无命令)'}`, 'info');
+      this.log(`[Message] 数据: ${data ? JSON.stringify(data, null, 2) : '(无数据)'}`, 'info');
+      
+      // ✅ 验证数据格式
+      if (!data || typeof data !== 'object') {
+        this.log(`[Message] ❌ 错误：消息格式无效`, 'error');
+        return;
+      }
+      
+      if (!data.command) {
+        this.log(`[Message] ❌ 错误：消息缺少 command 字段`, 'error');
+        return;
+      }
       
       try {
         switch (data.command) {
@@ -2485,15 +2499,22 @@ ${codeBlock(String(errorContext))}`;
         data: result.commits || result
       });
       
-      // ✅ 保存分析结果到数据库
+      // ✅ 保存分析结果到数据库（可选，失败不影响分析功能）
       if (this._databaseService) {
-        await this._databaseService.saveAnalysisResult(
-          repoPath,
-          analysisType,
-          result,
-          data,
-          `分析了 ${result.commits?.length || 0} 个提交`
-        );
+        try {
+          await this._databaseService.saveAnalysisResult(
+            repoPath,
+            analysisType,
+            result,
+            data,
+            `分析了 ${result.commits?.length || 0} 个提交`
+          );
+          this.log('[Analysis] ✅ 分析结果已保存到数据库', 'info');
+        } catch (dbError) {
+          this.log(`[Analysis] ⚠️  保存分析结果到数据库失败（不影响分析功能）: ${dbError}`, 'warn');
+        }
+      } else {
+        this.log('[Analysis] ⚠️  数据库服务未初始化，跳过保存分析结果', 'warn');
       }
       
     } catch (error) {
