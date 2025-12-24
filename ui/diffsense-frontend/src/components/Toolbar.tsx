@@ -422,39 +422,14 @@ const Toolbar = () => {
   };
 
   return (
-    <div className="toolbar-container react-component" style={{
-      display: "flex",
-      flexDirection: "column",
-      gap: "var(--sidebar-gap)",
-      padding: "var(--sidebar-padding)",
-      borderBottom: "1px solid var(--vscode-panel-border, #ccc)"
-    }}>
+    <div className="toolbar-container react-component flex flex-col gap-2 p-2 border-b border-border">
       {/* 语言切换器 */}
-      <div style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        padding: "4px 8px",
-        backgroundColor: "var(--vscode-textBlockQuote-background)",
-        borderRadius: "4px",
-        fontSize: "10px"
-      }}>
-        <span style={{ fontWeight: "600", color: "var(--vscode-foreground)" }}>
-          🌐
-        </span>
+      <div className="flex items-center justify-between px-2 py-1 rounded bg-surface-alt text-xs">
+        <span className="font-semibold text-text">🌐</span>
         <select
           value={currentLanguage}
           onChange={(e) => changeLanguage(e.target.value as any)}
-          style={{
-            flex: 1,
-            marginLeft: "6px",
-            padding: "2px 4px",
-            fontSize: "9px",
-            border: "1px solid var(--vscode-button-border)",
-            borderRadius: "2px",
-            backgroundColor: "var(--vscode-button-secondaryBackground)",
-            color: "var(--vscode-button-secondaryForeground)"
-          }}
+          className="flex-1 ml-2 px-1 py-0.5 text-[10px] rounded border border-border bg-surface text-subtle transition-colors duration-fast ease-standard"
         >
           {supportedLanguages.map(lang => (
             <option key={lang} value={lang}>
@@ -466,19 +441,12 @@ const Toolbar = () => {
 
       {/* 项目类型检测信息 */}
       {projectType !== 'unknown' && (
-        <div style={{
-          padding: "6px 8px",
-          backgroundColor: "var(--vscode-textBlockQuote-background)",
-          border: `1px solid ${getProjectTypeInfo().color}`,
-          borderRadius: "4px",
-          fontSize: "10px",
-          textAlign: "center"
-        }}>
-          <span style={{ color: getProjectTypeInfo().color, fontWeight: "600" }}>
+        <div className="px-2 py-1 rounded bg-surface-alt text-center text-[10px] border border-border">
+          <span className="font-semibold" style={{ color: getProjectTypeInfo().color }}>
             {getProjectTypeInfo().text}
           </span>
           {projectType === 'mixed' && (
-            <div style={{ marginTop: "2px", fontSize: "9px", color: "var(--vscode-descriptionForeground)" }}>
+            <div className="mt-0.5 text-[9px] text-subtle">
               {currentLanguage === 'zh-CN' ? '建议先选择分析范围' : 'Please select analysis scope first'}
             </div>
           )}
@@ -486,9 +454,9 @@ const Toolbar = () => {
       )}
 
       {/* 第1层：分析范围选择 */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-        <label style={{ fontSize: "10px", fontWeight: "600" }}>{t('toolbar.analysisScope')}</label>
-        <div style={{ display: "flex", gap: "2px" }}>
+      <div className="flex flex-col gap-1">
+        <label className="text-[10px] font-semibold">{t('toolbar.analysisScope')}</label>
+        <div className="flex gap-1">
           {[
             { value: 'backend', label: t('toolbar.backendLabel'), title: t('toolbar.backendTitle') },
             { value: 'frontend', label: t('toolbar.frontendLabel'), title: t('toolbar.frontendTitle') },
@@ -499,27 +467,11 @@ const Toolbar = () => {
               onClick={() => setAnalysisScope(option.value as any)}
               disabled={isAnalyzing}
               title={option.title}
-              style={{
-                flex: 1,
-                padding: "4px 6px",
-                fontSize: "9px",
-                border: analysisScope === option.value ? 
-                  '2px solid var(--vscode-button-background)' : 
-                  '1px solid var(--vscode-panel-border)',
-                borderRadius: "2px",
-                backgroundColor: analysisScope === option.value ? 
-                  'var(--vscode-button-background)' : 
-                  'var(--vscode-editor-background)',
-                color: analysisScope === option.value ? 
-                  'var(--vscode-button-foreground)' : 
-                  'var(--vscode-descriptionForeground)',
-                fontWeight: analysisScope === option.value ? '600' : '400',
-                opacity: analysisScope === option.value ? 1 : 0.6,
-                cursor: isAnalyzing ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: analysisScope === option.value ? 
-                  '0 1px 3px rgba(0, 0, 0, 0.2)' : 'none'
-              }}
+              className={`flex-1 px-2 py-1 text-[9px] rounded border transition-all duration-fast ease-standard ${
+                analysisScope === option.value
+                  ? 'bg-accent text-white border-accent shadow-token'
+                  : 'bg-surface text-subtle border-border opacity-80 hover:opacity-100'
+              } ${isAnalyzing ? 'cursor-not-allowed' : 'cursor-pointer'}`}
             >
               {option.label}
             </button>
@@ -529,9 +481,9 @@ const Toolbar = () => {
 
       {/* 第2层：分析模式选择（仅在前端或混合模式下显示） */}
       {(analysisScope === 'frontend' || analysisScope === 'mixed') && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-          <label style={{ fontSize: "10px", fontWeight: "600" }}>分析模式</label>
-          <div style={{ display: "flex", gap: "2px" }}>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-semibold">分析模式</label>
+          <div className="flex gap-1">
             {[
               { value: 'quick', label: '快速', title: '快速模式：<100文件全量分析，≥100文件显示FFIS评分最高的100个' },
               { value: 'deep', label: '深度', title: '深度模式：显示所有文件，完整分析' }
@@ -541,27 +493,11 @@ const Toolbar = () => {
                 onClick={() => setAnalysisMode(option.value as 'quick' | 'deep')}
                 disabled={isAnalyzing}
                 title={option.title}
-                style={{
-                  flex: 1,
-                  padding: "4px 6px",
-                  fontSize: "9px",
-                  border: analysisMode === option.value ? 
-                    '2px solid var(--vscode-button-background)' : 
-                    '1px solid var(--vscode-panel-border)',
-                  borderRadius: "2px",
-                  backgroundColor: analysisMode === option.value ? 
-                    'var(--vscode-button-background)' : 
-                    'var(--vscode-editor-background)',
-                  color: analysisMode === option.value ? 
-                    'var(--vscode-button-foreground)' : 
-                    'var(--vscode-descriptionForeground)',
-                  fontWeight: analysisMode === option.value ? '600' : '400',
-                  opacity: analysisMode === option.value ? 1 : 0.6,
-                  cursor: isAnalyzing ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s ease',
-                  boxShadow: analysisMode === option.value ? 
-                    '0 1px 3px rgba(0, 0, 0, 0.2)' : 'none'
-                }}
+                className={`flex-1 px-2 py-1 text-[9px] rounded border transition-all duration-fast ease-standard ${
+                  analysisMode === option.value
+                    ? 'bg-accent text-white border-accent shadow-token'
+                    : 'bg-surface text-subtle border-border opacity-80 hover:opacity-100'
+                } ${isAnalyzing ? 'cursor-not-allowed' : 'cursor-pointer'}`}
               >
                 {option.label}
               </button>
@@ -571,46 +507,26 @@ const Toolbar = () => {
       )}
 
       {/* 第3层：分析类型选择 */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-        <label style={{ fontSize: "10px", fontWeight: "600" }}>{t('toolbar.analysisTypes')}</label>
-        <div style={{ 
-          display: "flex", 
-          flexDirection: "column", 
-          gap: "2px",
-          maxHeight: "120px",
-          overflowY: "auto"
-        }}>
+      <div className="flex flex-col gap-1">
+        <label className="text-[10px] font-semibold">{t('toolbar.analysisTypes')}</label>
+        <div className="flex flex-col gap-1 max-h-[120px] overflow-y-auto">
           {analysisOptions[analysisScope]?.map(option => (
             <label 
               key={option.id}
-              style={{ 
-                display: "flex", 
-                alignItems: "flex-start", 
-                gap: "6px",
-                padding: "4px",
-                cursor: isAnalyzing ? 'not-allowed' : 'pointer',
-                borderRadius: "2px",
-                backgroundColor: analysisTypes.includes(option.id) ? 
-                  'var(--vscode-list-activeSelectionBackground)' : 
-                  'transparent'
-              }}
+              className={`flex items-start gap-1 px-2 py-1 rounded ${analysisTypes.includes(option.id) ? 'bg-surface-alt' : 'bg-transparent'} ${isAnalyzing ? 'cursor-not-allowed' : 'cursor-pointer'} transition-colors duration-fast ease-standard`}
             >
               <input
                 type="checkbox"
                 checked={analysisTypes.includes(option.id)}
                 onChange={() => handleAnalysisTypeToggle(option.id)}
                 disabled={isAnalyzing}
-                style={{ marginTop: "1px" }}
+                className="mt-0.5"
               />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: "9px", fontWeight: "500" }}>
+              <div className="flex-1">
+                <div className="text-[9px] font-medium">
                   {option.label}
                 </div>
-                <div style={{ 
-                  fontSize: "8px", 
-                  color: "var(--vscode-descriptionForeground)",
-                  lineHeight: "1.2"
-                }}>
+                <div className="text-[8px] text-subtle leading-[1.2]">
                   {option.description}
                 </div>
               </div>
@@ -621,55 +537,41 @@ const Toolbar = () => {
 
       {/* 前端路径输入（仅在前端或混合模式下显示） */}
       {(analysisScope === 'frontend' || analysisScope === 'mixed') && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-          <label style={{ fontSize: "10px", fontWeight: "600" }}>{t('toolbar.frontendPath')}</label>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-semibold">{t('toolbar.frontendPath')}</label>
           <input
             type="text"
             placeholder={t('toolbar.frontendPathPlaceholder')}
             value={frontendPath}
             onChange={(e) => setFrontendPath(e.target.value)}
             disabled={isAnalyzing}
-            style={{
-              padding: "4px",
-              fontSize: "10px",
-              border: "1px solid var(--vscode-input-border)",
-              backgroundColor: "var(--vscode-input-background)",
-              color: "var(--vscode-input-foreground)",
-              borderRadius: "2px"
-            }}
+            className="px-2 py-1 text-[10px] rounded border border-border bg-surface text-text transition-colors duration-fast ease-standard"
           />
-          <div style={{ 
-            fontSize: "8px", 
-            color: "var(--vscode-descriptionForeground)" 
-          }}>
+          <div className="text-[8px] text-subtle">
             {t('toolbar.frontendPathDesc')}
           </div>
         </div>
       )}
 
       {/* 分支选择 */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-        <label style={{ fontSize: "10px", fontWeight: "600" }}>{t('toolbar.gitBranch')}</label>
-        <div style={{ display: "flex", gap: "4px" }}>
+      <div className="flex flex-col gap-1">
+        <label className="text-[10px] font-semibold">{t('toolbar.gitBranch')}</label>
+        <div className="flex gap-1">
           <select 
             value={selectedBranch} 
             onChange={(e) => setSelectedBranch(e.target.value)}
             disabled={isAnalyzing}
-            style={{ flex: 1 }}
+            className="flex-1 px-2 py-1 text-[10px] rounded border border-border bg-surface text-text transition-colors duration-fast ease-standard"
           >
             <option value="">{t('toolbar.selectBranch')}</option>
             {branches.map(branch => (
               <option key={branch} value={branch}>{branch}</option>
             ))}
-      </select>
+          </select>
           <button 
             onClick={handleRefresh}
             disabled={isAnalyzing}
-            style={{ 
-              padding: "2px 6px", 
-              fontSize: "10px",
-              minWidth: "40px"
-            }}
+            className="px-2 py-1 text-[10px] min-w-[40px] rounded border border-border bg-surface text-subtle hover:text-text transition-colors duration-fast ease-standard"
             title={currentLanguage === 'zh-CN' ? '刷新分支列表' : 'Refresh branch list'}
           >
             {t('toolbar.refresh')}
@@ -678,37 +580,31 @@ const Toolbar = () => {
       </div>
 
       {/* 分析范围 */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-        <label style={{ fontSize: "10px", fontWeight: "600" }}>{t('toolbar.analysisRange')}</label>
+      <div className="flex flex-col gap-1">
+        <label className="text-[10px] font-semibold">{t('toolbar.analysisRange')}</label>
         <select 
           value={selectedRange} 
           onChange={(e) => setSelectedRange(e.target.value)}
           disabled={isAnalyzing}
+          className="px-2 py-1 text-[10px] rounded border border-border bg-surface text-text transition-colors duration-fast ease-standard"
         >
           {ranges.map(range => (
             <option key={range} value={range}>{range}</option>
           ))}
-      </select>
+        </select>
       </div>
 
       {/* Commit ID 范围输入 */}
       {isCommitRange && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-          <label style={{ fontSize: "10px", fontWeight: "600" }}>{t('toolbar.commitRange')}</label>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-semibold">{t('toolbar.commitRange')}</label>
           <input
             type="text"
             placeholder={t('toolbar.commitStartPlaceholder')}
             value={startCommitId}
             onChange={(e) => setStartCommitId(e.target.value)}
             disabled={isAnalyzing}
-            style={{
-              padding: "4px",
-              fontSize: "10px",
-              border: "1px solid var(--vscode-input-border)",
-              backgroundColor: "var(--vscode-input-background)",
-              color: "var(--vscode-input-foreground)",
-              borderRadius: "2px"
-            }}
+            className="px-2 py-1 text-[10px] rounded border border-border bg-surface text-text transition-colors duration-fast ease-standard"
           />
           <input
             type="text"
@@ -716,24 +612,12 @@ const Toolbar = () => {
             value={endCommitId}
             onChange={(e) => setEndCommitId(e.target.value)}
             disabled={isAnalyzing}
-            style={{
-              padding: "4px",
-              fontSize: "10px",
-              border: "1px solid var(--vscode-input-border)",
-              backgroundColor: "var(--vscode-input-background)",
-              color: "var(--vscode-input-foreground)",
-              borderRadius: "2px"
-            }}
+            className="px-2 py-1 text-[10px] rounded border border-border bg-surface text-text transition-colors duration-fast ease-standard"
           />
           <button
             onClick={validateCommitIds}
             disabled={isAnalyzing || !startCommitId || !endCommitId}
-            style={{
-              padding: "2px 4px",
-              fontSize: "9px",
-              backgroundColor: "var(--vscode-button-secondaryBackground)",
-              color: "var(--vscode-button-secondaryForeground)"
-            }}
+            className="px-2 py-1 text-[9px] rounded bg-surface-alt text-subtle hover:text-text transition-colors duration-fast ease-standard"
           >
             {t('toolbar.validateCommits')}
           </button>
@@ -742,21 +626,14 @@ const Toolbar = () => {
 
       {/* 自定义日期范围输入 */}
       {isCustomRange && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-          <label style={{ fontSize: "10px", fontWeight: "600" }}>{t('toolbar.dateRange')}</label>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-semibold">{t('toolbar.dateRange')}</label>
           <input
             type="date"
             value={customDateFrom}
             onChange={(e) => setCustomDateFrom(e.target.value)}
             disabled={isAnalyzing}
-            style={{
-              padding: "4px",
-              fontSize: "10px",
-              border: "1px solid var(--vscode-input-border)",
-              backgroundColor: "var(--vscode-input-background)",
-              color: "var(--vscode-input-foreground)",
-              borderRadius: "2px"
-            }}
+            className="px-2 py-1 text-[10px] rounded border border-border bg-surface text-text transition-colors duration-fast ease-standard"
           />
           <input
             type="date"
@@ -764,61 +641,34 @@ const Toolbar = () => {
             value={customDateTo}
             onChange={(e) => setCustomDateTo(e.target.value)}
             disabled={isAnalyzing}
-            style={{
-              padding: "4px",
-              fontSize: "10px",
-              border: "1px solid var(--vscode-input-border)",
-              backgroundColor: "var(--vscode-input-background)",
-              color: "var(--vscode-input-foreground)",
-              borderRadius: "2px"
-            }}
+            className="px-2 py-1 text-[10px] rounded border border-border bg-surface text-text transition-colors duration-fast ease-standard"
           />
         </div>
       )}
 
       {/* 回退检测输入 */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
-        <label style={{ fontSize: '10px', fontWeight: '600' }}>{t('toolbar.baseCommitLabel')}</label>
+      <div className="flex flex-col gap-1 mt-2">
+        <label className="text-[10px] font-semibold">{t('toolbar.baseCommitLabel')}</label>
         <input
           type="text"
           placeholder={t('toolbar.baseCommitPlaceholder')}
           value={baseCommitForRevert}
           onChange={(e) => setBaseCommitForRevert(e.target.value)}
           disabled={isAnalyzing}
-          style={{
-            padding: '4px',
-            fontSize: '10px',
-            border: '1px solid var(--vscode-input-border)',
-            backgroundColor: 'var(--vscode-input-background)',
-            color: 'var(--vscode-input-foreground)',
-            borderRadius: '2px'
-          }}
+          className="px-2 py-1 text-[10px] rounded border border-border bg-surface text-text transition-colors duration-fast ease-standard"
         />
       </div>
 
       {/* 分析按钮和导出按钮 */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '8px',
-        marginTop: '12px'
-      }}>
+      <div className="flex gap-2 mt-3">
         <button 
           onClick={handleAnalyze}
           disabled={!selectedBranch || isAnalyzing}
-          style={{ 
-            flex: 1,
-            fontSize: '11px',
-            padding: '6px 8px',
-            backgroundColor: isAnalyzing ? 
-              'var(--vscode-button-secondaryBackground)' : 
-              'var(--vscode-button-background)',
-            color: isAnalyzing ? 
-              'var(--vscode-button-secondaryForeground)' : 
-              'var(--vscode-button-foreground)',
-            border: 'none',
-            borderRadius: '3px',
-            cursor: isAnalyzing ? 'not-allowed' : 'pointer'
-          }}
+          className={`flex-1 text-[11px] px-2 py-1 rounded transition-colors duration-fast ease-standard ${
+            isAnalyzing
+              ? 'bg-surface-alt text-subtle cursor-not-allowed'
+              : 'bg-accent text-white cursor-pointer'
+          }`}
         >
           {isAnalyzing ? t('toolbar.analyzing') : t('toolbar.startAnalysis')}
         </button>
@@ -827,18 +677,9 @@ const Toolbar = () => {
         <button 
           onClick={handleHotspotAnalysis}
           disabled={!selectedBranch || isAnalyzing}
-          style={{ 
-            fontSize: '10px',
-            padding: '6px 8px',
-            backgroundColor: isAnalyzing ? 
-              'var(--vscode-button-secondaryBackground)' : 
-              '#FF6B35',
-            color: 'white',
-            border: 'none',
-            borderRadius: '3px',
-            cursor: isAnalyzing ? 'not-allowed' : 'pointer',
-            fontWeight: '500'
-          }}
+          className={`text-[10px] px-2 py-1 rounded transition-colors duration-fast ease-standard ${
+            isAnalyzing ? 'bg-surface-alt text-subtle cursor-not-allowed' : 'bg-[#FF6B35] text-white'
+          }`}
           title="分析代码热点 - 识别高风险文件"
         >
           {isAnalyzing ? '分析中...' : '🔥 热点分析'}
@@ -847,15 +688,7 @@ const Toolbar = () => {
         {/* 检测回退按钮 */}
         <button
           onClick={handleDetectRevert}
-          style={{
-            fontSize: '10px',
-            padding: '4px 8px',
-            backgroundColor: 'var(--vscode-button-secondaryBackground)',
-            color: 'var(--vscode-button-secondaryForeground)',
-            border: 'none',
-            borderRadius: '3px',
-            cursor: 'pointer'
-          }}
+          className="text-[10px] px-2 py-1 rounded bg-surface-alt text-subtle transition-colors duration-fast ease-standard"
           title={t('toolbar.detectRevert')}
         >
           {t('toolbar.detectRevert')}
@@ -863,87 +696,26 @@ const Toolbar = () => {
         
         {/* 导出按钮（带下拉菜单） */}
         <div 
-          className="export-button-container"
-          style={{ 
-            position: 'relative',
-            minWidth: '100px'
-          }}
+          className="export-button-container relative min-w-[100px]"
         >
           <button 
             onClick={() => setShowExportMenu(!showExportMenu)}
-            style={{ 
-              fontSize: '10px',
-              padding: '4px 8px',
-              backgroundColor: 'var(--vscode-button-secondaryBackground)',
-              color: 'var(--vscode-button-secondaryForeground)',
-              border: 'none',
-              borderRadius: '3px',
-              cursor: 'pointer',
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '4px'
-            }}
+            className="text-[10px] px-2 py-1 rounded bg-surface-alt text-subtle w-full flex items-center justify-between gap-1 transition-colors duration-fast ease-standard"
           >
             <span>{t('toolbar.export')}</span>
-            <span style={{ fontSize: '8px' }}>▼</span>
+            <span className="text-[8px]">▼</span>
           </button>
           {showExportMenu && (
-            <div style={{
-              position: 'absolute',
-              top: '100%',
-              left: 0,
-              right: 0,
-              marginTop: '2px',
-              backgroundColor: 'var(--vscode-dropdown-background)',
-              border: '1px solid var(--vscode-dropdown-border)',
-              borderRadius: '3px',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-              zIndex: 1000,
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
+            <div className="absolute top-full left-0 right-0 mt-0.5 bg-surface rounded border border-border shadow-token z-10 flex flex-col animate-fade-in">
               <button
                 onClick={() => handleExport('json')}
-                style={{
-                  fontSize: '10px',
-                  padding: '4px 8px',
-                  backgroundColor: 'transparent',
-                  color: 'var(--vscode-foreground)',
-                  border: 'none',
-                  borderRadius: '3px 3px 0 0',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  borderBottom: '1px solid var(--vscode-panel-border)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--vscode-list-hoverBackground)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
+                className="text-[10px] px-2 py-1 text-left rounded-t hover:bg-surface-alt transition-colors duration-fast ease-standard border-b border-border"
               >
                 {t('toolbar.exportJSON')}
               </button>
               <button
                 onClick={() => handleExport('html')}
-                style={{
-                  fontSize: '10px',
-                  padding: '4px 8px',
-                  backgroundColor: 'transparent',
-                  color: 'var(--vscode-foreground)',
-                  border: 'none',
-                  borderRadius: '0 0 3px 3px',
-                  cursor: 'pointer',
-                  textAlign: 'left'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--vscode-list-hoverBackground)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
+                className="text-[10px] px-2 py-1 text-left rounded-b hover:bg-surface-alt transition-colors duration-fast ease-standard"
               >
                 {t('toolbar.exportHTML')}
               </button>
@@ -953,32 +725,11 @@ const Toolbar = () => {
       </div>
 
       {/* Bug汇报按钮 */}
-      <div style={{ 
-        marginTop: '8px'
-      }}>
+      <div className="mt-2">
         <button 
           onClick={handleReportBug}
-          style={{ 
-            width: '100%',
-            fontSize: '10px',
-            padding: '6px 8px',
-            backgroundColor: 'var(--vscode-button-secondaryBackground)',
-            color: 'var(--vscode-button-secondaryForeground)',
-            border: '1px solid var(--vscode-button-border)',
-            borderRadius: '3px',
-            cursor: 'pointer',
-            transition: 'background-color 0.2s',
-            fontWeight: '500'
-          }}
+          className="w-full text-[10px] px-2 py-1 rounded border border-border bg-surface-alt text-subtle hover:text-text transition-colors duration-fast ease-standard font-medium"
           title={t('toolbar.reportBugTitle')}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = 'var(--vscode-button-hoverBackground)';
-            e.currentTarget.style.color = 'var(--vscode-button-foreground)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'var(--vscode-button-secondaryBackground)';
-            e.currentTarget.style.color = 'var(--vscode-button-secondaryForeground)';
-          }}
         >
           {t('toolbar.reportBug')}
         </button>
@@ -986,12 +737,7 @@ const Toolbar = () => {
 
       {/* 状态信息 */}
       {branches.length === 0 && (
-        <div style={{ 
-          fontSize: "9px", 
-          color: "var(--vscode-descriptionForeground)",
-          textAlign: "center",
-          padding: "4px"
-        }}>
+        <div className="text-[9px] text-subtle text-center p-1 animate-fade-in">
           {t('toolbar.loadingBranches')}
         </div>
       )}

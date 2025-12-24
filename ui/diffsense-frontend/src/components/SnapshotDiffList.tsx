@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Collapse from '../ui/motion/Collapse';
 
 interface ChangeItem {
   component: string;
@@ -28,11 +29,7 @@ const SnapshotDiffList: React.FC<SnapshotDiffListProps> = ({ changes }) => {
 
   if (!changes || changes.length === 0) {
     return (
-      <div style={{
-        padding: '12px',
-        color: 'var(--vscode-descriptionForeground)',
-        fontSize: '12px'
-      }}>
+      <div className="p-3 text-subtle text-xs">
         暂未检测到组件变动。
       </div>
     );
@@ -51,74 +48,47 @@ const SnapshotDiffList: React.FC<SnapshotDiffListProps> = ({ changes }) => {
   };
 
   return (
-    <div style={{ padding: '8px', overflowY: 'auto', flex: 1 }}>
+    <div className="p-2 overflow-y-auto flex-1">
       {Object.entries(grouped).map(([key, list]) => {
         const [comp, file] = key.split('|');
         const hasRisk = list.some(item => isRisky(item.changeType));
         const isExpanded = expandedComponents[key];
         return (
-          <div key={key} style={{
-            border: '1px solid var(--vscode-panel-border)',
-            borderRadius: '4px',
-            marginBottom: '6px',
-            backgroundColor: 'var(--vscode-textBlockQuote-background)'
-          }}>
+          <div key={key} className="border border-border rounded mb-1.5 bg-surface-alt">
             <div
               onClick={() => toggle(key)}
-              style={{
-                padding: '6px 8px',
-                cursor: 'pointer',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}
+              className="px-2 py-1 cursor-pointer flex justify-between items-center transition-colors duration-fast ease-standard hover:bg-surface"
             >
               <div>
-                <span style={{ fontWeight: 600 }}>{comp}</span>
-                <span style={{ fontSize: '10px', marginLeft: '6px', color: 'var(--vscode-descriptionForeground)' }}>
-                  {file}
-                </span>
+                <span className="font-semibold">{comp}</span>
+                <span className="text-[10px] ml-1.5 text-subtle">{file}</span>
               </div>
               <div>
                 {hasRisk && (
-                  <span style={{
-                    backgroundColor: 'var(--vscode-inputValidation-warningBackground)',
-                    color: 'var(--vscode-inputValidation-warningBorder)',
-                    padding: '0 4px',
-                    borderRadius: '2px',
-                    fontSize: '10px',
-                    marginRight: '6px'
-                  }}>
+                  <span className="bg-[var(--vscode-inputValidation-warningBackground)] text-[var(--vscode-inputValidation-warningBorder)] px-1 rounded text-[10px] mr-1.5">
                     ⚠️ 可能功能回退
                   </span>
                 )}
-                <span style={{ fontSize: '12px' }}>{isExpanded ? '▼' : '▶'}</span>
+                <span className="text-[12px]">{isExpanded ? '▼' : '▶'}</span>
               </div>
             </div>
-            {isExpanded && (
-              <div style={{ padding: '4px 12px', fontSize: '11px' }}>
-                {list.map((item, idx) => (
-                  <div key={idx} style={{
-                    borderTop: idx === 0 ? 'none' : '1px solid var(--vscode-panel-border)',
-                    padding: '4px 0'
-                  }}>
-                    <div>
-                      <strong>{item.changeType}</strong>
+            <Collapse open={isExpanded} className="px-3 py-1 text-[11px]">
+              {list.map((item, idx) => (
+                <div key={idx} className={`py-1 ${idx === 0 ? '' : 'border-t border-border'}`}>
+                  <div className="font-semibold">{item.changeType}</div>
+                  {item.before && (
+                    <div className="text-subtle">
+                      before: {Array.isArray(item.before) ? item.before.join(', ') : String(item.before)}
                     </div>
-                    {item.before && (
-                      <div style={{ color: 'var(--vscode-descriptionForeground)' }}>
-                        before: {Array.isArray(item.before) ? item.before.join(', ') : String(item.before)}
-                      </div>
-                    )}
-                    {item.after && (
-                      <div style={{ color: 'var(--vscode-descriptionForeground)' }}>
-                        after: {Array.isArray(item.after) ? item.after.join(', ') : String(item.after)}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+                  )}
+                  {item.after && (
+                    <div className="text-subtle">
+                      after: {Array.isArray(item.after) ? item.after.join(', ') : String(item.after)}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </Collapse>
           </div>
         );
       })}

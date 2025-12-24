@@ -114,30 +114,14 @@ const CallGraphView = ({ analysisResults }: CallGraphViewProps) => {
   const callGraphData = transformToCallGraphData();
 
   return (
-    <div style={{ 
-      height: '100%', 
-      display: 'flex',
-      background: 'var(--vscode-editor-background)'
-    }}>
+    <div className="h-full flex bg-surface">
       {/* 左侧：文件和方法列表 */}
-      <div style={{ 
-        width: '300px', 
-        borderRight: '1px solid var(--vscode-panel-border)',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
-        <div style={{
-          padding: '8px 12px',
-          background: 'var(--vscode-titleBar-activeBackground)',
-          color: 'var(--vscode-titleBar-activeForeground)',
-          borderBottom: '1px solid var(--vscode-panel-border)',
-          fontSize: '12px',
-          fontWeight: '600'
-        }}>
+      <div className="w-[300px] border-r border-border flex flex-col">
+        <div className="px-3 py-2 bg-surface-alt text-text border-b border-border text-[12px] font-semibold">
           🗂️ 影响文件和方法
         </div>
         
-        <div style={{ flex: 1 }}>
+        <div className="flex-1">
           <FileMethodList
             data={callGraphData}
             selectedMethod={selectedMethod}
@@ -147,33 +131,17 @@ const CallGraphView = ({ analysisResults }: CallGraphViewProps) => {
       </div>
 
       {/* 右侧：调用关系可视化 */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <div style={{
-          padding: '8px 12px',
-          background: 'var(--vscode-titleBar-activeBackground)', 
-          color: 'var(--vscode-titleBar-activeForeground)',
-          borderBottom: '1px solid var(--vscode-panel-border)',
-          fontSize: '12px',
-          fontWeight: '600',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}>
+      <div className="flex-1 flex flex-col">
+        <div className="px-3 py-2 bg-surface-alt text-text border-b border-border text-[12px] font-semibold flex items-center justify-between">
           <span>🕸️ 调用关系图</span>
           {selectedMethod && (
-            <span style={{
-              fontSize: '10px',
-              backgroundColor: 'var(--vscode-badge-background)',
-              color: 'var(--vscode-badge-foreground)',
-              padding: '2px 6px',
-              borderRadius: '3px'
-            }}>
+            <span className="text-[10px] bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)] px-1.5 py-0.5 rounded">
               选中: {selectedMethod}
             </span>
           )}
         </div>
         
-        <div style={{ flex: 1 }}>
+        <div className="flex-1">
           <CallGraphVisualization
             data={callGraphData}
             onMethodSelect={setSelectedMethod}
@@ -183,20 +151,10 @@ const CallGraphView = ({ analysisResults }: CallGraphViewProps) => {
 
       {/* 如果没有数据，显示提示 */}
       {callGraphData.impactedFiles.length === 0 && (
-        <div style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          textAlign: 'center',
-          color: 'var(--vscode-descriptionForeground)',
-          fontSize: '14px'
-        }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🕸️</div>
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center text-subtle text-[14px]">
+          <div className="text-[48px] mb-4">🕸️</div>
           <div>暂无调用关系数据</div>
-          <div style={{ fontSize: '12px', marginTop: '8px' }}>
-            请先进行代码分析以生成调用关系图
-          </div>
+          <div className="text-[12px] mt-2">请先进行代码分析以生成调用关系图</div>
         </div>
       )}
     </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import CallGraphVisualization from './CallGraphVisualization';
 import SnapshotDiffList from './SnapshotDiffList';
+import Fade from '../ui/motion/Fade';
 
 interface FileClassification {
   filePath: string;
@@ -775,21 +776,9 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
   );
 
   return (
-    <div className="report-renderer react-component" style={{
-      display: "flex",
-      flexDirection: "column",
-      minHeight: "100%",
-      backgroundColor: "var(--vscode-editor-background)"
-    }}>
+    <div className="report-renderer react-component flex flex-col min-h-full bg-surface">
       {/* Tab navigation */}
-      <div style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: "4px",
-        borderBottom: "1px solid var(--vscode-panel-border)",
-        backgroundColor: "var(--vscode-tab-inactiveBackground)",
-        padding: "4px"
-      }}>
+      <div className="flex flex-wrap gap-1 border-b border-border bg-surface-alt p-1">
         {[
           { key: 'overview', label: '📊 概览' },
           { key: 'classifications', label: '🎯 重要变更' },
@@ -804,20 +793,11 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key as any)}
-              style={{
-                padding: "8px 16px",
-                border: "none",
-                backgroundColor: activeTab === tab.key ? "var(--vscode-tab-activeBackground)" : "transparent",
-                color: activeTab === tab.key ? "var(--vscode-tab-activeForeground)" : "var(--vscode-tab-inactiveForeground)",
-                cursor: "pointer",
-                fontSize: "12px",
-                borderBottom: activeTab === tab.key ? "2px solid var(--vscode-focusBorder)" : "none",
-                position: "relative",
-                minWidth: "fit-content",
-                whiteSpace: "nowrap",
-                borderRadius: "4px 4px 0 0",
-                transition: "all 0.2s ease"
-              }}
+              className={`px-3 py-1 text-[12px] rounded-t transition-all duration-fast ease-standard ${
+                activeTab === tab.key
+                  ? 'bg-surface text-text border-b-2 border-accent'
+                  : 'bg-transparent text-subtle hover:text-text'
+              }`}
             >
               {tabLabel}
             </button>
@@ -826,13 +806,14 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
       </div>
 
       {/* Tab content */}
-      <div style={{ flex: "1", overflow: "visible" }}>
-        {activeTab === 'overview' && renderOverview()}
-        {activeTab === 'classifications' && renderClassifications()}
-        {activeTab === 'commits' && renderCommits()}
-        {activeTab === 'modifications' && renderModifications()}
+      <div className="flex-1 overflow-visible">
+        {activeTab === 'overview' && <Fade show className="animate-fade-in">{renderOverview()}</Fade>}
+        {activeTab === 'classifications' && <Fade show className="animate-fade-in">{renderClassifications()}</Fade>}
+        {activeTab === 'commits' && <Fade show className="animate-fade-in">{renderCommits()}</Fade>}
+        {activeTab === 'modifications' && <Fade show className="animate-fade-in">{renderModifications()}</Fade>}
         {activeTab === 'callgraph' && (
-          <CallGraphVisualization 
+          <Fade show className="animate-fade-in">
+            <CallGraphVisualization 
             data={{ 
               impactedFiles: impacts.map(impact => ({
                 file: impact.commitId,
@@ -843,9 +824,10 @@ const ReportRenderer: React.FC<ReportRendererProps> = ({ impacts, snapshotDiffs 
                 }))
               }))
             }} 
-          />
+            />
+          </Fade>
         )}
-        {activeTab === 'snapshot' && renderSnapshot()}
+        {activeTab === 'snapshot' && <Fade show className="animate-fade-in">{renderSnapshot()}</Fade>}
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Collapse from '../ui/motion/Collapse';
 
 interface MethodNode {
   name: string;
@@ -71,43 +72,20 @@ const FileMethodList = ({ data, selectedMethod, onMethodSelect, onFileSelect }: 
   };
 
   return (
-    <div style={{ 
-      height: '100%', 
-      display: 'flex', 
-      flexDirection: 'column',
-      background: 'var(--vscode-sidebar-background)'
-    }}>
+    <div className="h-full flex flex-col bg-surface">
       {/* 搜索和统计 */}
-      <div style={{
-        padding: '8px',
-        borderBottom: '1px solid var(--vscode-panel-border)'
-      }}>
+      <div className="p-2 border-b border-border">
         {/* 搜索框 */}
         <input
           type="text"
           placeholder="搜索文件或方法..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          style={{
-            width: '100%',
-            padding: '6px 8px',
-            fontSize: '12px',
-            border: '1px solid var(--vscode-input-border)',
-            backgroundColor: 'var(--vscode-input-background)',
-            color: 'var(--vscode-input-foreground)',
-            borderRadius: '3px',
-            marginBottom: '8px'
-          }}
+          className="w-full px-2 py-1 text-[12px] rounded border border-border bg-surface text-text mb-2 transition-colors duration-fast ease-standard"
         />
         
         {/* 统计信息 */}
-        <div style={{
-          fontSize: '10px',
-          color: 'var(--vscode-descriptionForeground)',
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '4px'
-        }}>
+        <div className="grid grid-cols-2 gap-1 text-[10px] text-subtle">
           <div>📁 文件: {stats.totalFiles}</div>
           <div>⚙️ 方法: {stats.totalMethods}</div>
           <div>🔴 修改: {stats.modifiedMethods}</div>
@@ -116,55 +94,32 @@ const FileMethodList = ({ data, selectedMethod, onMethodSelect, onFileSelect }: 
       </div>
 
       {/* 文件和方法列表 */}
-      <div style={{ 
-        flex: 1, 
-        overflow: 'auto',
-        padding: '4px'
-      }}>
+      <div className="flex-1 overflow-auto p-1">
         {filteredData.map((fileData) => (
-          <div key={fileData.file} style={{ marginBottom: '8px' }}>
+          <div key={fileData.file} className="mb-2">
             {/* 文件头 */}
             <div
               onClick={() => {
                 toggleFile(fileData.file);
                 onFileSelect?.(fileData.file);
               }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '6px 8px',
-                backgroundColor: expandedFiles.has(fileData.file) 
-                  ? 'var(--vscode-list-activeSelectionBackground)' 
-                  : 'var(--vscode-list-inactiveSelectionBackground)',
-                color: 'var(--vscode-list-activeSelectionForeground)',
-                borderRadius: '3px',
-                cursor: 'pointer',
-                fontSize: '11px',
-                fontWeight: '600'
-              }}
+              className={`flex items-center px-2 py-1 rounded cursor-pointer text-[11px] font-semibold transition-colors duration-fast ease-standard ${
+                expandedFiles.has(fileData.file) ? 'bg-surface-alt text-text' : 'bg-transparent text-text hover:bg-surface-alt'
+              }`}
             >
-              <span style={{ marginRight: '6px' }}>
+              <span className="mr-1.5">
                 {expandedFiles.has(fileData.file) ? '📂' : '📁'}
               </span>
-              <span style={{ flex: 1, minWidth: 0 }}>
+              <span className="flex-1 min-w-0">
                 {fileData.file.split('/').pop()}
               </span>
-              <span style={{
-                fontSize: '9px',
-                color: 'var(--vscode-descriptionForeground)',
-                backgroundColor: 'var(--vscode-badge-background)',
-                padding: '2px 4px',
-                borderRadius: '2px',
-                minWidth: '20px',
-                textAlign: 'center'
-              }}>
+              <span className="text-[9px] text-subtle bg-[var(--vscode-badge-background)] px-1 py-0.5 rounded min-w-[20px] text-center">
                 {fileData.methods.length}
               </span>
             </div>
 
             {/* 方法列表 */}
-            {expandedFiles.has(fileData.file) && (
-              <div style={{ marginLeft: '16px', marginTop: '4px' }}>
+            <Collapse open={expandedFiles.has(fileData.file)} className="ml-4 mt-1">
                 {fileData.methods.map((method) => {
                   const methodStyle = getMethodStyle(method.type);
                   const isSelected = selectedMethod === method.name;
@@ -173,60 +128,21 @@ const FileMethodList = ({ data, selectedMethod, onMethodSelect, onFileSelect }: 
                     <div
                       key={`${fileData.file}:${method.name}`}
                       onClick={() => onMethodSelect?.(method.name)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: '4px 8px',
-                        margin: '2px 0',
-                        backgroundColor: isSelected 
-                          ? 'var(--vscode-list-focusBackground)' 
-                          : 'transparent',
-                        borderLeft: `3px solid ${methodStyle.color}`,
-                        borderRadius: '0 3px 3px 0',
-                        cursor: 'pointer',
-                        fontSize: '10px',
-                        transition: 'background-color 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isSelected) {
-                          e.currentTarget.style.backgroundColor = 'var(--vscode-list-hoverBackground)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isSelected) {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                        }
-                      }}
+                      className={`flex items-center px-2 py-1 my-0.5 rounded-r cursor-pointer text-[10px] transition-colors duration-fast ease-standard border-l-4`}
+                      style={{ borderLeftColor: methodStyle.color, backgroundColor: isSelected ? 'var(--vscode-list-focusBackground)' : 'transparent' }}
                     >
-                      <span style={{ marginRight: '6px' }}>{methodStyle.icon}</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ 
-                          fontWeight: '500',
-                          color: 'var(--vscode-foreground)',
-                          marginBottom: '2px'
-                        }}>
+                      <span className="mr-1.5">{methodStyle.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-text mb-0.5">
                           {method.name}
                         </div>
-                        <div style={{
-                          fontSize: '9px',
-                          color: 'var(--vscode-descriptionForeground)',
-                          fontFamily: 'monospace',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }}>
+                        <div className="text-[9px] text-subtle font-mono overflow-hidden text-ellipsis whitespace-nowrap">
                           {method.signature}
                         </div>
                         
                         {/* 调用关系信息 */}
                         {(method.calls?.length || method.calledBy?.length) && (
-                          <div style={{
-                            fontSize: '8px',
-                            color: 'var(--vscode-descriptionForeground)',
-                            marginTop: '2px',
-                            display: 'flex',
-                            gap: '8px'
-                          }}>
+                          <div className="text-[8px] text-subtle mt-0.5 flex gap-2">
                             {method.calls?.length && (
                               <span>📞 调用: {method.calls.length}</span>
                             )}
@@ -238,70 +154,34 @@ const FileMethodList = ({ data, selectedMethod, onMethodSelect, onFileSelect }: 
                       </div>
                       
                       {/* 类型标签 */}
-                      <span style={{
-                        fontSize: '8px',
-                        color: methodStyle.color,
-                        backgroundColor: `${methodStyle.color}20`,
-                        padding: '1px 4px',
-                        borderRadius: '2px',
-                        fontWeight: '600'
-                      }}>
+                      <span className="text-[8px] px-1 rounded font-semibold" style={{ color: methodStyle.color, backgroundColor: `${methodStyle.color}20` }}>
                         {methodStyle.label}
                       </span>
                     </div>
                   );
                 })}
-              </div>
-            )}
+            </Collapse>
           </div>
         ))}
         
         {filteredData.length === 0 && (
-          <div style={{
-            textAlign: 'center',
-            padding: '20px',
-            color: 'var(--vscode-descriptionForeground)',
-            fontSize: '12px'
-          }}>
+          <div className="text-center p-5 text-subtle text-[12px]">
             {searchTerm ? '🔍 未找到匹配的文件或方法' : '📭 暂无数据'}
           </div>
         )}
       </div>
 
       {/* 操作按钮 */}
-      <div style={{
-        padding: '8px',
-        borderTop: '1px solid var(--vscode-panel-border)',
-        display: 'flex',
-        gap: '4px'
-      }}>
+      <div className="p-2 border-t border-border flex gap-1">
         <button
           onClick={() => setExpandedFiles(new Set(data.impactedFiles.map(f => f.file)))}
-          style={{
-            flex: 1,
-            padding: '4px 8px',
-            fontSize: '10px',
-            backgroundColor: 'var(--vscode-button-secondaryBackground)',
-            color: 'var(--vscode-button-secondaryForeground)',
-            border: 'none',
-            borderRadius: '3px',
-            cursor: 'pointer'
-          }}
+          className="flex-1 px-2 py-1 text-[10px] rounded bg-surface-alt text-subtle hover:text-text transition-colors duration-fast ease-standard"
         >
           📂 全部展开
         </button>
         <button
           onClick={() => setExpandedFiles(new Set())}
-          style={{
-            flex: 1,
-            padding: '4px 8px',
-            fontSize: '10px',
-            backgroundColor: 'var(--vscode-button-secondaryBackground)',
-            color: 'var(--vscode-button-secondaryForeground)',
-            border: 'none',
-            borderRadius: '3px',
-            cursor: 'pointer'
-          }}
+          className="flex-1 px-2 py-1 text-[10px] rounded bg-surface-alt text-subtle hover:text-text transition-colors duration-fast ease-standard"
         >
           📁 全部折叠
         </button>
