@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import Toolbar from "../components/Toolbar";
 import HotspotAnalysis from "../components/HotspotAnalysis";
 import CommitList from "../components/CommitList";
-import { saveState, getState } from "../utils/vscode";
+import { saveState, getState, postMessage } from "../utils/vscode";
+import ProductModeView from "./ProductModeView";
+import { transformToViewModel } from "../utils/productModeTransformer";
 
 const MainView = () => {
   const [analysisResults, setAnalysisResults] = useState<any[]>([]);
@@ -13,6 +15,10 @@ const MainView = () => {
   const [isAnalyzingProject, setIsAnalyzingProject] = useState(true);
   const [hotspotResults, setHotspotResults] = useState<any>(null);
   const [hasHotspotAnalyzed, setHasHotspotAnalyzed] = useState(false);
+  
+  // Product Mode State
+  const [viewMode, setViewMode] = useState<'product' | 'expert'>('product');
+  const [currentBranch, setCurrentBranch] = useState<string>('');
 
   // 组件挂载时恢复分析结果
   useEffect(() => {
@@ -31,30 +37,38 @@ const MainView = () => {
       setHotspotResults(savedState.hotspotResults);
       setHasHotspotAnalyzed(true);
     }
+    if (savedState.viewMode) {
+      setViewMode(savedState.viewMode);
+    }
   }, []);
 
   // 保存分析结果到状态
   useEffect(() => {
-    if (analysisResults.length > 0) {
-      const currentState = getState();
-      const newState = {
-        ...currentState,
-        analysisResults,
-        snapshotDiffs
-      };
-      saveState(newState);
-      console.log('💾 保存分析结果:', analysisResults);
-    }
-  }, [analysisResults, snapshotDiffs]);
+    const currentState = getState();
+    const newState = {
+      ...currentState,
+      viewMode, // Persist view mode
+      ...(analysisResults.length > 0 ? { analysisResults, snapshotDiffs } : {})
+    };
+    saveState(newState);
+  }, [analysisResults, snapshotDiffs, viewMode]);
 
   useEffect(() => {
     console.log('MainView mounted');
+    
+    // Initial fetch for branches to support Product Mode
+    postMessage({ command: 'getBranches' });
     
     const handleMessage = (event: MessageEvent) => {
       const message = event.data;
       console.log('MainView received message:', message);
       
       switch (message.command) {
+        case 'branchesLoaded':
+          if (message.branches && message.branches.length > 0) {
+            setCurrentBranch(message.branches[0]);
+          }
+          break;
         case 'projectAnalysisStarted':
           setIsAnalyzingProject(true);
           break;
@@ -117,6 +131,48 @@ const MainView = () => {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
+  const handleProductModeAnalyze = () => {
+    if (!currentBranch) {
+      // Try to fetch branches again if missing
+      postMessage({ command: 'getBranches' });
+      // Show temporary message or just wait? 
+      // Ideally we should wait for branch, but for now let's just alert if missing
+      alert('Loading branches... please try again in a second.');
+      return;
+    }
+
+    const analysisData = {
+      branch: currentBranch,
+      range: 'Last 5 commits', // Fixed default
+      analysisType: 'mixed',   // Fixed default
+      analysisOptions: ['fullStack'], // Fixed default
+      analysisMode: 'quick',   // Fixed default
+      language: 'en' // Default to en or detect? Toolbar uses 'useLanguage'. We'll default to en for now or 'zh-CN' if user prefers? 
+                     // The prompt text is in Chinese, so maybe 'zh-CN' is safer if that's the primary audience?
+                     // Actually, let's just stick to 'en' or pass undefined to let backend decide?
+                     // Toolbar defaults to browser language. 
+                     // I'll leave it as 'en' or maybe add language detection later.
+    };
+
+    setIsLoading(true);
+    postMessage({
+      command: 'analyze',
+      data: analysisData
+    });
+  };
+
+  if (viewMode === 'product') {
+    const viewModel = transformToViewModel(analysisResults);
+    return (
+      <ProductModeView 
+        model={viewModel}
+        onSwitchToExpert={() => setViewMode('expert')}
+        onAnalyze={handleProductModeAnalyze}
+        isAnalyzing={isLoading || isAnalyzingProject}
+      />
+    );
+  }
+
   return (
     <div 
       className="main-view react-component" 
@@ -128,8 +184,29 @@ const MainView = () => {
         padding: "0"
       }}
     >
-      <div style={{ padding: "4px", fontSize: "10px", color: "var(--vscode-descriptionForeground)" }}>
-        🔍 DiffSense v1.0 - Debug Mode
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        padding: "4px", 
+        backgroundColor: 'var(--vscode-editor-background)',
+        borderBottom: '1px solid var(--vscode-panel-border)'
+      }}>
+        <div style={{ fontSize: "10px", color: "var(--vscode-descriptionForeground)" }}>
+          🔍 DiffSense v1.0 - Expert Mode
+        </div>
+        <button 
+          onClick={() => setViewMode('product')}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--vscode-textLink-foreground)',
+            fontSize: '10px',
+            cursor: 'pointer',
+            textDecoration: 'underline'
+          }}
+        >
+          Switch to Product Mode
+        </button>
       </div>
       {(isAnalyzingProject || isLoading) && (
         <div style={{ padding: "4px", fontSize: "10px", color: "var(--vscode-descriptionForeground)" }}>
