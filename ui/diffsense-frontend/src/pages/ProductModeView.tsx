@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { AnalysisViewModel } from '../models/ProductModeModel';
+import type { AnalysisViewModel } from '../models/ProductModeModel';
 
 interface ProductModeViewProps {
   model: AnalysisViewModel;

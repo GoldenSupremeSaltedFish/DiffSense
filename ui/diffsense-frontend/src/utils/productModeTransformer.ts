@@ -1,5 +1,5 @@
 
-import { AnalysisViewModel } from '../models/ProductModeModel';
+import type { AnalysisViewModel } from '../models/ProductModeModel';
 
 // Reuse types from ReportRenderer or define a subset if we want to be strict
 // For now, we assume the input is the same 'any[]' or 'CommitImpact[]' that MainView receives
