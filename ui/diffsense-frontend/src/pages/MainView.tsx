@@ -18,6 +18,7 @@ const MainView = () => {
   
   // Product Mode State
   const [viewMode, setViewMode] = useState<'product' | 'expert'>('product');
+  const [branches, setBranches] = useState<string[]>([]);
   const [currentBranch, setCurrentBranch] = useState<string>('');
 
   // 组件挂载时恢复分析结果
@@ -66,6 +67,7 @@ const MainView = () => {
       switch (message.command) {
         case 'branchesLoaded':
           if (message.branches && message.branches.length > 0) {
+            setBranches(message.branches);
             setCurrentBranch(message.branches[0]);
           }
           break;
