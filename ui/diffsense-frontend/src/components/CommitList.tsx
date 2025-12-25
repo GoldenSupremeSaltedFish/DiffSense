@@ -11,24 +11,54 @@ const CommitList = ({ analysisResults, snapshotDiffs = [], error, hasAnalyzed = 
   console.log('CommitList渲染，结果数量:', analysisResults?.length || 0, '错误:', error, '已分析:', hasAnalyzed);
 
   return (
-    <div className="flex-1 flex flex-col overflow-visible p-2">
+    <div style={{
+      flex: 1,
+      display: "flex",
+      flexDirection: "column",
+      overflow: "visible",
+      padding: "8px"
+    }}>
       {analysisResults && analysisResults.length > 0 ? (
         <ReportRenderer impacts={analysisResults} snapshotDiffs={snapshotDiffs} />
       ) : (
-        <div className="text-center p-10 text-subtle text-sm animate-fade-in">
+        <div style={{
+          textAlign: "center",
+          padding: "40px",
+          color: "var(--vscode-descriptionForeground)",
+          fontSize: "14px"
+        }}>
           <div>🔍 暂无分析结果</div>
           {error ? (
-            <div className="text-xs mt-3 p-3 rounded border text-left max-w-[600px] mx-auto bg-[var(--vscode-inputValidation-errorBackground)] border-[var(--vscode-inputValidation-errorBorder)] text-[var(--vscode-errorForeground)]">
-              <div className="font-semibold mb-1">❌ 分析失败</div>
-              <div className="text-[11px] break-words">{error}</div>
+            <div style={{ 
+              fontSize: "12px", 
+              marginTop: "12px",
+              padding: "12px",
+              backgroundColor: "var(--vscode-inputValidation-errorBackground)",
+              color: "var(--vscode-errorForeground)",
+              borderRadius: "4px",
+              border: "1px solid var(--vscode-inputValidation-errorBorder)",
+              textAlign: "left",
+              maxWidth: "600px",
+              margin: "12px auto 0"
+            }}>
+              <div style={{ fontWeight: "600", marginBottom: "4px" }}>❌ 分析失败</div>
+              <div style={{ fontSize: "11px", wordBreak: "break-word" }}>{error}</div>
             </div>
           ) : hasAnalyzed ? (
-            <div className="text-xs mt-3 p-3 rounded border bg-[var(--vscode-inputValidation-infoBackground)] border-[var(--vscode-inputValidation-infoBorder)] text-text">
+            <div style={{ 
+              fontSize: "12px", 
+              marginTop: "12px",
+              padding: "12px",
+              backgroundColor: "var(--vscode-inputValidation-infoBackground)",
+              color: "var(--vscode-foreground)",
+              borderRadius: "4px",
+              border: "1px solid var(--vscode-inputValidation-infoBorder)"
+            }}>
               ⚠️ 分析完成，但未返回结果数据
             </div>
           ) : (
-            <div className="text-xs mt-2">
-              选择分支和范围后点击“开始分析”
+            <div style={{ fontSize: "12px", marginTop: "8px" }}>
+              选择分支和范围后点击"开始分析"
             </div>
           )}
         </div>

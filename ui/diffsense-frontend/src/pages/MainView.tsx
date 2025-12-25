@@ -3,7 +3,6 @@ import Toolbar from "../components/Toolbar";
 import HotspotAnalysis from "../components/HotspotAnalysis";
 import CommitList from "../components/CommitList";
 import { saveState, getState } from "../utils/vscode";
-import Fade from "../ui/motion/Fade";
 
 const MainView = () => {
   const [analysisResults, setAnalysisResults] = useState<any[]>([]);
@@ -119,31 +118,36 @@ const MainView = () => {
   }, []);
 
   return (
-    <div className="main-view react-component w-full min-h-full flex flex-col gap-4 p-3 bg-surface text-text">
-      <div className="text-xs text-subtle px-1">🔍 DiffSense v1.0</div>
-      <Fade show={isAnalyzingProject || isLoading} className="text-xs text-subtle px-1">
-        {isAnalyzingProject ? "正在分析项目..." : "正在分析..."}
-      </Fade>
-      <div className="flex items-center">
-        <Toolbar />
+    <div 
+      className="main-view react-component" 
+      style={{
+        width: "100%",
+        minHeight: "100%",
+        display: "flex",
+        flexDirection: "column",
+        padding: "0"
+      }}
+    >
+      <div style={{ padding: "4px", fontSize: "10px", color: "var(--vscode-descriptionForeground)" }}>
+        🔍 DiffSense v1.0 - Debug Mode
       </div>
-      {hasHotspotAnalyzed && hotspotResults && (
-        <div className="rounded-md bg-surface-alt shadow-token p-3">
-          <HotspotAnalysis
-            results={hotspotResults}
-            isLoading={isLoading}
-            error={error || undefined}
-          />
+      {(isAnalyzingProject || isLoading) && (
+        <div style={{ padding: "4px", fontSize: "10px", color: "var(--vscode-descriptionForeground)" }}>
+          {isAnalyzingProject ? '正在分析项目...' : '正在分析...'}
         </div>
       )}
-      <div className="rounded-md bg-surface-alt shadow-token p-3">
-        <CommitList
-          analysisResults={analysisResults}
-          snapshotDiffs={snapshotDiffs}
-          error={error}
-          hasAnalyzed={hasAnalyzed}
-        />
-      </div>
+      <Toolbar />
+      {hasHotspotAnalyzed && hotspotResults && (
+        <div style={{ padding: "4px" }}>
+          <HotspotAnalysis results={hotspotResults} isLoading={isLoading} error={error || undefined} />
+        </div>
+      )}
+      <CommitList 
+        analysisResults={analysisResults} 
+        snapshotDiffs={snapshotDiffs} 
+        error={error}
+        hasAnalyzed={hasAnalyzed}
+      />
     </div>
   );
 };

@@ -22,22 +22,6 @@
   --sidebar-gap: 6px;
   --button-height: 28px;
   --select-height: 24px;
-
-  /* 设计令牌桥接到 VSCode 主题变量 */
-  --surface: var(--vscode-editor-background);
-  --surface-alt: var(--vscode-editorWidget-background, var(--vscode-sideBar-background, var(--vscode-editor-background)));
-  --border: var(--vscode-panel-border, var(--vscode-input-border, #d1d9e0));
-  --accent: var(--vscode-focusBorder, var(--vscode-button-background, #0969da));
-  --accent-hover: var(--vscode-button-hoverBackground, #0550ae);
-  --text: var(--vscode-foreground);
-  --subtle: var(--vscode-descriptionForeground, #6b7280);
-  --muted: var(--vscode-disabledForeground, #9ca3af);
-  --shadow-1: rgba(0, 0, 0, .06);
-  --shadow-2: rgba(0, 0, 0, .12);
-
-  /* 动效默认令牌 */
-  --motion-duration: 250ms;
-  --motion-easing: cubic-bezier(.2,.0,.0,1);
 }
 
 /* 确保html和body使用VSCode主题颜色 */
@@ -78,19 +62,6 @@ a:hover {
   /* 由插件HTML控制，这里不设置 */
   color: inherit;
   background-color: inherit;
-}
-
-/* 动效降级：尊重用户系统设置 */
-@media (prefers-reduced-motion: reduce) {
-  :root {
-    --motion-duration: 0ms;
-    --motion-easing: linear;
-  }
-  * {
-    animation: none !important;
-    transition-duration: 0ms !important;
-    transition-timing-function: linear !important;
-  }
 }
 
 h1 {
