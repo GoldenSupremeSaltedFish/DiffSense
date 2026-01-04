@@ -2,7 +2,7 @@
 
 **DiffSense** is a powerful code change impact analysis tool provided as a VSCode extension. It helps developers quickly understand the scope and risk of code changes through static code analysis and version difference comparison.
 
-[![Version](https://img.shields.io/badge/version-0.1.12-blue.svg)](https://github.com/GoldenSupremeSaltedFish/DiffSense)
+[![Version](https://img.shields.io/badge/version-0.2.1-blue.svg)](https://github.com/GoldenSupremeSaltedFish/DiffSense)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](./LICENSE.txt)
 [![VSCode](https://img.shields.io/badge/VSCode-1.74.0+-blueviolet.svg)](https://code.visualstudio.com/)
 [![Marketplace](https://img.shields.io/badge/Marketplace-DiffSense-orange.svg)](https://marketplace.visualstudio.com/items?itemName=humphreyLi.diffsense)
