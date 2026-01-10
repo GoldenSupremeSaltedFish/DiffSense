@@ -23,6 +23,7 @@ const Toolbar = () => {
   const [showExportMenu, setShowExportMenu] = useState(false);
   
   // 新增：分析范围和类型状态
+  // ✅ 初始状态设为 'unknown'，等待项目类型检测后自动设置
   const [analysisScope, setAnalysisScope] = useState<'backend' | 'frontend' | 'mixed'>('backend');
   const [projectType, setProjectType] = useState<'backend' | 'frontend' | 'mixed' | 'unknown'>('unknown');
   const [backendLanguage, setBackendLanguage] = useState<'java' | 'golang' | 'unknown'>('unknown');
@@ -162,12 +163,18 @@ const Toolbar = () => {
         case 'projectTypeDetected':
           setProjectType(message.projectType);
           setBackendLanguage(message.backendLanguage || 'unknown');
-          // 根据检测结果自动设置分析范围
-          if (message.projectType !== 'unknown' && message.projectType !== 'mixed') {
-            setAnalysisScope(message.projectType);
+          // ✅ 根据检测结果自动设置分析范围（包括 mixed 类型）
+          if (message.projectType !== 'unknown') {
+            // 如果是 mixed 类型，默认选择 backend（用户后续可以手动切换）
+            const autoScope = message.projectType === 'mixed' ? 'backend' : message.projectType;
+            setAnalysisScope(autoScope);
+            console.log(`[Toolbar] 自动设置分析范围: ${autoScope} (项目类型: ${message.projectType})`);
           }
+          // ✅ 设置前端路径（从推理结果）
           if (message.frontendPaths && message.frontendPaths.length > 0) {
-            setFrontendPath(message.frontendPaths[0]); // 设置第一个前端路径作为默认值
+            const firstPath = message.frontendPaths[0];
+            setFrontendPath(firstPath);
+            console.log(`[Toolbar] 自动设置前端路径: ${firstPath}`);
           }
           break;
         case 'analysisStarted':
@@ -252,11 +259,24 @@ const Toolbar = () => {
 
     setIsAnalyzing(true);
     
-    // 使用新的postMessage函数
-    postMessage({
+    // ✅ 添加调试日志
+    console.log('[Toolbar] 准备发送分析请求:', {
       command: 'analyze',
       data: analysisData
     });
+    
+    // 使用新的postMessage函数
+    try {
+      postMessage({
+        command: 'analyze',
+        data: analysisData
+      });
+      console.log('[Toolbar] ✅ 分析请求已发送');
+    } catch (error) {
+      console.error('[Toolbar] ❌ 发送分析请求失败:', error);
+      setIsAnalyzing(false);
+      alert(t('messages.analysisRequestFailed') || '发送分析请求失败，请查看控制台获取详细信息');
+    }
   };
 
   const handleHotspotAnalysis = () => {

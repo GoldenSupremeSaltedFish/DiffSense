@@ -61,6 +61,7 @@ export default class DiffSense implements vscode.WebviewViewProvider {
   ) {
     this._view = webviewView.webview;
     this.log('[UI] WebviewView 正在解析...', 'info');
+    this.log(`[UI] Webview 对象: ${this._view ? '已创建' : '未创建'}`, 'info');
 
     webviewView.webview.options = {
       enableScripts: true,
@@ -77,30 +78,75 @@ export default class DiffSense implements vscode.WebviewViewProvider {
     this.updateUIState(PluginState.IDLE, 'DiffSense 已激活，准备分析项目...');
 
     // ✅ Handle messages from the webview
+    // ✅ 确保消息监听器已正确设置
+    this.log('[UI] 设置消息监听器...', 'info');
     webviewView.webview.onDidReceiveMessage(async (data) => {
-      this.log(`[Message] 收到前端消息: ${data.command}`, 'info');
+      this.log(`[Message] ========== 收到前端消息 ==========`, 'info');
+      this.log(`[Message] 命令: ${data ? data.command : '(无命令)'}`, 'info');
+      this.log(`[Message] 数据: ${data ? JSON.stringify(data, null, 2) : '(无数据)'}`, 'info');
       
-      switch (data.command) {
-        case 'refresh':
-          this.startBackgroundAnalysis();
-          break;
-        case 'openLog':
-          this.showOutput();
-          break;
-        case 'cancelAnalysis':
-          this.cancelBackgroundAnalysis();
-          break;
-        case 'analyze':
-          // ✅ 处理分析请求
-          this.log('[Analysis] 收到分析请求', 'info');
-          this.handleAnalysisRequest(data.data).catch((error) => {
-            this.log(`[Analysis] 分析请求处理失败: ${error}`, 'error');
-            this._view?.postMessage({
-              command: 'analysisError',
-              error: error instanceof Error ? error.message : String(error)
-            });
+      // ✅ 验证数据格式
+      if (!data || typeof data !== 'object') {
+        this.log(`[Message] ❌ 错误：消息格式无效`, 'error');
+        return;
+      }
+      
+      if (!data.command) {
+        this.log(`[Message] ❌ 错误：消息缺少 command 字段`, 'error');
+        return;
+      }
+      
+      try {
+        switch (data.command) {
+          case 'refresh':
+            this.log('[Message] 处理 refresh 命令', 'info');
+            this.startBackgroundAnalysis();
+            break;
+          case 'openLog':
+            this.log('[Message] 处理 openLog 命令', 'info');
+            this.showOutput();
+            break;
+          case 'cancelAnalysis':
+            this.log('[Message] 处理 cancelAnalysis 命令', 'info');
+            this.cancelBackgroundAnalysis();
+            break;
+          case 'test':
+          // ✅ 测试消息处理
+          this.log('[Message] ✅ 收到测试消息，VSCode API 通信正常', 'info');
+          this._view?.postMessage({
+            command: 'testResponse',
+            data: '后端收到测试消息'
           });
           break;
+        case 'analyze':
+            // ✅ 处理分析请求
+            this.log('[Message] ========== 开始处理分析请求 ==========', 'info');
+            this.log(`[Message] 分析数据: ${JSON.stringify(data.data, null, 2)}`, 'info');
+            
+            if (!data.data) {
+              this.log('[Message] ❌ 错误：分析数据为空', 'error');
+              this._view?.postMessage({
+                command: 'analysisError',
+                error: '分析数据为空'
+              });
+              return;
+            }
+            
+            // 使用 try-catch 确保错误被捕获
+            try {
+              await this.handleAnalysisRequest(data.data);
+              this.log('[Message] ✅ 分析请求处理完成', 'info');
+            } catch (error) {
+              const errorMsg = error instanceof Error ? error.message : String(error);
+              const errorStack = error instanceof Error ? error.stack : 'N/A';
+              this.log(`[Message] ❌ 分析请求处理失败: ${errorMsg}`, 'error');
+              this.log(`[Message] 错误堆栈: ${errorStack}`, 'error');
+              this._view?.postMessage({
+                command: 'analysisError',
+                error: errorMsg
+              });
+            }
+            break;
         case 'getHotspotAnalysis':
           // ✅ 处理热点分析请求
           this.log('[Analysis] 收到热点分析请求', 'info');
@@ -144,8 +190,16 @@ export default class DiffSense implements vscode.WebviewViewProvider {
           });
           break;
         default:
-          this.log(`[Message] 未知命令: ${data.command}`, 'warn');
+          this.log(`[Message] ⚠️  未知命令: ${data.command}`, 'warn');
+          this.log(`[Message] 完整消息数据: ${JSON.stringify(data, null, 2)}`, 'warn');
       }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        const errorStack = error instanceof Error ? error.stack : 'N/A';
+        this.log(`[Message] ❌ 消息处理异常: ${errorMsg}`, 'error');
+        this.log(`[Message] 错误堆栈: ${errorStack}`, 'error');
+      }
+      this.log(`[Message] ========== 消息处理完成 ==========`, 'info');
     });
 
     // ✅ 3. UI 显示后，立即启动后台任务（不阻塞）
@@ -417,6 +471,43 @@ export default class DiffSense implements vscode.WebviewViewProvider {
   }
 
   /**
+   * ✅ 清理分支名称，移除 "HEAD ->" 前缀和无效字符
+   */
+  private cleanBranchName(branchName: string): string {
+    if (!branchName) return '';
+    
+    // 移除 "HEAD -> " 前缀（Git branch 输出格式）
+    let cleaned = branchName.replace(/^HEAD\s*->\s*/i, '').trim();
+    
+    // 移除 "* " 前缀（当前分支标记）
+    cleaned = cleaned.replace(/^\*\s+/, '').trim();
+    
+    // 移除 "remotes/" 前缀（远程分支）
+    cleaned = cleaned.replace(/^remotes\/[^/]+\//, '');
+    
+    // 移除其他无效字符
+    cleaned = cleaned.replace(/[<>|]/g, '').trim();
+    
+    return cleaned;
+  }
+
+  /**
+   * ✅ 验证分支名称是否为有效的 Git 引用
+   */
+  private isValidBranchName(branchName: string): boolean {
+    if (!branchName || branchName.length === 0) return false;
+    
+    // 排除无效的分支名称
+    const invalidNames = ['HEAD', '->', 'origin', 'remotes'];
+    if (invalidNames.includes(branchName)) return false;
+    
+    // 检查是否包含箭头或其他无效字符
+    if (branchName.includes('->') || branchName.includes('|')) return false;
+    
+    return true;
+  }
+
+  /**
    * ✅ 加载 Git 分支列表
    */
   private async loadGitBranches(rootPath: string): Promise<string[]> {
@@ -435,18 +526,35 @@ export default class DiffSense implements vscode.WebviewViewProvider {
           
           for (const line of lines) {
             const trimmed = line.trim();
-            if (!trimmed || trimmed.startsWith('*')) continue;
+            if (!trimmed) continue;
+            
+            // 清理分支名称
+            let branchName = this.cleanBranchName(trimmed);
+            
+            // 验证分支名称
+            if (!this.isValidBranchName(branchName)) {
+              continue;
+            }
             
             // 处理远程分支 (remotes/origin/xxx)
             if (trimmed.startsWith('remotes/')) {
-              const branchName = trimmed.replace(/^remotes\/[^/]+\//, '');
-              if (branchName && !branches.includes(branchName) && branchName !== 'HEAD') {
+              // 已经通过 cleanBranchName 处理了
+              if (branchName && !branches.includes(branchName)) {
                 branches.push(branchName);
               }
             } else {
-              // 本地分支
-              if (!branches.includes(trimmed)) {
-                branches.push(trimmed);
+              // 本地分支（跳过当前分支标记）
+              if (trimmed.startsWith('*')) {
+                // 当前分支，需要清理
+                branchName = this.cleanBranchName(trimmed);
+                if (this.isValidBranchName(branchName) && !branches.includes(branchName)) {
+                  branches.push(branchName);
+                }
+              } else {
+                // 普通本地分支
+                if (!branches.includes(branchName)) {
+                  branches.push(branchName);
+                }
               }
             }
           }
@@ -531,18 +639,40 @@ export default class DiffSense implements vscode.WebviewViewProvider {
           }
         );
         
-        // ✅ 注入 VSCode API（如果 HTML 中没有）
-        if (!html.includes('acquireVsCodeApi')) {
-          const vscodeApiScript = `
+        // ✅ 注入 VSCode API（确保总是注入，即使 HTML 中已有）
+        // 移除旧的脚本（如果有）
+        html = html.replace(/<script[^>]*>[\s\S]*?acquireVsCodeApi[\s\S]*?<\/script>/gi, '');
+        
+        const vscodeApiScript = `
             <script>
               (function() {
-                const vscode = acquireVsCodeApi();
-                window.vscode = vscode;
+                try {
+                  console.log('[VSCode API] 正在初始化 VSCode API...');
+                  const vscode = acquireVsCodeApi();
+                  window.vscode = vscode;
+                  window.acquireVsCodeApi = function() { return vscode; };
+                  console.log('[VSCode API] ✅ VSCode API 初始化成功', vscode);
+                  
+                  // 测试消息发送
+                  setTimeout(() => {
+                    console.log('[VSCode API] 发送测试消息...');
+                    vscode.postMessage({ command: 'test', data: 'VSCode API 测试' });
+                  }, 1000);
+                } catch (error) {
+                  console.error('[VSCode API] ❌ 初始化失败:', error);
+                  // 提供 Mock API 用于开发
+                  window.vscode = {
+                    postMessage: (message) => {
+                      console.warn('[VSCode API] Mock postMessage:', message);
+                    },
+                    getState: () => ({}),
+                    setState: () => {}
+                  };
+                }
               })();
             </script>
           `;
-          html = html.replace('</head>', vscodeApiScript + '</head>');
-        }
+        html = html.replace('</head>', vscodeApiScript + '</head>');
         
         this.log('[UI] ✅ React 前端 HTML 已加载并处理', 'info');
         return html;
@@ -2395,9 +2525,17 @@ ${codeBlock(String(errorContext))}`;
    */
   private async handleAnalysisRequest(data: any) {
     this.log('[Analysis] ========== 开始代码分析 ==========', 'info');
-    this.log(`[Analysis] 分析参数: ${JSON.stringify(data, null, 2)}`, 'info');
+    this.log(`[Analysis] 接收到的数据: ${JSON.stringify(data, null, 2)}`, 'info');
+    
+    // ✅ 验证数据
+    if (!data) {
+      const errorMsg = '分析数据为空';
+      this.log(`[Analysis] ❌ ${errorMsg}`, 'error');
+      throw new Error(errorMsg);
+    }
     
     // ✅ 发送分析开始消息
+    this.log('[Analysis] 发送 analysisStarted 消息到前端', 'info');
     this._view?.postMessage({
       command: 'analysisStarted'
     });
@@ -2410,15 +2548,26 @@ ${codeBlock(String(errorContext))}`;
       const repoPath = workspaceFolder.uri.fsPath;
       
       const analysisType = data.analysisType || 'backend';
-      const branch = data.branch || 'HEAD';
+      // ✅ 清理分支名称，移除 "HEAD ->" 等无效前缀
+      const rawBranch = data.branch || 'HEAD';
+      const branch = this.cleanBranchName(rawBranch) || 'HEAD';
       const range = data.range || 'Last 3 commits';
       const analysisMode = data.analysisMode || 'unknown'; // 获取分析模式
       
       this.log(`[Analysis] 工作区: ${repoPath}`, 'info');
       this.log(`[Analysis] 分析类型: ${analysisType}`, 'info');
-      this.log(`[Analysis] 分支: ${branch}`, 'info');
+      this.log(`[Analysis] 分支: ${branch} (原始: ${rawBranch})`, 'info');
       this.log(`[Analysis] 范围: ${range}`, 'info');
-      this.log(`[Analysis] 模式: ${analysisMode === 'quick' ? '快速模式 (Simple)' : analysisMode === 'deep' ? '深度模式 (Pro)' : analysisMode}`, 'info');
+      
+      // ✅ 验证分支名称
+      if (!this.isValidBranchName(branch)) {
+        this.log(`[Analysis] ⚠️  分支名称无效，使用默认值 HEAD: ${branch}`, 'warn');
+        data.branch = 'HEAD';
+      } else {
+        data.branch = branch;
+      }
+      this.log(`[Analysis] 前端路径: ${data.frontendPath || '(未指定)'}`, 'info');
+      this.log(`[Analysis] 完整参数: ${JSON.stringify(data, null, 2)}`, 'info');
       
       let result: any;
       
@@ -2448,15 +2597,22 @@ ${codeBlock(String(errorContext))}`;
         data: result.commits || result
       });
       
-      // ✅ 保存分析结果到数据库
+      // ✅ 保存分析结果到数据库（可选，失败不影响分析功能）
       if (this._databaseService) {
-        await this._databaseService.saveAnalysisResult(
-          repoPath,
-          analysisType,
-          result,
-          data,
-          `分析了 ${result.commits?.length || 0} 个提交`
-        );
+        try {
+          await this._databaseService.saveAnalysisResult(
+            repoPath,
+            analysisType,
+            result,
+            data,
+            `分析了 ${result.commits?.length || 0} 个提交`
+          );
+          this.log('[Analysis] ✅ 分析结果已保存到数据库', 'info');
+        } catch (dbError) {
+          this.log(`[Analysis] ⚠️  保存分析结果到数据库失败（不影响分析功能）: ${dbError}`, 'warn');
+        }
+      } else {
+        this.log('[Analysis] ⚠️  数据库服务未初始化，跳过保存分析结果', 'warn');
       }
       
     } catch (error) {
@@ -2487,66 +2643,176 @@ ${codeBlock(String(errorContext))}`;
     }
     
     this.log(`[Analysis] 前端分析器路径: ${nodeAnalyzerPath}`, 'info');
+    this.log(`[Analysis] 仓库根目录: ${repoPath}`, 'info');
+    this.log(`[Analysis] 接收到的前端路径参数: ${options.frontendPath || '(未指定)'}`, 'info');
     
-    // 构建命令行参数
-    const args: string[] = [nodeAnalyzerPath, repoPath, '--format', 'json'];
-    
-    if (options.branch) {
-      args.push('--branch', options.branch);
+    // ✅ 确定目标目录：如果指定了 frontendPath，使用它；否则使用仓库根目录
+    let targetDir: string;
+    if (options.frontendPath) {
+      // 如果 frontendPath 是绝对路径，直接使用；否则与 repoPath 组合
+      if (path.isAbsolute(options.frontendPath)) {
+        targetDir = options.frontendPath;
+      } else {
+        targetDir = path.join(repoPath, options.frontendPath);
+      }
+      this.log(`[Analysis] ✅ 使用前端路径作为目标目录: ${targetDir}`, 'info');
+    } else {
+      targetDir = repoPath;
+      this.log(`[Analysis] ⚠️  未指定前端路径，使用仓库根目录: ${targetDir}`, 'warn');
     }
     
+    // 验证目标目录是否存在
+    if (!fs.existsSync(targetDir)) {
+      this.log(`[Analysis] ❌ 目标目录不存在: ${targetDir}`, 'error');
+      throw new Error(`目标目录不存在: ${targetDir}`);
+    }
+    
+    // 构建命令行参数（第一个参数是目标目录）
+    const args: string[] = [nodeAnalyzerPath, targetDir, '--format', 'json'];
+    
+    // ✅ 传递分支参数（必需，用于Git分析）
+    if (options.branch) {
+      // ✅ 清理分支名称，确保是有效的 Git 引用
+      const cleanedBranch = this.cleanBranchName(options.branch);
+      if (this.isValidBranchName(cleanedBranch)) {
+        args.push('--branch', cleanedBranch);
+        this.log(`[Analysis] ✅ 分支参数: ${cleanedBranch} (原始: ${options.branch})`, 'info');
+      } else {
+        // 如果清理后无效，使用默认值
+        this.log(`[Analysis] ⚠️  分支名称无效，使用默认值 HEAD: ${options.branch}`, 'warn');
+        args.push('--branch', 'HEAD');
+      }
+    } else {
+      this.log(`[Analysis] ⚠️  未指定分支，使用默认值 HEAD`, 'warn');
+      args.push('--branch', 'HEAD');
+    }
+    
+    // ✅ 处理范围参数（必需，用于启用Git分析）
+    let hasGitParams = false;
     if (options.range) {
       if (options.range.startsWith('Last ')) {
         const count = parseInt(options.range.replace('Last ', '').replace(' commits', ''));
-        args.push('--commits', count.toString());
+        if (!isNaN(count)) {
+          args.push('--commits', count.toString());
+          hasGitParams = true;
+          this.log(`[Analysis] ✅ 提交数量参数: ${count}`, 'info');
+        }
       } else if (options.range === 'Today') {
         args.push('--since', 'today');
+        hasGitParams = true;
+        this.log(`[Analysis] ✅ 日期范围: today`, 'info');
       } else if (options.range === 'This week') {
         args.push('--since', '1 week ago');
+        hasGitParams = true;
+        this.log(`[Analysis] ✅ 日期范围: 1 week ago`, 'info');
+      } else if (options.range === 'Custom Date Range') {
+        // ✅ 处理自定义日期范围
+        if (options.dateFrom) {
+          args.push('--since', options.dateFrom);
+          hasGitParams = true;
+          this.log(`[Analysis] ✅ 自定义日期范围开始: ${options.dateFrom}`, 'info');
+        }
+        if (options.dateTo) {
+          args.push('--until', options.dateTo);
+          hasGitParams = true;
+          this.log(`[Analysis] ✅ 自定义日期范围结束: ${options.dateTo}`, 'info');
+        }
       }
     }
     
+    // ✅ 处理提交ID范围
     if (options.startCommit && options.endCommit) {
       args.push('--start-commit', options.startCommit);
       args.push('--end-commit', options.endCommit);
+      hasGitParams = true;
+      this.log(`[Analysis] ✅ 提交范围: ${options.startCommit}..${options.endCommit}`, 'info');
     }
     
-    if (options.frontendPath) {
-      args.push('--frontend-path', options.frontendPath);
+    // ✅ 验证Git参数
+    if (!hasGitParams && !options.branch) {
+      this.log(`[Analysis] ⚠️  警告：未提供Git参数，Git分析可能不会启用`, 'warn');
+    } else {
+      this.log(`[Analysis] ✅ Git参数已设置，分析器将启用Git分析`, 'info');
     }
     
-    this.log(`[Analysis] 执行命令: node ${args.join(' ')}`, 'info');
+    // ✅ 注意：前端路径已经作为第一个参数（targetDir）传递，不需要单独传递
+    
+    this.log(`[Analysis] ========== 前端分析器命令 ==========`, 'info');
+    this.log(`[Analysis] 完整命令: node ${args.join(' ')}`, 'info');
+    this.log(`[Analysis] 工作目录: ${repoPath}`, 'info');
+    this.log(`[Analysis] 目标目录: ${targetDir}`, 'info');
+    this.log(`[Analysis] ====================================`, 'info');
     
     return new Promise((resolve, reject) => {
-      execFile('node', args, {
+      this.log(`[Analysis] 开始执行前端分析器...`, 'info');
+      
+      const childProcess = execFile('node', args, {
         cwd: repoPath,
         timeout: 300000, // 5分钟超时
         maxBuffer: 1024 * 1024 * 10 // 10MB
       }, (error, stdout, stderr) => {
         if (error) {
-          this.log(`[Analysis] 前端分析器执行错误: ${error.message}`, 'error');
+          this.log(`[Analysis] ❌ 前端分析器执行错误: ${error.message}`, 'error');
+          if (error.code) {
+            this.log(`[Analysis] 错误代码: ${error.code}`, 'error');
+          }
           if (stderr) {
-            this.log(`[Analysis] stderr: ${stderr}`, 'error');
+            this.log(`[Analysis] [stderr] ${stderr}`, 'error');
+          }
+          if (stdout) {
+            this.log(`[Analysis] [stdout] ${stdout.substring(0, 1000)}`, 'error');
           }
           reject(error);
           return;
         }
         
-        // ✅ 所有输出都记录日志
-        if (stderr) {
-          this.log(`[Analysis] [前端分析器输出] ${stderr}`, 'info');
+        // ✅ 所有输出都记录日志（分析器使用 console.error 输出到 stderr）
+        if (stderr && stderr.trim()) {
+          // 将 stderr 按行分割，逐行记录日志
+          const stderrLines = stderr.trim().split('\n');
+          for (const line of stderrLines) {
+            if (line.trim()) {
+              this.log(`[Analysis] [前端分析器] ${line}`, 'info');
+            }
+          }
         }
         
         try {
+          if (!stdout || !stdout.trim()) {
+            throw new Error('分析器没有返回任何输出');
+          }
+          
           const result = JSON.parse(stdout);
-          this.log(`[Analysis] ✅ 前端分析完成`, 'info');
+          this.log(`[Analysis] ✅ 前端分析完成，结果包含 ${result.commits?.length || 0} 个提交`, 'info');
           resolve(result);
         } catch (parseError) {
           this.log(`[Analysis] ❌ 解析分析结果失败: ${parseError}`, 'error');
-          this.log(`[Analysis] [原始输出] ${stdout.substring(0, 500)}`, 'error');
+          this.log(`[Analysis] [原始输出长度] ${stdout ? stdout.length : 0} 字符`, 'error');
+          if (stdout) {
+            this.log(`[Analysis] [原始输出前500字符] ${stdout.substring(0, 500)}`, 'error');
+          }
           reject(new Error(`解析分析结果失败: ${parseError}`));
         }
       });
+      
+      // ✅ 实时捕获子进程的输出（如果可能）
+      if (childProcess.stdout) {
+        childProcess.stdout.on('data', (data) => {
+          const output = data.toString();
+          if (output.trim()) {
+            this.log(`[Analysis] [stdout] ${output.trim()}`, 'info');
+          }
+        });
+      }
+      
+      if (childProcess.stderr) {
+        childProcess.stderr.on('data', (data) => {
+          const output = data.toString();
+          if (output.trim()) {
+            this.log(`[Analysis] [stderr] ${output.trim()}`, 'info');
+          }
+        });
+      }
     });
   }
 
@@ -2565,7 +2831,14 @@ ${codeBlock(String(errorContext))}`;
     const args: string[] = [golangAnalyzerPath, repoPath, '--format', 'json'];
     
     if (options.branch) {
-      args.push('--branch', options.branch);
+      // ✅ 清理分支名称
+      const cleanedBranch = this.cleanBranchName(options.branch);
+      const validBranch = this.isValidBranchName(cleanedBranch) ? cleanedBranch : 'HEAD';
+      args.push('--branch', validBranch);
+      this.log(`[Analysis] ✅ Golang 分析器分支参数: ${validBranch} (原始: ${options.branch})`, 'info');
+    } else {
+      args.push('--branch', 'HEAD');
+      this.log(`[Analysis] ⚠️  未指定分支，使用默认值 HEAD`, 'warn');
     }
     
     this.log(`[Analysis] 执行命令: node ${args.join(' ')}`, 'info');
@@ -2612,51 +2885,160 @@ ${codeBlock(String(errorContext))}`;
     
     this.log(`[Analysis] Java 分析器路径: ${javaAnalyzerPath}`, 'info');
     
-    // Java 分析器使用 JAR 文件
+    // ✅ Java 分析器使用 inspect 命令（InspectCommand）
+    // ✅ 清理分支名称
+    const rawBranch = options.branch || 'HEAD';
+    const cleanedBranch = this.cleanBranchName(rawBranch);
+    const validBranch = this.isValidBranchName(cleanedBranch) ? cleanedBranch : 'HEAD';
+    
     const args: string[] = [
       '-jar', javaAnalyzerPath,
-      '--target-dir', repoPath,
-      '--format', 'json'
+      'inspect',  // 使用 inspect 子命令
+      '--branch', validBranch,
+      '--output', 'json'
     ];
     
-    if (options.branch) {
-      args.push('--branch', options.branch);
+    this.log(`[Analysis] ✅ Java 分析器分支参数: ${validBranch} (原始: ${rawBranch})`, 'info');
+    
+    // ✅ 处理范围参数
+    if (options.range) {
+      if (options.range.startsWith('Last ')) {
+        const count = parseInt(options.range.replace('Last ', '').replace(' commits', ''));
+        if (!isNaN(count)) {
+          args.push('--commits', count.toString());
+          this.log(`[Analysis] 提交数量参数: ${count}`, 'info');
+        }
+      } else if (options.range === 'Today') {
+        // 转换为日期格式 yyyy-MM-dd
+        const today = new Date().toISOString().split('T')[0];
+        args.push('--since', today);
+        this.log(`[Analysis] 日期范围: ${today}`, 'info');
+      } else if (options.range === 'This week') {
+        // 计算一周前的日期
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const weekAgoStr = weekAgo.toISOString().split('T')[0];
+        args.push('--since', weekAgoStr);
+        this.log(`[Analysis] 日期范围: ${weekAgoStr}`, 'info');
+      }
+    }
+    
+    // ✅ 处理自定义日期范围
+    if (options.range === 'Custom Date Range') {
+      if (options.dateFrom) {
+        // 确保日期格式为 yyyy-MM-dd
+        const dateFrom = this.formatDateForJava(options.dateFrom);
+        args.push('--since', dateFrom);
+        this.log(`[Analysis] 自定义日期范围开始: ${dateFrom}`, 'info');
+      }
+      // Java 分析器不支持 --until，只支持 --since
+    }
+    
+    // ✅ 处理提交ID范围（Java分析器不支持，但可以尝试使用 --baseline）
+    if (options.startCommit && options.endCommit) {
+      // 使用 --baseline 参数指定起始提交
+      args.push('--baseline', options.startCommit);
+      this.log(`[Analysis] 基准提交: ${options.startCommit}`, 'info');
+    }
+    
+    // ✅ 添加深度参数（如果有）
+    if (options.maxDepth) {
+      args.push('--depth', options.maxDepth.toString());
     }
     
     this.log(`[Analysis] 执行命令: java ${args.join(' ')}`, 'info');
     
     return new Promise((resolve, reject) => {
-      execFile('java', args, {
+      this.log(`[Analysis] 开始执行 Java 分析器...`, 'info');
+      
+      const childProcess = execFile('java', args, {
         cwd: repoPath,
         timeout: 300000,
         maxBuffer: 1024 * 1024 * 50 // 50MB
       }, (error, stdout, stderr) => {
         if (error) {
-          this.log(`[Analysis] Java 分析器执行错误: ${error.message}`, 'error');
+          this.log(`[Analysis] ❌ Java 分析器执行错误: ${error.message}`, 'error');
           if (error.message.includes('maxBuffer')) {
             this.log('[Analysis] ⚠️ stdout maxBuffer length exceeded. Please try reducing the analysis scope.', 'error');
           }
+          if (error.code) {
+            this.log(`[Analysis] 错误代码: ${error.code}`, 'error');
+          }
           if (stderr) {
-            this.log(`[Analysis] stderr: ${stderr}`, 'error');
+            this.log(`[Analysis] [stderr] ${stderr}`, 'error');
+          }
+          if (stdout) {
+            this.log(`[Analysis] [stdout] ${stdout.substring(0, 1000)}`, 'error');
           }
           reject(error);
           return;
         }
         
-        if (stderr) {
-          this.log(`[Analysis] [Java分析器输出] ${stderr}`, 'info');
+        // ✅ 所有输出都记录日志
+        if (stderr && stderr.trim()) {
+          const stderrLines = stderr.trim().split('\n');
+          for (const line of stderrLines) {
+            if (line.trim()) {
+              this.log(`[Analysis] [Java分析器] ${line}`, 'info');
+            }
+          }
         }
         
         try {
+          if (!stdout || !stdout.trim()) {
+            throw new Error('Java 分析器没有返回任何输出');
+          }
+          
           const result = JSON.parse(stdout);
-          this.log(`[Analysis] ✅ Java 分析完成`, 'info');
+          this.log(`[Analysis] ✅ Java 分析完成，结果包含 ${Array.isArray(result) ? result.length : 0} 个提交`, 'info');
           resolve(result);
         } catch (parseError) {
           this.log(`[Analysis] ❌ 解析分析结果失败: ${parseError}`, 'error');
+          this.log(`[Analysis] [原始输出长度] ${stdout ? stdout.length : 0} 字符`, 'error');
+          if (stdout) {
+            this.log(`[Analysis] [原始输出前500字符] ${stdout.substring(0, 500)}`, 'error');
+          }
           reject(new Error(`解析分析结果失败: ${parseError}`));
         }
       });
+      
+      // ✅ 实时捕获子进程的输出
+      if (childProcess.stdout) {
+        childProcess.stdout.on('data', (data) => {
+          const output = data.toString();
+          if (output.trim()) {
+            this.log(`[Analysis] [stdout] ${output.trim()}`, 'info');
+          }
+        });
+      }
+      
+      if (childProcess.stderr) {
+        childProcess.stderr.on('data', (data) => {
+          const output = data.toString();
+          if (output.trim()) {
+            this.log(`[Analysis] [stderr] ${output.trim()}`, 'info');
+          }
+        });
+      }
     });
+  }
+
+  /**
+   * ✅ 格式化日期为 Java 分析器需要的格式 (yyyy-MM-dd)
+   */
+  private formatDateForJava(dateStr: string): string {
+    try {
+      // 尝试解析各种日期格式
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) {
+        // 如果解析失败，尝试其他格式
+        return dateStr;
+      }
+      return date.toISOString().split('T')[0];
+    } catch (error) {
+      // 如果格式化失败，返回原始字符串
+      return dateStr;
+    }
   }
 
   /**
