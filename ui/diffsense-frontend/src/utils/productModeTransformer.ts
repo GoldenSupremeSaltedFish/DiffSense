@@ -1,11 +1,15 @@
 
-import type { AnalysisViewModel } from '../models/ProductModeModel';
+import type { AnalysisViewModel, AnalysisItem } from '../models/ProductModeModel';
 
-// Reuse types from ReportRenderer or define a subset if we want to be strict
-// For now, we assume the input is the same 'any[]' or 'CommitImpact[]' that MainView receives
 interface CommitImpact {
   commitId: string;
   message: string;
+  author?: {
+    name: string;
+    email: string;
+  };
+  timestamp?: string;
+  changedFilesCount?: number;
   changeClassifications?: Array<{
     classification: {
       category: string;
@@ -28,23 +32,19 @@ export const transformToViewModel = (impacts: CommitImpact[]): AnalysisViewModel
         headline: '暂无分析数据',
         keyFindings: [],
         recommendation: '请运行分析以查看结果。'
-      }
+      },
+      items: []
     };
   }
 
   let highRiskCount = 0;
   let mediumRiskCount = 0;
   const keyFindings: string[] = [];
+  const items: AnalysisItem[] = [];
 
-  // Risk categorization
-  // High: A1 (Business Logic), A2 (Interface Change)
-  // Medium: A3 (Data Structure), A4 (Middleware), F1 (Component Behavior), F2 (UI Structure)
-  // Low: Others
-  
   const highRiskCategories = ['A1', 'A2'];
   const mediumRiskCategories = ['A3', 'A4', 'F1', 'F2'];
 
-  // Map category codes to human-friendly terms
   const categoryNames: Record<string, string> = {
     'A1': '核心业务逻辑',
     'A2': 'API 接口定义',
@@ -56,33 +56,57 @@ export const transformToViewModel = (impacts: CommitImpact[]): AnalysisViewModel
 
   impacts.forEach(commit => {
     const classifications = commit.changeClassifications || [];
-    
+    let commitHighRisk = 0;
+    let commitMediumRisk = 0;
+    const affectedModules = new Set<string>();
+
     classifications.forEach(fc => {
       const cat = fc.classification.category;
       const categoryName = categoryNames[cat] || fc.classification.categoryName || '未知模块';
-      
+      affectedModules.add(categoryName);
+
       if (highRiskCategories.includes(cat)) {
         highRiskCount++;
-        // Add to findings if we have fewer than 3
+        commitHighRisk++;
         if (keyFindings.length < 3) {
-          // Avoid filename if possible, or keep it simple. Requirement says "Human language, not filenames".
-          // But context is needed. Let's try to be generic.
-          // "Involved core business logic changes"
           keyFindings.push(`检测到 ${categoryName} 发生高风险变更`);
         }
       } else if (mediumRiskCategories.includes(cat)) {
         mediumRiskCount++;
-        if (keyFindings.length < 3 && highRiskCount === 0) { // Prioritize high risk
-           keyFindings.push(`检测到 ${categoryName} 发生变动，可能影响稳定性`);
+        commitMediumRisk++;
+        if (keyFindings.length < 3 && highRiskCount === 0) {
+          keyFindings.push(`检测到 ${categoryName} 发生变动，可能影响稳定性`);
         }
+      }
+    });
+
+    let commitRiskLevel: 'high' | 'medium' | 'low' = 'low';
+    let commitRiskSummary = '变更风险较低';
+
+    if (commitHighRisk > 0) {
+      commitRiskLevel = 'high';
+      commitRiskSummary = `涉及 ${commitHighRisk} 处高风险变更`;
+    } else if (commitMediumRisk > 0) {
+      commitRiskLevel = 'medium';
+      commitRiskSummary = `包含 ${commitMediumRisk} 处中等风险变更`;
+    }
+
+    items.push({
+      id: commit.commitId,
+      author: commit.author?.name || 'Unknown',
+      time: commit.timestamp ? new Date(commit.timestamp).toLocaleString('zh-CN') : 'Unknown',
+      riskLevel: commitRiskLevel,
+      fileCount: commit.changedFilesCount || 0,
+      riskSummary: commitRiskSummary,
+      message: commit.message,
+      details: {
+        affectedModules: Array.from(affectedModules).slice(0, 5) // Top 5 modules
       }
     });
   });
 
-  // Deduplicate findings
   const uniqueFindings = Array.from(new Set(keyFindings));
 
-  // Determine overall level
   let level: 'low' | 'medium' | 'high' = 'low';
   let headline = '本次变更风险较低';
   let recommendation = '可以直接合并。';
@@ -97,7 +121,6 @@ export const transformToViewModel = (impacts: CommitImpact[]): AnalysisViewModel
     recommendation = '建议关注受影响的 UI/API 模块。';
   }
 
-  // Fallback findings if empty but risks exist (shouldn't happen with logic above, but safety net)
   if (uniqueFindings.length === 0) {
     if (level === 'low') {
       uniqueFindings.push('未发现显著的风险模式。');
@@ -110,8 +133,9 @@ export const transformToViewModel = (impacts: CommitImpact[]): AnalysisViewModel
     summary: {
       level,
       headline,
-      keyFindings: uniqueFindings.slice(0, 3), // Limit to top 3
+      keyFindings: uniqueFindings.slice(0, 3),
       recommendation
-    }
+    },
+    items
   };
 };
