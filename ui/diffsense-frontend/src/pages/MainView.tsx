@@ -171,6 +171,8 @@ const MainView = () => {
         onSwitchToExpert={() => setViewMode('expert')}
         onAnalyze={handleProductModeAnalyze}
         isAnalyzing={isLoading || isAnalyzingProject}
+        branches={branches}
+        initialBranch={currentBranch}
       />
     );
   }
