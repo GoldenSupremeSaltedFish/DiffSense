@@ -500,8 +500,8 @@ export default class DiffSense implements vscode.WebviewViewProvider {
     // 移除 "* " 前缀（当前分支标记）
     cleaned = cleaned.replace(/^\*\s+/, '').trim();
     
-    // 移除 "remotes/" 前缀（远程分支）
-    cleaned = cleaned.replace(/^remotes\/[^/]+\//, '');
+    // 移除 "remotes/" 前缀（远程分支），但保留 remote 名称（如 origin/）以便 Git 正确识别
+    cleaned = cleaned.replace(/^remotes\//, '');
     
     // 移除其他无效字符
     cleaned = cleaned.replace(/[<>|]/g, '').trim();
