@@ -305,7 +305,12 @@ class CliAdapter {
     async getGitDiff(from, to, repoPath) {
         const { execFile } = require('child_process');
         const { promisify } = require('util');
-        const execFileAsync = promisify(execFile);
+        const execFileAsync = (file, args, options) => {
+            return promisify(execFile)(file, args, {
+                maxBuffer: 1024 * 1024 * 50, // 50MB
+                ...options
+            });
+        };
         
         try {
             const { stdout } = await execFileAsync('git', ['diff', '--name-only', `${from}..${to}`], {

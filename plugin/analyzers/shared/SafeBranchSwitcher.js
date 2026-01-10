@@ -51,7 +51,8 @@ class SafeBranchSwitcher {
         const execOptions = {
             cwd: this.repoPath,
             encoding: 'utf8',
-            stdio: ['pipe', 'pipe', 'pipe']
+            stdio: ['pipe', 'pipe', 'pipe'],
+            maxBuffer: 1024 * 1024 * 50 // 50MB
         };
         
         try {

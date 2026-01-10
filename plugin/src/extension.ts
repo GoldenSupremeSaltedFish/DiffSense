@@ -2296,10 +2296,13 @@ ${codeBlock(String(errorContext))}`;
         execFile('node', [mergeImpactPath, baseCommit, headCommit], {
           cwd: repoPath,
           timeout: 60000,
-          maxBuffer: 1024 * 1024 * 5
+          maxBuffer: 1024 * 1024 * 50 // 50MB
         }, (error, stdout, stderr) => {
           if (error) {
             console.error('mergeImpact 执行错误:', error);
+            if (error.message.includes('maxBuffer')) {
+              console.error('⚠️ stdout maxBuffer length exceeded in mergeImpact');
+            }
             console.error('stderr:', stderr);
             reject(error);
           } else {
@@ -2409,11 +2412,13 @@ ${codeBlock(String(errorContext))}`;
       const analysisType = data.analysisType || 'backend';
       const branch = data.branch || 'HEAD';
       const range = data.range || 'Last 3 commits';
+      const analysisMode = data.analysisMode || 'unknown'; // 获取分析模式
       
       this.log(`[Analysis] 工作区: ${repoPath}`, 'info');
       this.log(`[Analysis] 分析类型: ${analysisType}`, 'info');
       this.log(`[Analysis] 分支: ${branch}`, 'info');
       this.log(`[Analysis] 范围: ${range}`, 'info');
+      this.log(`[Analysis] 模式: ${analysisMode === 'quick' ? '快速模式 (Simple)' : analysisMode === 'deep' ? '深度模式 (Pro)' : analysisMode}`, 'info');
       
       let result: any;
       
@@ -2624,10 +2629,13 @@ ${codeBlock(String(errorContext))}`;
       execFile('java', args, {
         cwd: repoPath,
         timeout: 300000,
-        maxBuffer: 1024 * 1024 * 10
+        maxBuffer: 1024 * 1024 * 50 // 50MB
       }, (error, stdout, stderr) => {
         if (error) {
           this.log(`[Analysis] Java 分析器执行错误: ${error.message}`, 'error');
+          if (error.message.includes('maxBuffer')) {
+            this.log('[Analysis] ⚠️ stdout maxBuffer length exceeded. Please try reducing the analysis scope.', 'error');
+          }
           if (stderr) {
             this.log(`[Analysis] stderr: ${stderr}`, 'error');
           }
