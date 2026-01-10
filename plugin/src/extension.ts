@@ -34,6 +34,12 @@ export default class DiffSense implements vscode.WebviewViewProvider {
   private context: vscode.ExtensionContext;
   private currentState: PluginState = PluginState.IDLE;
   private backgroundTaskCancellation: vscode.CancellationTokenSource | null = null;
+  
+  // ✅ 缓存数据，用于模式切换时恢复状态
+  private _cachedBranches: string[] = [];
+  private _cachedAnalysisResult: any = null;
+  private _cachedProjectType: any = null;
+  private _cachedProjectInference: any = null;
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
@@ -334,17 +340,29 @@ export default class DiffSense implements vscode.WebviewViewProvider {
       // ✅ 阶段完成：记录详细结果
       this.log('[Background] [阶段 2] ✅ 项目推理完成', 'info');
       this.log(`[Background] [结果] 项目类型: ${result.projectType}`, 'info');
+      
+      // ✅ 缓存项目推理结果
+      this._cachedProjectInference = result;
+      
       this.log(`[Background] [结果] 源根目录: ${JSON.stringify(result.sourceRoots)}`, 'info');
       this.log(`[Background] [结果] 检测详情: ${JSON.stringify(result.detectionDetails)}`, 'info');
       
       // ✅ 阶段 3: 检测项目类型和后端语言
       this.log('[Background] [阶段 3] 开始检测项目类型和后端语言...', 'info');
       const projectTypeInfo = await this.detectProjectType(rootPath, result);
+      
+      // ✅ 缓存项目类型信息
+      this._cachedProjectType = projectTypeInfo;
+      
       this.log(`[Background] [阶段 3] ✅ 项目类型检测完成: ${projectTypeInfo.projectType} (后端语言: ${projectTypeInfo.backendLanguage})`, 'info');
       
       // ✅ 阶段 4: 加载 Git 分支
       this.log('[Background] [阶段 4] 开始加载 Git 分支...', 'info');
       const branches = await this.loadGitBranches(rootPath);
+      
+      // ✅ 缓存分支列表
+      this._cachedBranches = branches;
+      
       this.log(`[Background] [阶段 4] ✅ 加载完成，找到 ${branches.length} 个分支`, 'info');
       
       this.log(`[Background] ========== 后台分析完成 ==========`, 'info');
@@ -2591,6 +2609,9 @@ ${codeBlock(String(errorContext))}`;
       
       this.log(`[Analysis] ✅ 分析完成，结果包含 ${result.commits?.length || 0} 个提交`, 'info');
       
+      // ✅ 缓存分析结果
+      this._cachedAnalysisResult = result.commits || result;
+
       // ✅ 发送分析结果
       this._view?.postMessage({
         command: 'analysisResult',
