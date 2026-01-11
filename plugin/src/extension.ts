@@ -195,6 +195,82 @@ export default class DiffSense implements vscode.WebviewViewProvider {
             });
           });
           break;
+
+        case 'getBranches':
+          this.log('[Message] 收到获取分支列表请求', 'info');
+          if (this._cachedBranches && this._cachedBranches.length > 0) {
+            this.log(`[Message] 使用缓存的分支列表 (${this._cachedBranches.length} 个)`, 'info');
+            this._view?.postMessage({
+              command: 'branchesLoaded',
+              branches: this._cachedBranches
+            });
+          } else {
+            // 尝试重新加载
+            const workspaceFolders = vscode.workspace.workspaceFolders;
+            if (workspaceFolders) {
+              this.loadGitBranches(workspaceFolders[0].uri.fsPath).then(branches => {
+                this._cachedBranches = branches;
+                this._view?.postMessage({
+                  command: 'branchesLoaded',
+                  branches: branches
+                });
+              });
+            }
+          }
+          break;
+
+        case 'restoreAnalysisResults':
+          this.log('[Message] 收到恢复分析结果请求', 'info');
+          if (this._cachedAnalysisResult) {
+            this.log('[Message] 恢复缓存的分析结果', 'info');
+            this._view?.postMessage({
+              command: 'analysisCompleted',
+              data: this._cachedAnalysisResult
+            });
+          }
+          // 同时恢复项目信息
+          if (this._cachedProjectInference) {
+            this._view?.postMessage({
+              command: 'projectAnalysisCompleted',
+              data: this._cachedProjectInference
+            });
+          }
+          if (this._cachedProjectType) {
+            this._view?.postMessage({
+              command: 'projectTypeDetected',
+              projectType: this._cachedProjectType.projectType,
+              backendLanguage: this._cachedProjectType.backendLanguage,
+              frontendPaths: this._cachedProjectInference?.sourceRoots || []
+            });
+          }
+          break;
+
+        case 'detectProjectType':
+          this.log('[Message] 收到项目类型检测请求', 'info');
+          if (this._cachedProjectType) {
+            this._view?.postMessage({
+              command: 'projectTypeDetected',
+              projectType: this._cachedProjectType.projectType,
+              backendLanguage: this._cachedProjectType.backendLanguage,
+              frontendPaths: this._cachedProjectInference?.sourceRoots || []
+            });
+          } else {
+            // 如果没有缓存，尝试快速检测
+            if (this._cachedProjectInference && vscode.workspace.workspaceFolders) {
+              const rootPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
+              this.detectProjectType(rootPath, this._cachedProjectInference).then(info => {
+                this._cachedProjectType = info;
+                this._view?.postMessage({
+                  command: 'projectTypeDetected',
+                  projectType: info.projectType,
+                  backendLanguage: info.backendLanguage,
+                  frontendPaths: this._cachedProjectInference?.sourceRoots || []
+                });
+              });
+            }
+          }
+          break;
+
         default:
           this.log(`[Message] ⚠️  未知命令: ${data.command}`, 'warn');
           this.log(`[Message] 完整消息数据: ${JSON.stringify(data, null, 2)}`, 'warn');
