@@ -90,31 +90,90 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
         boxSizing: 'border-box',
         gap: '20px',
         fontFamily: 'var(--vscode-font-family)',
-        overflowY: 'auto'
+        overflowY: 'auto',
+        animation: 'fadeIn 0.5s ease-out'
       }}>
+        <style>
+          {`
+            @keyframes fadeIn {
+              from { opacity: 0; transform: translateY(10px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            @keyframes slideIn {
+              from { opacity: 0; transform: translateX(-10px); }
+              to { opacity: 1; transform: translateX(0); }
+            }
+            .hover-card {
+              transition: transform 0.2s, box-shadow 0.2s;
+            }
+            .hover-card:hover {
+              transform: translateY(-2px);
+              box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            }
+            .action-btn {
+              transition: all 0.2s;
+            }
+            .action-btn:hover {
+              filter: brightness(1.1);
+            }
+            .expand-content {
+              animation: fadeIn 0.3s ease-out;
+            }
+          `}
+        </style>
+
         {/* 3. 关键提示区域 (Critical Alerts) */}
         <div style={{
-          padding: '16px',
-          backgroundColor: 'var(--vscode-editor-inactiveSelectionBackground)',
-          borderLeft: `4px solid ${getRiskColor(summary.level)}`,
-          borderRadius: '4px'
+          padding: '20px',
+          background: `linear-gradient(to right, ${getRiskColor(summary.level)}22, transparent)`,
+          borderLeft: `5px solid ${getRiskColor(summary.level)}`,
+          borderRadius: '8px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+          animation: 'slideIn 0.4s ease-out'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '20px', marginRight: '8px' }}>{getRiskIcon(summary.level)}</span>
-            <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>{summary.headline}</h2>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
+            <span style={{ fontSize: '24px', marginRight: '12px', filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.1))' }}>
+              {getRiskIcon(summary.level)}
+            </span>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: 'var(--vscode-foreground)' }}>
+                {summary.headline}
+              </h2>
+              <div style={{ fontSize: '12px', color: 'var(--vscode-descriptionForeground)', marginTop: '2px', fontWeight: '500' }}>
+                {summary.level === 'high' ? '需重点关注' : summary.level === 'medium' ? '建议复查' : '风险可控'}
+              </div>
+            </div>
           </div>
-          <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: 'var(--vscode-foreground)' }}>
-            {summary.recommendation}
-          </p>
+          
+          <div style={{ 
+            backgroundColor: 'var(--vscode-editor-background)', 
+            padding: '12px', 
+            borderRadius: '6px',
+            fontSize: '13px', 
+            color: 'var(--vscode-foreground)',
+            lineHeight: '1.5',
+            border: '1px solid var(--vscode-widget-border)'
+          }}>
+            <strong>建议：</strong> {summary.recommendation}
+          </div>
           
           {summary.keyFindings.length > 0 && (
-            <div style={{ marginTop: '12px' }}>
-              <h3 style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--vscode-descriptionForeground)', marginBottom: '8px' }}>
+            <div style={{ marginTop: '16px' }}>
+              <h3 style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--vscode-descriptionForeground)', marginBottom: '10px', fontWeight: '600' }}>
                 关键发现
               </h3>
-              <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px' }}>
+              <ul style={{ margin: 0, paddingLeft: '0', listStyle: 'none' }}>
                 {summary.keyFindings.map((finding, idx) => (
-                  <li key={idx} style={{ marginBottom: '4px' }}>{finding}</li>
+                  <li key={idx} style={{ 
+                    marginBottom: '8px', 
+                    fontSize: '13px', 
+                    display: 'flex', 
+                    alignItems: 'start',
+                    gap: '8px'
+                  }}>
+                    <span style={{ color: getRiskColor(summary.level), fontSize: '14px', lineHeight: '1' }}>•</span>
+                    {finding}
+                  </li>
                 ))}
               </ul>
             </div>
@@ -123,97 +182,133 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
 
         {/* 4. 分析结果展示 (Analysis Results) */}
         <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600' }}>变更详情</h3>
-            <div style={{ fontSize: '11px', color: 'var(--vscode-descriptionForeground)' }}>
-              共 {items.length} 个提交
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>📋</span> 变更详情
+            </h3>
+            <div style={{ 
+              fontSize: '11px', 
+              color: 'var(--vscode-badge-foreground)', 
+              backgroundColor: 'var(--vscode-badge-background)',
+              padding: '2px 8px',
+              borderRadius: '10px'
+            }}>
+              {items.length} 个提交
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {items.map(item => (
-              <div key={item.id} style={{
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {items.map((item, index) => (
+              <div key={item.id} className="hover-card" style={{
                 border: '1px solid var(--vscode-widget-border)',
-                borderRadius: '4px',
+                borderRadius: '8px',
                 backgroundColor: 'var(--vscode-editor-background)',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                animation: 'slideIn 0.4s ease-out forwards',
+                animationDelay: `${index * 0.1}s`,
+                opacity: 0 // Start hidden for animation
               }}>
                 {/* List Item Header */}
                 <div 
                   onClick={() => toggleExpand(item.id)}
                   style={{
-                    padding: '10px',
+                    padding: '14px',
                     display: 'flex',
                     alignItems: 'center',
                     cursor: 'pointer',
-                    backgroundColor: expandedItems.has(item.id) ? 'var(--vscode-list-hoverBackground)' : 'transparent'
+                    backgroundColor: expandedItems.has(item.id) ? 'var(--vscode-list-hoverBackground)' : 'transparent',
+                    transition: 'background-color 0.2s'
                   }}
                 >
                   {/* Risk Indicator */}
                   <div style={{ 
-                    width: '8px', 
-                    height: '8px', 
-                    borderRadius: '50%', 
-                    backgroundColor: getRiskColor(item.riskLevel),
-                    marginRight: '12px',
-                    flexShrink: 0
-                  }} />
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    marginRight: '16px',
+                    minWidth: '40px'
+                  }}>
+                    <div style={{ 
+                      width: '10px', 
+                      height: '10px', 
+                      borderRadius: '50%', 
+                      backgroundColor: getRiskColor(item.riskLevel),
+                      boxShadow: `0 0 6px ${getRiskColor(item.riskLevel)}`
+                    }} />
+                    {expandedItems.has(item.id) && <div style={{ width: '1px', height: '100%', backgroundColor: 'var(--vscode-widget-border)', marginTop: '4px' }} />}
+                  </div>
 
                   {/* Main Info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '6px' }}>
                       <span style={{ 
                         fontFamily: 'monospace', 
                         fontSize: '12px', 
                         fontWeight: 'bold', 
-                        marginRight: '8px',
+                        marginRight: '10px',
+                        padding: '2px 6px',
+                        backgroundColor: 'var(--vscode-textBlockQuote-background)',
+                        borderRadius: '4px',
                         color: 'var(--vscode-textLink-foreground)'
                       }}>
                         {item.id.substring(0, 7)}
                       </span>
-                      <span style={{ fontSize: '12px', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: '13px', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {item.message.split('\n')[0]}
                       </span>
                     </div>
-                    <div style={{ fontSize: '11px', color: 'var(--vscode-descriptionForeground)', display: 'flex', gap: '12px' }}>
-                      <span>{item.author}</span>
-                      <span>{item.time}</span>
-                      <span>{item.fileCount} 文件</span>
+                    <div style={{ fontSize: '11px', color: 'var(--vscode-descriptionForeground)', display: 'flex', gap: '16px', alignItems: 'center' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>👤 {item.author}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>🕒 {item.time.split(' ')[0]}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>📄 {item.fileCount} 文件</span>
                     </div>
                   </div>
 
                   {/* Risk Summary */}
                   <div style={{ 
-                    marginLeft: '12px', 
+                    marginLeft: '16px', 
                     fontSize: '11px', 
                     color: getRiskColor(item.riskLevel),
-                    fontWeight: '600',
+                    fontWeight: '700',
                     textAlign: 'right',
-                    flexShrink: 0
+                    flexShrink: 0,
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    backgroundColor: `${getRiskColor(item.riskLevel)}15`,
+                    border: `1px solid ${getRiskColor(item.riskLevel)}30`
                   }}>
                     {item.riskSummary}
+                  </div>
+                  
+                  {/* Chevron Icon */}
+                  <div style={{ marginLeft: '12px', color: 'var(--vscode-descriptionForeground)', transform: expandedItems.has(item.id) ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}>
+                    ▼
                   </div>
                 </div>
 
                 {/* Expandable Details */}
                 {expandedItems.has(item.id) && (
-                  <div style={{
-                    padding: '10px 10px 10px 30px',
+                  <div className="expand-content" style={{
+                    padding: '12px 16px 16px 70px',
                     borderTop: '1px solid var(--vscode-widget-border)',
                     backgroundColor: 'var(--vscode-textBlockQuote-background)',
                     fontSize: '12px'
                   }}>
                     {item.details?.affectedModules && item.details.affectedModules.length > 0 ? (
                       <div>
-                        <span style={{ fontWeight: '600', marginRight: '8px' }}>受影响模块:</span>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
+                        <div style={{ fontWeight: '600', marginBottom: '8px', color: 'var(--vscode-foreground)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>🧩</span> 受影响模块
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                           {item.details.affectedModules.map((mod, idx) => (
                             <span key={idx} style={{
-                              backgroundColor: 'var(--vscode-badge-background)',
-                              color: 'var(--vscode-badge-foreground)',
-                              padding: '2px 6px',
-                              borderRadius: '3px',
-                              fontSize: '11px'
+                              backgroundColor: 'var(--vscode-editor-background)',
+                              border: '1px solid var(--vscode-widget-border)',
+                              color: 'var(--vscode-foreground)',
+                              padding: '4px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                             }}>
                               {mod}
                             </span>
@@ -221,7 +316,7 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
                         </div>
                       </div>
                     ) : (
-                      <div style={{ color: 'var(--vscode-descriptionForeground)' }}>无详细模块信息</div>
+                      <div style={{ color: 'var(--vscode-descriptionForeground)', fontStyle: 'italic' }}>暂无详细模块信息</div>
                     )}
                   </div>
                 )}
@@ -231,52 +326,59 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
         </div>
 
         {/* 5. 操作按钮 (Action Buttons) */}
-        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+        <div style={{ display: 'flex', gap: '12px', marginTop: '12px', paddingBottom: '20px' }}>
           <button
+            className="action-btn"
             onClick={handleStart}
             disabled={isAnalyzing}
             style={{
               flex: 1,
-              padding: '10px',
+              padding: '12px',
               backgroundColor: 'var(--vscode-button-background)',
               color: 'var(--vscode-button-foreground)',
               border: 'none',
-              borderRadius: '2px',
+              borderRadius: '4px',
               cursor: isAnalyzing ? 'not-allowed' : 'pointer',
               opacity: isAnalyzing ? 0.7 : 1,
-              fontWeight: '600'
+              fontWeight: '600',
+              fontSize: '14px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
             }}
           >
-            {isAnalyzing ? '分析中...' : '重新分析'}
+            {isAnalyzing ? '🔄 分析中...' : '🔄 重新分析'}
           </button>
           
           <button
+            className="action-btn"
             onClick={handleExport}
             style={{
-              padding: '10px 16px',
+              padding: '12px 20px',
               backgroundColor: 'var(--vscode-button-secondaryBackground)',
               color: 'var(--vscode-button-secondaryForeground)',
               border: 'none',
-              borderRadius: '2px',
-              cursor: 'pointer'
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: '500'
             }}
             title="复制结果 JSON 到剪贴板"
           >
-            复制/导出
+            📋 复制/导出
           </button>
 
           <button
+            className="action-btn"
              onClick={onSwitchToExpert}
              style={{
-               padding: '10px 16px',
+               padding: '12px 20px',
                backgroundColor: 'transparent',
                color: 'var(--vscode-textLink-foreground)',
                border: '1px solid var(--vscode-button-secondaryBackground)',
-               borderRadius: '2px',
-               cursor: 'pointer'
+               borderRadius: '4px',
+               cursor: 'pointer',
+               fontWeight: '500'
              }}
           >
-            专家模式
+            🔍 专家模式
           </button>
         </div>
 
@@ -284,28 +386,29 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
         <div style={{ 
           display: 'flex', 
           justifyContent: 'center', 
-          gap: '16px', 
+          gap: '24px', 
           fontSize: '11px', 
           color: 'var(--vscode-descriptionForeground)',
-          paddingTop: '10px',
+          paddingTop: '16px',
           borderTop: '1px solid var(--vscode-widget-border)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--vscode-charts-red)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--vscode-charts-red)', boxShadow: '0 0 4px var(--vscode-charts-red)' }} />
             <span>高风险</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--vscode-charts-orange)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--vscode-charts-orange)', boxShadow: '0 0 4px var(--vscode-charts-orange)' }} />
             <span>中风险</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--vscode-charts-green)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--vscode-charts-green)', boxShadow: '0 0 4px var(--vscode-charts-green)' }} />
             <span>低风险</span>
           </div>
         </div>
       </div>
     );
   }
+
 
   // --- Input View (Home Page) ---
   return (
