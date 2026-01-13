@@ -10,6 +10,7 @@ interface ProductModeViewProps {
   onAnalyze: (branch: string, scope: string) => void;
   isAnalyzing: boolean;
   onExport: (format: 'json' | 'html') => void;
+  t: (key: string) => string;
 }
 
 const ProductModeView: React.FC<ProductModeViewProps> = ({ 
@@ -19,7 +20,8 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
   onSwitchToExpert, 
   onAnalyze, 
   isAnalyzing,
-  onExport
+  onExport,
+  t
 }) => {
   const [selectedBranch, setSelectedBranch] = useState(initialBranch);
   const [selectedScope, setSelectedScope] = useState('Last 5 commits');
@@ -156,7 +158,7 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
                 {summary.headline}
               </h2>
               <div style={{ fontSize: '12px', color: 'var(--vscode-descriptionForeground)', marginTop: '2px', fontWeight: '500' }}>
-                {summary.level === 'high' ? '需重点关注' : summary.level === 'medium' ? '建议复查' : '风险可控'}
+                {summary.level === 'high' ? t('productMode.highRisk') : summary.level === 'medium' ? t('productMode.mediumRisk') : t('productMode.lowRisk')}
               </div>
             </div>
           </div>
@@ -170,13 +172,13 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
             lineHeight: '1.5',
             border: '1px solid var(--vscode-widget-border)'
           }}>
-            <strong>建议：</strong> {summary.recommendation}
+            <strong>{t('productMode.recommendation')}：</strong> {summary.recommendation}
           </div>
           
           {summary.keyFindings.length > 0 && (
             <div style={{ marginTop: '16px' }}>
               <h3 style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--vscode-descriptionForeground)', marginBottom: '10px', fontWeight: '600' }}>
-                关键发现
+                {t('productMode.keyFindings')}
               </h3>
               <ul style={{ margin: 0, paddingLeft: '0', listStyle: 'none' }}>
                 {summary.keyFindings.map((finding, idx) => (
@@ -200,7 +202,7 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>📋</span> 变更详情
+              <span>📋</span> {t('productMode.changeDetails')}
             </h3>
             <div style={{ 
               fontSize: '11px', 
@@ -209,7 +211,7 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
               padding: '2px 8px',
               borderRadius: '10px'
             }}>
-              {items.length} 个提交
+              {items.length} {t('productMode.commitsCount')}
             </div>
           </div>
 
@@ -276,7 +278,7 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
                     <div style={{ fontSize: '11px', color: 'var(--vscode-descriptionForeground)', display: 'flex', gap: '16px', alignItems: 'center' }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>👤 {item.author}</span>
                       <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>🕒 {item.time.split(' ')[0]}</span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>📄 {item.fileCount} 文件</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>📄 {item.fileCount} {t('productMode.filesCount')}</span>
                     </div>
                   </div>
 
@@ -313,7 +315,7 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
                     {item.details?.affectedModules && item.details.affectedModules.length > 0 ? (
                       <div>
                         <div style={{ fontWeight: '600', marginBottom: '8px', color: 'var(--vscode-foreground)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span>🧩</span> 受影响模块
+                          <span>🧩</span> {t('productMode.affectedModules')}
                         </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                           {item.details.affectedModules.map((mod, idx) => (
@@ -332,7 +334,7 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
                         </div>
                       </div>
                     ) : (
-                      <div style={{ color: 'var(--vscode-descriptionForeground)', fontStyle: 'italic' }}>暂无详细模块信息</div>
+                      <div style={{ color: 'var(--vscode-descriptionForeground)', fontStyle: 'italic' }}>{t('productMode.noModules')}</div>
                     )}
                   </div>
                 )}
@@ -361,7 +363,7 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
             }}
           >
-            {isAnalyzing ? '🔄 分析中...' : '🔄 重新分析'}
+            {isAnalyzing ? `🔄 ${t('productMode.analyzing')}` : `🔄 ${t('productMode.startAnalysis')}`}
           </button>
           
           <div className="export-container" style={{ position: 'relative' }}>
@@ -381,9 +383,9 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
                 gap: '8px',
                 height: '100%'
               }}
-              title="导出分析结果"
+              title={t('productMode.export')}
             >
-              📋 导出报告 <span style={{ fontSize: '10px' }}>▼</span>
+              📋 {t('productMode.export')} <span style={{ fontSize: '10px' }}>▼</span>
             </button>
             
             {showExportMenu && (
@@ -420,7 +422,7 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--vscode-list-hoverBackground)'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
-                  <span>📄</span> JSON
+                  <span>📄</span> {t('productMode.exportJson')}
                 </button>
                 <div style={{ height: '1px', backgroundColor: 'var(--vscode-dropdown-border)' }} />
                 <button
@@ -441,7 +443,7 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--vscode-list-hoverBackground)'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
-                  <span>🌐</span> HTML
+                  <span>🌐</span> {t('productMode.exportHtml')}
                 </button>
               </div>
             )}
@@ -460,7 +462,7 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
                fontWeight: '500'
              }}
           >
-            🔍 专家模式
+            🔍 {t('productMode.switchToExpert')}
           </button>
         </div>
 
@@ -476,15 +478,15 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--vscode-charts-red)', boxShadow: '0 0 4px var(--vscode-charts-red)' }} />
-            <span>高风险</span>
+            <span>{t('productMode.highRisk')}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--vscode-charts-orange)', boxShadow: '0 0 4px var(--vscode-charts-orange)' }} />
-            <span>中风险</span>
+            <span>{t('productMode.mediumRisk')}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--vscode-charts-green)', boxShadow: '0 0 4px var(--vscode-charts-green)' }} />
-            <span>低风险</span>
+            <span>{t('productMode.lowRisk')}</span>
           </div>
         </div>
       </div>
@@ -507,7 +509,7 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
     }}>
       <div style={{ marginBottom: '40px', textAlign: 'center' }}>
         <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>DiffSense</h1>
-        <p style={{ color: 'var(--vscode-descriptionForeground)' }}>代码变更风险评估 - 简易模式</p>
+        <p style={{ color: 'var(--vscode-descriptionForeground)' }}>{t('productMode.subtitle')}</p>
       </div>
 
       {/* Inputs */}
@@ -515,7 +517,7 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
         
         {/* Branch Selection */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <label style={{ fontSize: '12px', fontWeight: '600' }}>分析分支</label>
+          <label style={{ fontSize: '12px', fontWeight: '600' }}>{t('toolbar.gitBranch')}</label>
           <div style={{ display: 'flex', gap: '8px' }}>
             <select 
               value={selectedBranch}
@@ -535,11 +537,11 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
               {branches.map(b => (
                 <option key={b} value={b}>{b}</option>
               ))}
-              {branches.length === 0 && <option value="">Loading branches...</option>}
+              {branches.length === 0 && <option value="">{t('toolbar.loadingBranches')}</option>}
             </select>
             <button
               onClick={handleReset}
-              title="重置选项"
+              title={t('productMode.reset')}
               style={{
                 padding: '8px',
                 backgroundColor: 'var(--vscode-button-secondaryBackground)',
@@ -556,7 +558,7 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
 
         {/* Scope Selection */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <label style={{ fontSize: '12px', fontWeight: '600' }}>分析范围</label>
+          <label style={{ fontSize: '12px', fontWeight: '600' }}>{t('productMode.scope')}</label>
           <select 
             value={selectedScope}
             onChange={(e) => setSelectedScope(e.target.value)}
@@ -571,9 +573,9 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
               outline: 'none'
             }}
           >
-            <option value="Last 5 commits">最近 5 次提交</option>
-            <option value="Last 10 commits">最近 10 次提交</option>
-            <option value="Last 30 commits">自上次发布以来</option>
+            <option value="Last 5 commits">{t('productMode.scopeLast5')}</option>
+            <option value="Last 10 commits">{t('productMode.scopeLast10')}</option>
+            <option value="Last 30 commits">{t('productMode.scopeSinceRelease')}</option>
           </select>
         </div>
       </div>
@@ -596,7 +598,7 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
           marginBottom: '20px'
         }}
       >
-        {isAnalyzing ? '正在评估...' : '开始评估'}
+        {isAnalyzing ? t('productMode.analyzing') : t('productMode.startAnalysis')}
       </button>
 
       {/* Escape Hatch */}
@@ -613,7 +615,7 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
             padding: '8px'
           }}
         >
-          查看完整分析（专家模式）
+          {t('productMode.switchToExpert')}
         </button>
       </div>
     </div>

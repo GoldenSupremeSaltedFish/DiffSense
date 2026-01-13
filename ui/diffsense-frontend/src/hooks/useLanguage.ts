@@ -57,7 +57,7 @@ export const useLanguage = () => {
   };
 
   // 获取当前语言的文本
-  const t = (keyPath: string): string => {
+  const t = (keyPath: string, params?: Record<string, string | number>): string => {
     const keys = keyPath.split('.');
     let value: any = config;
     
@@ -70,7 +70,15 @@ export const useLanguage = () => {
       }
     }
     
-    return typeof value === 'string' ? value : keyPath;
+    let result = typeof value === 'string' ? value : keyPath;
+    
+    if (params && typeof result === 'string') {
+      Object.entries(params).forEach(([key, val]) => {
+        result = result.replace(new RegExp(`{${key}}`, 'g'), String(val));
+      });
+    }
+
+    return result;
   };
 
   return {

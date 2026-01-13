@@ -5,8 +5,10 @@ import CommitList from "../components/CommitList";
 import { saveState, getState, postMessage } from "../utils/vscode";
 import ProductModeView from "./ProductModeView";
 import { transformToViewModel } from "../utils/productModeTransformer";
+import { useLanguage } from "../hooks/useLanguage";
 
 const MainView = () => {
+  const { currentLanguage, changeLanguage, t, supportedLanguages } = useLanguage();
   const [analysisResults, setAnalysisResults] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +64,9 @@ const MainView = () => {
     
     // Restore analysis results and project status
     postMessage({ command: 'restoreAnalysisResults' });
+
+    // Request current language
+    postMessage({ command: 'getLanguage' });
     
     const handleMessage = (event: MessageEvent) => {
       const message = event.data;
@@ -132,6 +137,18 @@ const MainView = () => {
           setIsLoading(false);
           setError(message.error || '热点分析失败');
           break;
+        case 'setLanguage':
+          if (message.language) {
+            console.log('🌐 Received language from VS Code:', message.language);
+            // Map VS Code language to supported languages
+            const langCode = message.language.toLowerCase();
+            if (langCode.startsWith('zh')) {
+              changeLanguage('zh-CN');
+            } else {
+              changeLanguage('en-US');
+            }
+          }
+          break;
       }
     };
 
@@ -155,11 +172,7 @@ const MainView = () => {
       analysisType: 'mixed',   // Fixed default
       analysisOptions: ['fullStack'], // Fixed default
       analysisMode: 'quick',   // Fixed default
-      language: 'en' // Default to en or detect? Toolbar uses 'useLanguage'. We'll default to en for now or 'zh-CN' if user prefers? 
-                     // The prompt text is in Chinese, so maybe 'zh-CN' is safer if that's the primary audience?
-                     // Actually, let's just stick to 'en' or pass undefined to let backend decide?
-                     // Toolbar defaults to browser language. 
-                     // I'll leave it as 'en' or maybe add language detection later.
+      language: currentLanguage
     };
 
     setIsLoading(true);
@@ -170,7 +183,7 @@ const MainView = () => {
   };
 
   if (viewMode === 'product') {
-    const viewModel = transformToViewModel(analysisResults);
+    const viewModel = transformToViewModel(analysisResults, t);
     return (
       <ProductModeView 
         model={viewModel}
@@ -183,9 +196,10 @@ const MainView = () => {
           postMessage({
             command: 'exportResults',
             format: format,
-            language: 'zh-CN' // Product mode defaults to Chinese as per UI
+            language: currentLanguage
           });
         }}
+        t={t}
       />
     );
   }
@@ -209,7 +223,7 @@ const MainView = () => {
         borderBottom: '1px solid var(--vscode-panel-border)'
       }}>
         <div style={{ fontSize: "10px", color: "var(--vscode-descriptionForeground)" }}>
-          🔍 DiffSense v1.0 - Expert Mode
+          🔍 DiffSense v1.0 - {t('productMode.expertModeTitle')}
         </div>
         <button 
           onClick={() => setViewMode('product')}
@@ -222,15 +236,20 @@ const MainView = () => {
             textDecoration: 'underline'
           }}
         >
-          Switch to Product Mode
+          {t('productMode.switchToProduct')}
         </button>
       </div>
       {(isAnalyzingProject || isLoading) && (
         <div style={{ padding: "4px", fontSize: "10px", color: "var(--vscode-descriptionForeground)" }}>
-          {isAnalyzingProject ? '正在分析项目...' : '正在分析...'}
+          {isAnalyzingProject ? t('productMode.analyzingProject') : t('productMode.analyzing')}
         </div>
       )}
-      <Toolbar />
+      <Toolbar 
+        currentLanguage={currentLanguage}
+        changeLanguage={changeLanguage}
+        t={t}
+        supportedLanguages={supportedLanguages}
+      />
       {hasHotspotAnalyzed && hotspotResults && (
         <div style={{ padding: "4px" }}>
           <HotspotAnalysis results={hotspotResults} isLoading={isLoading} error={error || undefined} />

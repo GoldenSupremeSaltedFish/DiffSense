@@ -83,6 +83,13 @@ export default class DiffSense implements vscode.WebviewViewProvider {
     // ✅ 立即通知 UI 插件已激活
     this.updateUIState(PluginState.IDLE, 'DiffSense 已激活，准备分析项目...');
 
+    // ✅ 发送当前 VS Code 语言设置
+    this.log(`[UI] 发送语言设置: ${vscode.env.language}`, 'info');
+    webviewView.webview.postMessage({
+      command: 'setLanguage',
+      language: vscode.env.language
+    });
+
     // ✅ Handle messages from the webview
     // ✅ 确保消息监听器已正确设置
     this.log('[UI] 设置消息监听器...', 'info');
@@ -193,6 +200,14 @@ export default class DiffSense implements vscode.WebviewViewProvider {
               valid: false,
               error: error instanceof Error ? error.message : String(error)
             });
+          });
+          break;
+
+        case 'getLanguage':
+          this.log('[UI] 收到语言获取请求', 'info');
+          this._view?.postMessage({
+            command: 'setLanguage',
+            language: vscode.env.language
           });
           break;
 

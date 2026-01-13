@@ -24,14 +24,14 @@ interface CommitImpact {
   };
 }
 
-export const transformToViewModel = (impacts: CommitImpact[]): AnalysisViewModel => {
+export const transformToViewModel = (impacts: CommitImpact[], t: (key: string, params?: any) => string): AnalysisViewModel => {
   if (!impacts || impacts.length === 0) {
     return {
       summary: {
         level: 'low',
-        headline: '暂无分析数据',
+        headline: t('productMode.noAnalysisData'),
         keyFindings: [],
-        recommendation: '请运行分析以查看结果。'
+        recommendation: t('productMode.runAnalysisToView')
       },
       items: []
     };
@@ -45,13 +45,16 @@ export const transformToViewModel = (impacts: CommitImpact[]): AnalysisViewModel
   const highRiskCategories = ['A1', 'A2'];
   const mediumRiskCategories = ['A3', 'A4', 'F1', 'F2'];
 
-  const categoryNames: Record<string, string> = {
-    'A1': '核心业务逻辑',
-    'A2': 'API 接口定义',
-    'A3': '数据结构',
-    'A4': '中间件配置',
-    'F1': '前端组件行为',
-    'F2': 'UI 结构',
+  const getCategoryName = (code: string) => {
+    switch (code) {
+      case 'A1': return t('productMode.categoryA1');
+      case 'A2': return t('productMode.categoryA2');
+      case 'A3': return t('productMode.categoryA3');
+      case 'A4': return t('productMode.categoryA4');
+      case 'F1': return t('productMode.categoryF1');
+      case 'F2': return t('productMode.categoryF2');
+      default: return t('productMode.unknownModule');
+    }
   };
 
   impacts.forEach(commit => {
@@ -62,39 +65,39 @@ export const transformToViewModel = (impacts: CommitImpact[]): AnalysisViewModel
 
     classifications.forEach(fc => {
       const cat = fc.classification.category;
-      const categoryName = categoryNames[cat] || fc.classification.categoryName || '未知模块';
+      const categoryName = getCategoryName(cat) || fc.classification.categoryName || t('productMode.unknownModule');
       affectedModules.add(categoryName);
 
       if (highRiskCategories.includes(cat)) {
         highRiskCount++;
         commitHighRisk++;
         if (keyFindings.length < 3) {
-          keyFindings.push(`检测到 ${categoryName} 发生高风险变更`);
+          keyFindings.push(t('productMode.findingHighRisk', { category: categoryName }));
         }
       } else if (mediumRiskCategories.includes(cat)) {
         mediumRiskCount++;
         commitMediumRisk++;
         if (keyFindings.length < 3 && highRiskCount === 0) {
-          keyFindings.push(`检测到 ${categoryName} 发生变动，可能影响稳定性`);
+          keyFindings.push(t('productMode.findingMediumRisk', { category: categoryName }));
         }
       }
     });
 
     let commitRiskLevel: 'high' | 'medium' | 'low' = 'low';
-    let commitRiskSummary = '变更风险较低';
+    let commitRiskSummary = t('productMode.commitRiskLow');
 
     if (commitHighRisk > 0) {
       commitRiskLevel = 'high';
-      commitRiskSummary = `涉及 ${commitHighRisk} 处高风险变更`;
+      commitRiskSummary = t('productMode.commitRiskHigh', { count: commitHighRisk });
     } else if (commitMediumRisk > 0) {
       commitRiskLevel = 'medium';
-      commitRiskSummary = `包含 ${commitMediumRisk} 处中等风险变更`;
+      commitRiskSummary = t('productMode.commitRiskMedium', { count: commitMediumRisk });
     }
 
     items.push({
       id: commit.commitId,
       author: commit.author?.name || 'Unknown',
-      time: commit.timestamp ? new Date(commit.timestamp).toLocaleString('zh-CN') : 'Unknown',
+      time: commit.timestamp ? new Date(commit.timestamp).toLocaleString() : 'Unknown',
       riskLevel: commitRiskLevel,
       fileCount: commit.changedFilesCount || 0,
       riskSummary: commitRiskSummary,
@@ -108,24 +111,24 @@ export const transformToViewModel = (impacts: CommitImpact[]): AnalysisViewModel
   const uniqueFindings = Array.from(new Set(keyFindings));
 
   let level: 'low' | 'medium' | 'high' = 'low';
-  let headline = '本次变更风险较低';
-  let recommendation = '可以直接合并。';
+  let headline = t('productMode.summaryHeadlineLow');
+  let recommendation = t('productMode.summaryRecommendationLow');
 
   if (highRiskCount > 0) {
     level = 'high';
-    headline = `本次修改涉及 ${highRiskCount} 处高风险变更，建议在合并前重点检查。`;
-    recommendation = '建议进行详细 Code Review 并补充测试用例。';
+    headline = t('productMode.summaryHeadlineHigh', { count: highRiskCount });
+    recommendation = t('productMode.summaryRecommendationHigh');
   } else if (mediumRiskCount > 0) {
     level = 'medium';
-    headline = `本次修改包含 ${mediumRiskCount} 处中等风险变更，请注意回归测试。`;
-    recommendation = '建议关注受影响的 UI/API 模块。';
+    headline = t('productMode.summaryHeadlineMedium', { count: mediumRiskCount });
+    recommendation = t('productMode.summaryRecommendationMedium');
   }
 
   if (uniqueFindings.length === 0) {
     if (level === 'low') {
-      uniqueFindings.push('未发现显著的风险模式。');
+      uniqueFindings.push(t('productMode.noRiskPatterns'));
     } else {
-      uniqueFindings.push('涉及多处代码调整。');
+      uniqueFindings.push(t('productMode.multipleAdjustments'));
     }
   }
 

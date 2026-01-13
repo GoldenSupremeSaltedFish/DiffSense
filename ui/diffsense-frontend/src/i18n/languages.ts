@@ -136,6 +136,63 @@ export interface LanguageConfig {
     unknownMethods: string;
     noCallGraphData: string;
   };
+
+  // 产品模式
+  productMode: {
+    switchToExpert: string;
+    switchToProduct: string;
+    subtitle: string;
+    startAnalysis: string;
+    reset: string;
+    scope: string;
+    scopeLast5: string;
+    scopeLast10: string;
+    scopeSinceRelease: string;
+    scopeToday: string;
+    scopeWeek: string;
+    export: string;
+    exportJson: string;
+    exportHtml: string;
+    noResults: string;
+    fileChange: string;
+    risk: string;
+    impact: string;
+    highRisk: string;
+    mediumRisk: string;
+    lowRisk: string;
+  analyzing: string;
+  analyzingProject: string;
+  recommendation: string;
+    keyFindings: string;
+    changeDetails: string;
+    commitsCount: string;
+    filesCount: string;
+    affectedModules: string;
+    noModules: string;
+    expertModeTitle: string;
+    noAnalysisData: string;
+    runAnalysisToView: string;
+    unknownModule: string;
+    categoryA1: string;
+    categoryA2: string;
+    categoryA3: string;
+    categoryA4: string;
+    categoryF1: string;
+    categoryF2: string;
+    findingHighRisk: string;
+    findingMediumRisk: string;
+    commitRiskLow: string;
+    commitRiskHigh: string;
+    commitRiskMedium: string;
+    summaryHeadlineLow: string;
+    summaryRecommendationLow: string;
+    summaryHeadlineHigh: string;
+    summaryRecommendationHigh: string;
+    summaryHeadlineMedium: string;
+    summaryRecommendationMedium: string;
+    noRiskPatterns: string;
+    multipleAdjustments: string;
+  };
 }
 
 export interface LanguageText {
@@ -341,6 +398,62 @@ export const zhCN: LanguageConfig = {
     affectedMethods: '受影响的方法',
     unknownMethods: '外部/未知方法',
     noCallGraphData: '暂无调用关系数据'
+  },
+
+  productMode: {
+    switchToExpert: '切换到专家模式',
+    switchToProduct: '切换到产品模式',
+    subtitle: '代码变更风险评估 - 简易模式',
+    startAnalysis: '开始分析',
+    reset: '重置',
+    scope: '分析范围',
+    scopeLast5: '最近5次提交',
+    scopeLast10: '最近10次提交',
+    scopeSinceRelease: '自上次发布以来',
+    scopeToday: '今天的提交',
+    scopeWeek: '本周的提交',
+    export: '导出报告',
+    exportJson: '导出 JSON',
+    exportHtml: '导出 HTML',
+    noResults: '暂无分析结果，请点击"开始分析"',
+    fileChange: '文件 / 变更',
+    risk: '风险等级',
+    impact: '影响分析',
+    highRisk: '高风险',
+    mediumRisk: '中风险',
+    lowRisk: '低风险',
+    analyzing: '正在分析...',
+    analyzingProject: '正在分析项目...',
+    recommendation: '建议',
+    keyFindings: '关键发现',
+    changeDetails: '变更详情',
+    commitsCount: '个提交',
+    filesCount: '文件',
+    affectedModules: '受影响模块',
+    noModules: '暂无详细模块信息',
+    expertModeTitle: '专家模式',
+    noAnalysisData: '暂无分析数据',
+    runAnalysisToView: '请运行分析以查看结果。',
+    unknownModule: '未知模块',
+    categoryA1: '核心业务逻辑',
+    categoryA2: 'API 接口定义',
+    categoryA3: '数据结构',
+    categoryA4: '中间件配置',
+    categoryF1: '前端组件行为',
+    categoryF2: 'UI 结构',
+    findingHighRisk: '检测到 {category} 发生高风险变更',
+    findingMediumRisk: '检测到 {category} 发生变动，可能影响稳定性',
+    commitRiskLow: '变更风险较低',
+    commitRiskHigh: '涉及 {count} 处高风险变更',
+    commitRiskMedium: '包含 {count} 处中等风险变更',
+    summaryHeadlineLow: '本次变更风险较低',
+    summaryRecommendationLow: '可以直接合并。',
+    summaryHeadlineHigh: '本次修改涉及 {count} 处高风险变更，建议在合并前重点检查。',
+    summaryRecommendationHigh: '建议进行详细 Code Review 并补充测试用例。',
+    summaryHeadlineMedium: '本次修改包含 {count} 处中等风险变更，请注意回归测试。',
+    summaryRecommendationMedium: '建议关注受影响的 UI/API 模块。',
+    noRiskPatterns: '未发现显著的风险模式。',
+    multipleAdjustments: '涉及多处代码调整。'
   }
 };
 
@@ -475,6 +588,62 @@ export const enUS: LanguageConfig = {
     affectedMethods: 'Affected methods',
     unknownMethods: 'External/Unknown methods',
     noCallGraphData: 'No call graph data available'
+  },
+
+  productMode: {
+    switchToExpert: 'Switch to Expert Mode',
+    switchToProduct: 'Switch to Product Mode',
+    subtitle: 'Code Change Risk Assessment - Simplified Mode',
+    startAnalysis: 'Start Analysis',
+    reset: 'Reset',
+    scope: 'Scope',
+    scopeLast5: 'Last 5 commits',
+    scopeLast10: 'Last 10 commits',
+    scopeSinceRelease: 'Since last release',
+    scopeToday: 'Today\'s commits',
+    scopeWeek: 'This week\'s commits',
+    export: 'Export Report',
+    exportJson: 'Export JSON',
+    exportHtml: 'Export HTML',
+    noResults: 'No analysis results yet. Click "Start Analysis".',
+    fileChange: 'File / Change',
+    risk: 'Risk',
+    impact: 'Impact',
+    highRisk: 'High Risk',
+    mediumRisk: 'Medium Risk',
+    lowRisk: 'Low Risk',
+    analyzing: 'Analyzing...',
+    analyzingProject: 'Analyzing Project...',
+    recommendation: 'Recommendation',
+    keyFindings: 'Key Findings',
+    changeDetails: 'Change Details',
+    commitsCount: 'commits',
+    filesCount: 'files',
+    affectedModules: 'Affected Modules',
+    noModules: 'No detailed module info',
+    expertModeTitle: 'Expert Mode',
+    noAnalysisData: 'No analysis data',
+    runAnalysisToView: 'Please run analysis to view results.',
+    unknownModule: 'Unknown Module',
+    categoryA1: 'Core Business Logic',
+    categoryA2: 'API Definition',
+    categoryA3: 'Data Structure',
+    categoryA4: 'Middleware Config',
+    categoryF1: 'Frontend Component Behavior',
+    categoryF2: 'UI Structure',
+    findingHighRisk: 'Detected high risk change in {category}',
+    findingMediumRisk: 'Detected change in {category}, might affect stability',
+    commitRiskLow: 'Low risk changes',
+    commitRiskHigh: 'Involves {count} high risk changes',
+    commitRiskMedium: 'Contains {count} medium risk changes',
+    summaryHeadlineLow: 'Low risk changes',
+    summaryRecommendationLow: 'Ready to merge.',
+    summaryHeadlineHigh: 'Involves {count} high risk changes, check before merge.',
+    summaryRecommendationHigh: 'Detailed Code Review and test cases recommended.',
+    summaryHeadlineMedium: 'Contains {count} medium risk changes, check regression.',
+    summaryRecommendationMedium: 'Focus on affected UI/API modules.',
+    noRiskPatterns: 'No significant risk patterns found.',
+    multipleAdjustments: 'Involves multiple code adjustments.'
   }
 };
 
