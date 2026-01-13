@@ -2463,31 +2463,65 @@ ${codeBlock(String(errorContext))}`;
     const encodedTitle = encodeURIComponent(cleanTitle);
     const encodedBody = encodeURIComponent(cleanBody);
     
-    // GitHub URL参数长度限制（实际约8192字符）
-    const maxUrlLength = 7000; // 使用更保守的值
+    // GitHub URL参数长度限制（实际约8192字符，但浏览器和服务器限制可能更严，保守取6000）
+    const maxUrlLength = 6000; 
     let issueUrl = `${baseUrl}issues/new?title=${encodedTitle}&body=${encodedBody}`;
     
     if (issueUrl.length > maxUrlLength) {
       console.warn('⚠️ GitHub Issue URL超长，正在优化内容...');
       
-      // 计算可用的body长度
       const issueUrlPrefix = `${baseUrl}issues/new?title=${encodedTitle}&body=`;
-      const availableLength = maxUrlLength - issueUrlPrefix.length - 200; // 保留更多缓冲
+      const availableLength = maxUrlLength - issueUrlPrefix.length - 200; // 保留缓冲
       
-      // 智能截断：尽量保留核心信息
+      // 策略：保留头部（问题描述）和尾部（环境信息），中间截断
       let truncatedBody = cleanBody;
-      if (cleanBody.length > availableLength) {
-        // 找到环境信息部分的开始位置
-        const envInfoIndex = cleanBody.indexOf('## 📊 环境信息');
-        if (envInfoIndex > 0 && envInfoIndex < availableLength) {
-          // 保留问题描述和环境信息，移除详细日志
-          const beforeEnvInfo = cleanBody.substring(0, envInfoIndex);
-          const envInfoPart = cleanBody.substring(envInfoIndex, Math.min(cleanBody.length, envInfoIndex + 500));
-          truncatedBody = beforeEnvInfo + envInfoPart + '\n\n---\n**注意：** 详细日志信息已省略，完整信息请查看插件输出。';
-        } else {
-          // 简单截断
-          truncatedBody = cleanBody.substring(0, availableLength) + '\n\n---\n**注意：** 内容已截断。';
-        }
+      
+      // 如果当前编码后长度确实超标
+      // 注意：必须比较编码后的长度，因为中文编码后会膨胀3倍以上
+      if (encodedBody.length > availableLength) {
+          const envInfoHeader = '## 📊 环境信息';
+          const envInfoIndex = cleanBody.indexOf(envInfoHeader);
+          
+          let part1 = '';
+          let part2 = '';
+          
+          if (envInfoIndex > 0) {
+              part1 = cleanBody.substring(0, envInfoIndex);
+              part2 = cleanBody.substring(envInfoIndex);
+          } else {
+              part1 = cleanBody;
+              part2 = '';
+          }
+          
+          // 优先保留环境信息 (part2)，但也限制其长度
+          // 限制环境信息部分不超过 1000 编码字符
+          let safePart2 = part2;
+          if (encodeURIComponent(safePart2).length > 1000) {
+               safePart2 = part2.substring(0, 300) + '\n...'; // 简单截断环境信息
+          }
+          
+          const part2EncodedLen = encodeURIComponent(safePart2).length;
+          const remainingLen = availableLength - part2EncodedLen - 100; // 留出连接符空间
+          
+          // 现在截断 part1 以适应 remainingLen
+          if (remainingLen > 0) {
+              // 初始猜测：假设平均每个字符占3个编码位 (混合中英文环境)
+              let cutIndex = Math.floor(remainingLen / 3);
+              if (cutIndex > part1.length) cutIndex = part1.length;
+              
+              let candidate = part1.substring(0, cutIndex);
+              // 循环缩减直到满足长度要求
+              while (encodeURIComponent(candidate).length > remainingLen && cutIndex > 0) {
+                  cutIndex = Math.floor(cutIndex * 0.8); // 快速收缩
+                  candidate = part1.substring(0, cutIndex);
+              }
+              
+              part1 = candidate + '\n\n... (中间详细内容已省略以缩短URL) ...\n\n';
+          } else {
+              part1 = '(内容过长已省略)\n';
+          }
+          
+          truncatedBody = part1 + safePart2;
       }
       
       const encodedTruncatedBody = encodeURIComponent(truncatedBody);
