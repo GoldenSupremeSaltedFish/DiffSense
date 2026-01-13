@@ -3218,13 +3218,9 @@ ${codeBlock(String(errorContext))}`;
       this.log(`[BugReport] Issue 标题: ${title}`, 'info');
       this.log(`[BugReport] Issue 正文长度: ${body.length} 字符`, 'info');
       
-      // ✅ 获取仓库 URL（从 Git 信息）
-      let repoUrl = gitInfo.remoteUrl || '';
-      if (!repoUrl || repoUrl.includes('Error:')) {
-        // 尝试从其他来源获取
-        repoUrl = 'https://github.com/yourorg/diffsense'; // 默认仓库
-        this.log('[BugReport] ⚠️ 无法获取仓库 URL，使用默认值', 'warn');
-      }
+      // ✅ 设置 Bug 汇报的仓库 URL
+      // 注意：这里应该指向插件本身的仓库，而不是用户项目的仓库
+      const repoUrl = 'https://github.com/GoldenSupremeSaltedFish/DiffSense';
       
       // ✅ 构建 GitHub Issue URL
       const issueUrl = this.buildGitHubIssueUrl(repoUrl, title, body);
