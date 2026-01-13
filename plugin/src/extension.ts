@@ -2990,7 +2990,7 @@ ${codeBlock(String(errorContext))}`;
     
     const args: string[] = [
       '-jar', javaAnalyzerPath,
-      'inspect',  // 使用 inspect 子命令
+      // 'inspect',  // JAR 包主类已默认为 inspect 命令，无需显式传递子命令
       '--branch', validBranch,
       '--output', 'json'
     ];
