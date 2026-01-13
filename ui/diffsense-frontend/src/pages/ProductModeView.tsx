@@ -9,6 +9,7 @@ interface ProductModeViewProps {
   onSwitchToExpert: () => void;
   onAnalyze: (branch: string, scope: string) => void;
   isAnalyzing: boolean;
+  onExport: (format: 'json' | 'html') => void;
 }
 
 const ProductModeView: React.FC<ProductModeViewProps> = ({ 
@@ -17,11 +18,13 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
   initialBranch, 
   onSwitchToExpert, 
   onAnalyze, 
-  isAnalyzing 
+  isAnalyzing,
+  onExport
 }) => {
   const [selectedBranch, setSelectedBranch] = useState(initialBranch);
   const [selectedScope, setSelectedScope] = useState('Last 5 commits');
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   // Update internal branch state if initialBranch changes (e.g. loaded later)
   useEffect(() => {
@@ -29,6 +32,23 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
       setSelectedBranch(initialBranch);
     }
   }, [initialBranch]);
+
+  // Click outside listener for export menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (showExportMenu && !target.closest('.export-container')) {
+        setShowExportMenu(false);
+      }
+    };
+
+    if (showExportMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [showExportMenu]);
 
   const hasResults = model && model.items.length > 0;
 
@@ -41,13 +61,9 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
     setSelectedScope('Last 5 commits');
   };
 
-  const handleExport = () => {
-    if (!model) return;
-    const json = JSON.stringify(model, null, 2);
-    navigator.clipboard.writeText(json).then(() => {
-      // Could show a toast here if we had one
-      console.log('Copied to clipboard');
-    });
+  const handleExportClick = (format: 'json' | 'html') => {
+    onExport(format);
+    setShowExportMenu(false);
   };
 
   const toggleExpand = (id: string) => {
@@ -348,22 +364,88 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
             {isAnalyzing ? '🔄 分析中...' : '🔄 重新分析'}
           </button>
           
-          <button
-            className="action-btn"
-            onClick={handleExport}
-            style={{
-              padding: '12px 20px',
-              backgroundColor: 'var(--vscode-button-secondaryBackground)',
-              color: 'var(--vscode-button-secondaryForeground)',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontWeight: '500'
-            }}
-            title="复制结果 JSON 到剪贴板"
-          >
-            📋 复制/导出
-          </button>
+          <div className="export-container" style={{ position: 'relative' }}>
+            <button
+              className="action-btn"
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              style={{
+                padding: '12px 20px',
+                backgroundColor: 'var(--vscode-button-secondaryBackground)',
+                color: 'var(--vscode-button-secondaryForeground)',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                height: '100%'
+              }}
+              title="导出分析结果"
+            >
+              📋 导出报告 <span style={{ fontSize: '10px' }}>▼</span>
+            </button>
+            
+            {showExportMenu && (
+              <div style={{
+                position: 'absolute',
+                bottom: '100%', // Show above the button
+                left: 0,
+                minWidth: '120px',
+                marginBottom: '4px',
+                backgroundColor: 'var(--vscode-dropdown-background)',
+                border: '1px solid var(--vscode-dropdown-border)',
+                borderRadius: '4px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+                zIndex: 1000,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden'
+              }}>
+                <button
+                  onClick={() => handleExportClick('json')}
+                  style={{
+                    padding: '10px 12px',
+                    backgroundColor: 'transparent',
+                    color: 'var(--vscode-foreground)',
+                    border: 'none',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontSize: '13px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--vscode-list-hoverBackground)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <span>📄</span> JSON
+                </button>
+                <div style={{ height: '1px', backgroundColor: 'var(--vscode-dropdown-border)' }} />
+                <button
+                  onClick={() => handleExportClick('html')}
+                  style={{
+                    padding: '10px 12px',
+                    backgroundColor: 'transparent',
+                    color: 'var(--vscode-foreground)',
+                    border: 'none',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontSize: '13px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--vscode-list-hoverBackground)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <span>🌐</span> HTML
+                </button>
+              </div>
+            )}
+          </div>
 
           <button
             className="action-btn"

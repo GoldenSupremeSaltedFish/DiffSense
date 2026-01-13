@@ -107,6 +107,9 @@ const MainView = () => {
           if (message.data) {
             setAnalysisResults(message.data);
             setHasAnalyzed(true);
+            // 确保状态重置
+            setIsLoading(false);
+            setIsAnalyzingProject(false);
           }
           break;
         case 'hotspotAnalysisResult':
@@ -176,6 +179,13 @@ const MainView = () => {
         isAnalyzing={isLoading || isAnalyzingProject}
         branches={branches}
         initialBranch={currentBranch}
+        onExport={(format) => {
+          postMessage({
+            command: 'exportResults',
+            format: format,
+            language: 'zh-CN' // Product mode defaults to Chinese as per UI
+          });
+        }}
       />
     );
   }
