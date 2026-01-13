@@ -424,7 +424,7 @@ const ProductModeView: React.FC<ProductModeViewProps> = ({
       justifyContent: 'center'
     }}>
       <div style={{ marginBottom: '40px', textAlign: 'center' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>Commit Hero</h1>
+        <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>DiffSense</h1>
         <p style={{ color: 'var(--vscode-descriptionForeground)' }}>代码变更风险评估 - 简易模式</p>
       </div>
 

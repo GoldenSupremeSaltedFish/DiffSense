@@ -60,6 +60,9 @@ const MainView = () => {
     // Initial fetch for branches to support Product Mode
     postMessage({ command: 'getBranches' });
     
+    // Restore analysis results and project status
+    postMessage({ command: 'restoreAnalysisResults' });
+    
     const handleMessage = (event: MessageEvent) => {
       const message = event.data;
       console.log('MainView received message:', message);

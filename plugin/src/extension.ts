@@ -224,7 +224,7 @@ export default class DiffSense implements vscode.WebviewViewProvider {
           if (this._cachedAnalysisResult) {
             this.log('[Message] 恢复缓存的分析结果', 'info');
             this._view?.postMessage({
-              command: 'analysisCompleted',
+              command: 'restoredAnalysisResults',
               data: this._cachedAnalysisResult
             });
           }
