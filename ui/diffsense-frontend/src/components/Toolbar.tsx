@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { postMessage, saveState, getState } from "../utils/vscode";
-import { SupportedLanguage } from "../i18n/languages";
+import type { SupportedLanguage } from "../i18n/languages";
 
 // Mock类型，避免重复定义
 type MockApi = {
