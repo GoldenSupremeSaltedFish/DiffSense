@@ -249,6 +249,15 @@ export default class DiffSense implements vscode.WebviewViewProvider {
               command: 'projectAnalysisCompleted',
               data: this._cachedProjectInference
             });
+          } else {
+            // 如果没有缓存的项目分析结果，也应该通知前端项目分析已结束（或从未开始）
+            // 以免前端一直显示"正在分析项目..."
+            // 只有当没有任何缓存且未开始分析时才发送
+             if (!this.backgroundTaskCancellation) {
+                this._view?.postMessage({
+                    command: 'projectAnalysisCompleted'
+                });
+             }
           }
           if (this._cachedProjectType) {
             this._view?.postMessage({

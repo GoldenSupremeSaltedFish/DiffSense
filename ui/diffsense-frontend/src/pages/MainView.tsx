@@ -26,20 +26,8 @@ const MainView = () => {
   // 组件挂载时恢复分析结果
   useEffect(() => {
     const savedState = getState();
-    if (savedState.analysisResults) {
-      console.log('🔄 恢复分析结果:', savedState.analysisResults);
-      setAnalysisResults(savedState.analysisResults);
-      setHasAnalyzed(true);
-    }
-    if (savedState.snapshotDiffs) {
-      console.log('🔄 恢复快照对比结果:', savedState.snapshotDiffs);
-      setSnapshotDiffs(savedState.snapshotDiffs);
-    }
-    if (savedState.hotspotResults) {
-      console.log('🔄 恢复热点分析结果:', savedState.hotspotResults);
-      setHotspotResults(savedState.hotspotResults);
-      setHasHotspotAnalyzed(true);
-    }
+    // 只恢复 UI 偏好设置，不恢复分析结果，以解决"顽固缓存"问题
+    // 分析结果应完全由后端 restoreAnalysisResults 控制
     if (savedState.viewMode) {
       setViewMode(savedState.viewMode);
     }
@@ -51,10 +39,14 @@ const MainView = () => {
     const newState = {
       ...currentState,
       viewMode, // Persist view mode
-      ...(analysisResults.length > 0 ? { analysisResults, snapshotDiffs } : {})
+      // 注意：这里仍然保存结果到 localStorage，以便 saveState 逻辑保持一致
+      // 但在 mount 时我们选择不加载它们，除非后端没有数据？
+      // 或者我们完全移除 analysisResults 的本地存储？
+      // 为了彻底解决缓存问题，我们不再保存 analysisResults 到本地存储
+      // analysisResults, snapshotDiffs 
     };
     saveState(newState);
-  }, [analysisResults, snapshotDiffs, viewMode]);
+  }, [viewMode]); // 移除 analysisResults, snapshotDiffs 依赖
 
   useEffect(() => {
     console.log('MainView mounted');
