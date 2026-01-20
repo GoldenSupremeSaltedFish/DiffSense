@@ -7,7 +7,13 @@
 
 const path = require('path');
 const fs = require('fs');
-const { execSync } = require('child_process');
+const cp = require('child_process');
+const execSync = (cmd, options) => {
+  return cp.execSync(cmd, {
+    maxBuffer: 1024 * 1024 * 50, // 50MB
+    ...options
+  });
+};
 const { defaultErrorHandler, ErrorCodes } = require('./errorHandler');
 
 /**

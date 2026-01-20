@@ -10,7 +10,13 @@
  * 脚本会对比两个版本的前端组件快照，并输出变动 JSON 列表。
  */
 
-const { execSync } = require('child_process');
+const cp = require('child_process');
+const execSync = (cmd, options) => {
+  return cp.execSync(cmd, {
+    maxBuffer: 1024 * 1024 * 50, // 50MB
+    ...options
+  });
+};
 const path = require('path');
 const fs = require('fs');
 const os = require('os');

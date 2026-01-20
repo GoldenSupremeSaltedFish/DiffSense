@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { postMessage, saveState, getState } from "../utils/vscode";
-import { useLanguage } from "../hooks/useLanguage";
+import type { SupportedLanguage } from "../i18n/languages";
 
 // Mock类型，避免重复定义
 type MockApi = {
@@ -13,9 +13,14 @@ declare global {
   interface Window extends MockApi {}
 }
 
-const Toolbar = () => {
-  const { currentLanguage, changeLanguage, t, supportedLanguages } = useLanguage();
-  
+interface ToolbarProps {
+  currentLanguage: SupportedLanguage;
+  changeLanguage: (lang: SupportedLanguage) => void;
+  t: (key: string) => string;
+  supportedLanguages: SupportedLanguage[];
+}
+
+const Toolbar: React.FC<ToolbarProps> = ({ currentLanguage, changeLanguage, t, supportedLanguages }) => {
   const [branches, setBranches] = useState<string[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string>('');
   const [selectedRange, setSelectedRange] = useState<string>('Last 3 commits');

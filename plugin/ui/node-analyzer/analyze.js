@@ -9,7 +9,13 @@ const madge = require('madge');
 const path = require('path');
 const fs = require('fs');
 const glob = require('glob');
-const { execSync } = require('child_process');
+const cp = require('child_process');
+const execSync = (cmd, options) => {
+  return cp.execSync(cmd, {
+    maxBuffer: 1024 * 1024 * 50, // 50MB
+    ...options
+  });
+};
 const { Project } = require('ts-morph');
 const { extractSnapshotsForFile } = require('./snapshotExtractors');
 

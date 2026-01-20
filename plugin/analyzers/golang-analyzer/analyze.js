@@ -11,7 +11,12 @@ const glob = require('glob');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
 
-const execFileAsync = promisify(execFile);
+const execFileAsync = (file, args, options) => {
+  return promisify(execFile)(file, args, {
+    maxBuffer: 1024 * 1024 * 50, // 50MB
+    ...options
+  });
+};
 
 class GolangAnalyzer {
   constructor(targetDir, options = {}) {
