@@ -146,7 +146,7 @@ jobs:
 
       # 同步产物到子仓库
       - name: Sync Artifacts to Sub Repository
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/'))
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         working-directory: plugin
         env:
           ARTIFACTS_TOKEN: ${{ secrets.ARTIFACTS_TOKEN }}
