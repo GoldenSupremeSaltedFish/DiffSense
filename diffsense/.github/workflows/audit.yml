@@ -9,13 +9,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write
+      pull-requests: write # Required for posting comments
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Important for fetching diff history
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -26,39 +24,13 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      - name: Get Diff
-        id: get_diff
-        run: |
-          # Fetch target branch to ensure we can diff against it
-          git fetch origin ${{ github.base_ref }}
-          
-          # Generate diff between target branch (base) and current head
-          git diff origin/${{ github.base_ref }}...HEAD > pr.diff
-          
-          # Check if diff is empty
-          if [ ! -s pr.diff ]; then
-            echo "No changes detected."
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-          else
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-          fi
-
       - name: Run DiffSense Audit
-        if: steps.get_diff.outputs.has_changes == 'true'
-        id: run_audit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Run main.py with markdown format and capture output
-          python main.py pr.diff --format markdown > report.md
-          
-          # Read report content into a variable (multiline safe)
-          echo "report<<EOF" >> $GITHUB_OUTPUT
-          cat report.md >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Comment on PR
-        if: steps.get_diff.outputs.has_changes == 'true'
-        uses: thollander/actions-comment-pull-request@v2
-        with:
-          message: |
-            ${{ steps.run_audit.outputs.report }}
-          comment_tag: diffsense_audit # Updates existing comment with this tag
+          # Call the unified runner with GitHub parameters
+          python run_audit.py \
+            --platform github \
+            --token "$GITHUB_TOKEN" \
+            --repo "${{ github.repository }}" \
+            --pr "${{ github.event.pull_request.number }}"

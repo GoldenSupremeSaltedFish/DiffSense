@@ -1,1 +1,4 @@
 PyYAML
+PyGithub
+python-gitlab
+requests
