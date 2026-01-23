@@ -6,11 +6,13 @@ from core.parser import DiffParser
 from core.rules import RuleEngine
 from core.evaluator import ImpactEvaluator
 from core.composer import DecisionComposer
+from core.renderer import MarkdownRenderer
 
 def main():
     parser = argparse.ArgumentParser(description="DiffSense: Event-driven MR Audit Analyzer")
     parser.add_argument("diff_file", help="Path to the diff file")
     parser.add_argument("--rules", default="config/rules.yaml", help="Path to rules config")
+    parser.add_argument("--format", choices=["json", "markdown"], default="json", help="Output format")
     
     args = parser.parse_args()
     
@@ -44,8 +46,8 @@ def main():
     composer = DecisionComposer()
     result = composer.compose(impacts)
     
-    # 6. Output JSON
-    output = {
+    # 6. Output
+    output_data = {
         "audit_result": result,
         "details": {
             "files_changed": diff_data["files"],
@@ -54,7 +56,11 @@ def main():
         }
     }
     
-    print(json.dumps(output, indent=2))
+    if args.format == "json":
+        print(json.dumps(output_data, indent=2))
+    elif args.format == "markdown":
+        renderer = MarkdownRenderer()
+        print(renderer.render(output_data))
 
 if __name__ == "__main__":
     main()
