@@ -1,0 +1,18 @@
+runtime:
+  high:
+    - match: "thread|async|lock"
+    - file: "**/core/**"
+  medium:
+    - file: "**/service/**"
+
+data:
+  high:
+    - match: "ALTER TABLE|DROP TABLE"
+    - file: "**/migrations/**"
+  medium:
+    - match: "SELECT|INSERT|UPDATE"
+
+architecture:
+  high:
+    - file: "**/package.json"
+    - file: "**/requirements.txt"
