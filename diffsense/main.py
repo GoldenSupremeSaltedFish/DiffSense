@@ -40,27 +40,20 @@ def main():
     evaluator = ImpactEvaluator(rule_engine)
     
     # 4. Evaluate Impact
-    impacts = evaluator.evaluate(diff_data)
+    # Now returns a list of triggered rules (List[Dict])
+    triggered_rules = evaluator.evaluate(diff_data)
     
     # 5. Compose Decision
     composer = DecisionComposer()
-    result = composer.compose(impacts)
+    # Now takes triggered_rules and list of files
+    result = composer.compose(triggered_rules, diff_data.get('files', []))
     
     # 6. Output
-    output_data = {
-        "audit_result": result,
-        "details": {
-            "files_changed": diff_data["files"],
-            "stats": diff_data["stats"],
-            "raw_impacts": impacts
-        }
-    }
-    
     if args.format == "json":
-        print(json.dumps(output_data, indent=2))
+        print(json.dumps(result, indent=2))
     elif args.format == "markdown":
         renderer = MarkdownRenderer()
-        print(renderer.render(output_data))
+        print(renderer.render(result))
 
 if __name__ == "__main__":
     main()

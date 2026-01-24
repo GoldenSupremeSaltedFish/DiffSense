@@ -1,18 +1,42 @@
-runtime:
-  high:
-    - match: "thread|async|lock"
-    - file: "**/core/**"
-  medium:
-    - file: "**/service/**"
+rules:
+  - id: runtime.concurrency_risk
+    match: "thread|async|lock"
+    file: "**/core/**"
+    impact: runtime
+    severity: high
+    rationale: "Concurrency changes in core modules pose high stability risk"
 
-data:
-  high:
-    - match: "ALTER TABLE|DROP TABLE"
-    - file: "**/migrations/**"
-  medium:
-    - match: "SELECT|INSERT|UPDATE"
+  - id: runtime.service_layer
+    file: "**/service/**"
+    impact: runtime
+    severity: medium
+    rationale: "Changes in service layer may affect business logic"
 
-architecture:
-  high:
-    - file: "**/package.json"
-    - file: "**/requirements.txt"
+  - id: data.destructive_schema
+    match: "ALTER TABLE|DROP TABLE"
+    file: "**/migrations/**"
+    impact: data
+    severity: high
+    rationale: "Destructive schema changes require careful review"
+
+  - id: data.query_change
+    match: "SELECT|INSERT|UPDATE"
+    impact: data
+    severity: medium
+    rationale: "SQL query modifications"
+
+  - id: architecture.dependency_change
+    # Combining patterns for simplicity, or I can support list in code. 
+    # For now, let's stick to simple glob or regex.
+    # fnmatch doesn't support (a|b), so I will split into two rules or handle regex in file.
+    # Let's just use two rules for now to keep it simple and safe.
+    file: "**/package.json"
+    impact: architecture
+    severity: high
+    rationale: "Dependency changes affect build and security"
+
+  - id: architecture.dependency_change_python
+    file: "**/requirements.txt"
+    impact: architecture
+    severity: high
+    rationale: "Dependency changes affect build and security"
