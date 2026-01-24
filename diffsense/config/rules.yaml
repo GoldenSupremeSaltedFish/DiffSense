@@ -1,6 +1,6 @@
 rules:
   - id: runtime.concurrency_risk
-    match: "thread|async|lock"
+    match: "(?i)(thread|async|lock|synchronized)"
     file: "**/core/**"
     impact: runtime
     severity: high
