@@ -1,0 +1,8 @@
+diff --git a/config.yaml b/config.yaml
+index 83c509e..0d31522 100644
+--- a/config.yaml
++++ b/config.yaml
+@@ -10,6 +10,6 @@ server:
+-  port: 8080
++  port: 9090
+   host: "0.0.0.0"

@@ -1,0 +1,36 @@
+name: DiffSense MR Audit
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # Required for posting comments
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run DiffSense Audit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Call the unified runner with GitHub parameters
+          python run_audit.py \
+            --platform github \
+            --token "$GITHUB_TOKEN" \
+            --repo "${{ github.repository }}" \
+            --pr "${{ github.event.pull_request.number }}"

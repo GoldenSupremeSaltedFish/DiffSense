@@ -1,0 +1,10 @@
+diff --git a/src/core/auth.py b/src/core/auth.py
+index 83c509e..0d31522 100644
+--- a/src/core/auth.py
++++ b/src/core/auth.py
+@@ -10,6 +10,7 @@ def login(user, password):
+     if verify(user, password):
++        # async check
++        await async_verify(user)
+         return True
+     return False
