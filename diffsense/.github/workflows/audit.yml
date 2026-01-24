@@ -3,6 +3,8 @@ name: DiffSense MR Audit
 on:
   pull_request:
     types: [opened, synchronize]
+  pull_request_review:
+    types: [submitted]
 
 jobs:
   audit:

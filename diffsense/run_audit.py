@@ -44,6 +44,18 @@ def run_audit(adapter, rules_path):
     
     print("Posting comment...")
     adapter.post_comment(report)
+    
+    # Enforcement Logic: Click-to-Ack (Approve-to-Ack)
+    # If risk is elevated/critical, require PR approval to pass CI.
+    review_level = result.get("review_level", "normal")
+    if review_level in ["elevated", "critical"]:
+        print(f"Risk level: {review_level}. Checking for approval...")
+        if adapter.is_approved():
+            print("✅ PR is approved. Risk acknowledged. CI Passed.")
+        else:
+            print("🚨 Risk elevated and PR not approved. CI Failed to ensure awareness.")
+            sys.exit(1)
+            
     print("Audit finished successfully.")
 
 def main():
