@@ -49,11 +49,22 @@ def run_audit(adapter, rules_path):
     # If risk is elevated/critical, require PR approval to pass CI.
     review_level = result.get("review_level", "normal")
     if review_level in ["elevated", "critical"]:
-        print(f"Risk level: {review_level}. Checking for approval...")
-        if adapter.is_approved():
+        print(f"Risk level: {review_level}. Checking for approval or acknowledgement...")
+        
+        is_approved = adapter.is_approved()
+        has_reaction = False
+        
+        # Check for reaction if adapter supports it
+        if hasattr(adapter, 'has_ack_reaction'):
+            has_reaction = adapter.has_ack_reaction()
+            
+        if is_approved:
             print("✅ PR is approved. Risk acknowledged. CI Passed.")
+        elif has_reaction:
+            print("✅ Risk acknowledged via reaction (👍). CI Passed.")
         else:
-            print("🚨 Risk elevated and PR not approved. CI Failed to ensure awareness.")
+            print("🚨 Risk elevated. Waiting for Approval OR Reaction (👍) on the report comment.")
+            print("CI Failed to ensure awareness.")
             sys.exit(1)
             
     print("Audit finished successfully.")

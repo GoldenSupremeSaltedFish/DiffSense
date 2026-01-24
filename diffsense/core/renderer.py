@@ -28,7 +28,7 @@ class MarkdownRenderer:
             lines.append("**Required action:**")
             lines.append("This is a risk signal, not a block.")
             lines.append("")
-            lines.append("👉 **Approve this PR** to acknowledge the risk and unblock CI.")
+            lines.append("👉 **Approve this PR** OR **React with 👍** to this comment to acknowledge the risk and unblock CI.")
             
         else:
             lines.append(f"# ✅ DiffSense Audit: {review_level}")

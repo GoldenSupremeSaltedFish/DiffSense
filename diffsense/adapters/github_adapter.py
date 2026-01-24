@@ -133,3 +133,17 @@ class GitHubAdapter(PlatformAdapter):
         # If any changes requested, it's not approved.
         # If approved by at least one and no changes requested, it's approved.
         return has_approval and not has_changes_requested
+
+    def has_ack_reaction(self) -> bool:
+        """
+        Check if the bot's comment has a Thumbs Up (👍) reaction.
+        """
+        comments = self.pr.get_issue_comments()
+        for comment in comments:
+            if self.comment_tag in comment.body:
+                # Check reactions
+                reactions = comment.get_reactions()
+                for reaction in reactions:
+                    if reaction.content == "+1": # +1 corresponds to 👍
+                        return True
+        return False
