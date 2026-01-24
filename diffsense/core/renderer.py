@@ -4,57 +4,38 @@ class MarkdownRenderer:
     def render(self, result: Dict[str, Any]) -> str:
         """
         Renders the audit result into a Markdown string.
-        Expects the new Parser Contract JSON structure.
         """
         review_level = result.get("review_level", "unknown").capitalize()
-        reasons = result.get("reasons", [])
-        impacts = result.get("impacts", {})
         details = result.get("details", [])
         
-        # Emoji mapping for visual cue
-        level_emoji = "🚨" if review_level in ["Elevated", "Critical"] else "✅"
-        
         lines = []
-        lines.append(f"### DiffSense · MR Audit")
-        lines.append("")
-        lines.append(f"**Review Level:** {level_emoji} {review_level}")
-        lines.append("")
         
-        # Impact Table
-        if impacts:
-            lines.append("| Dimension | Impact |")
-            lines.append("|-----------|--------|")
+        if review_level == "Elevated":
+            lines.append(f"# 🚨 DiffSense Risk Signal: {review_level}")
+            lines.append("")
+            lines.append("**Detected high-risk changes:**")
             
-            # Sort impacts for consistent output
-            for dim, level in impacts.items():
-                # Bold high/critical impacts
-                display_level = level.capitalize()
-                if level in ["high", "critical"]:
-                    display_level = f"**{display_level}**"
-                lines.append(f"| {dim.capitalize()} | {display_level} |")
-            lines.append("")
-        
-        # Reasons Section
-        if reasons:
-            lines.append("**Detected Issues:**")
-            for reason in reasons:
-                lines.append(f"- `{reason}`")
-            lines.append("")
-
-        # Details Section
-        if details:
-            lines.append("<details>")
-            lines.append("<summary>View Detailed Analysis</summary>")
-            lines.append("")
-            lines.append("| Rule ID | Severity | File | Rationale |")
-            lines.append("|---------|----------|------|-----------|")
             for d in details:
-                rule_id = d.get('rule_id', '-')
-                sev = d.get('severity', '-')
-                f = d.get('file', '-')
-                rat = d.get('rationale', '-')
-                lines.append(f"| {rule_id} | {sev} | {f} | {rat} |")
+                if d.get('severity') == 'high':
+                    lines.append(f"- **Dimension:** {d.get('impact', 'Unknown').capitalize()}")
+                    lines.append(f"- **Rule:** `{d.get('rule_id')}`")
+                    lines.append(f"- **File:** `{d.get('file')}`")
+                    lines.append("")
+                    lines.append(f"> **Rationale:** {d.get('rationale')}")
+                    lines.append("")
+            
+            lines.append("---")
+            lines.append("**Required action:**")
+            lines.append("⚠️ **A human reviewer must explicitly acknowledge and approve this risk.**")
             lines.append("")
-            lines.append("</details>")
+            lines.append("To acknowledge this risk and unblock the CI, please:")
+            lines.append("1. **Review** the changes carefully.")
+            lines.append("2. Add the **`risk-accepted`** label to this Pull Request.")
+            lines.append("3. Re-run this job.")
+            
+        else:
+            lines.append(f"# ✅ DiffSense Audit: {review_level}")
+            lines.append("")
+            lines.append("No high-risk changes detected. Standard review process applies.")
             
         return "\n".join(lines)
