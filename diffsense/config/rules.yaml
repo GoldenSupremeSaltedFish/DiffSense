@@ -1,10 +1,26 @@
 rules:
   - id: runtime.concurrency_risk
-    match: "(?i)(thread|async|lock|synchronized)"
+    # Use AST Signal instead of regex match
+    signal: "runtime.concurrency.synchronized"
+    # match: "(?i)(thread|async|lock|synchronized)"  <-- Removed regex
     file: "**/core/**"
     impact: runtime
     severity: high
-    rationale: "Concurrency changes in core modules pose high stability risk"
+    rationale: "Concurrency changes (synchronized) in core modules pose high stability risk"
+
+  - id: runtime.concurrency_lock_risk
+    signal: "runtime.concurrency.lock"
+    file: "**/core/**"
+    impact: runtime
+    severity: high
+    rationale: "Explicit lock usage in core modules"
+
+  - id: runtime.concurrency_volatile_risk
+    signal: "runtime.concurrency.volatile"
+    file: "**/core/**"
+    impact: runtime
+    severity: high
+    rationale: "Volatile field usage in core modules"
 
   - id: runtime.service_layer
     file: "**/service/**"
