@@ -1,0 +1,12 @@
+diff --git a/application/src/main/java/run/halo/app/core/counter/CounterServiceImpl.java b/application/src/main/java/run/halo/app/core/counter/CounterServiceImpl.java
+index cea0ea7c2..fe3a8d97f 100644
+--- a/application/src/main/java/run/halo/app/core/counter/CounterServiceImpl.java
++++ b/application/src/main/java/run/halo/app/core/counter/CounterServiceImpl.java
+@@ -21,6 +21,7 @@ import run.halo.app.extension.index.query.Queries;    
+ public class CounterServiceImpl implements CounterService {
+ 
+     private final ReactiveExtensionClient client;
++    private volatile boolean initialized = false;
+ 
+     public CounterServiceImpl(ReactiveExtensionClient client) {        
+         this.client = client;

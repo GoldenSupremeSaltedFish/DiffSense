@@ -15,14 +15,16 @@ class RuleEngine:
         except FileNotFoundError:
             return []
 
-    def evaluate(self, diff_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def evaluate(self, diff_data: Dict[str, Any], ast_signals: List[Any] = None) -> List[Dict[str, Any]]:
         """
-        Evaluates rules against diff data and returns a list of triggered rules.
+        Evaluates rules against diff data AND AST signals.
+        Returns a list of triggered rules.
         """
         triggered_rules = []
+        ast_signals = ast_signals or []
         
         for rule in self.rules:
-            match_details = self._match_rule(rule, diff_data)
+            match_details = self._match_rule(rule, diff_data, ast_signals)
             if match_details:
                 # Clone rule and add match context
                 triggered = rule.copy()
@@ -31,11 +33,30 @@ class RuleEngine:
                 
         return triggered_rules
 
-    def _match_rule(self, rule: Dict[str, str], diff_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _match_rule(self, rule: Dict[str, str], diff_data: Dict[str, Any], ast_signals: List[Any]) -> Dict[str, Any]:
         """
         Check if a single rule matches. 
         Returns dict with match details (e.g. matched file) if matched, None otherwise.
         """
+        
+        # 0. Check AST Signals (New First-Class Check)
+        if 'signal' in rule:
+            target_signal = rule['signal']
+            # Look for this signal in ast_signals
+            for sig in ast_signals:
+                if sig.id == target_signal:
+                    # Signal Matched!
+                    # Check if there are other constraints (like file)
+                    if 'file' in rule:
+                        if not fnmatch.fnmatch(sig.file, rule['file']):
+                            continue # Signal found but file doesn't match
+                    
+                    return {"file": sig.file}
+            
+            # If we are looking for a signal but didn't find it, rule fails
+            return None
+
+        # Fallback to old regex/file matching logic
         
         # 1. Check File Pattern
         matched_files = []
