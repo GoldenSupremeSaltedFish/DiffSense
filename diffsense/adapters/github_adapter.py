@@ -111,3 +111,39 @@ class GitHubAdapter(PlatformAdapter):
         else:
             self.pr.create_issue_comment(final_body)
             print("Created GitHub comment")
+
+    def is_approved(self) -> bool:
+        reviews = self.pr.get_reviews()
+        reviewer_states = {}
+        for review in reviews:
+            # Dismissed reviews are not active, but get_reviews might return them?
+            # State can be APPROVED, CHANGES_REQUESTED, COMMENTED, DISMISSED, PENDING.
+            # We only care about the latest state per user.
+            reviewer_states[review.user.login] = review.state
+        
+        has_approval = False
+        has_changes_requested = False
+        
+        for state in reviewer_states.values():
+            if state == 'APPROVED':
+                has_approval = True
+            elif state == 'CHANGES_REQUESTED':
+                has_changes_requested = True
+                
+        # If any changes requested, it's not approved.
+        # If approved by at least one and no changes requested, it's approved.
+        return has_approval and not has_changes_requested
+
+    def has_ack_reaction(self) -> bool:
+        """
+        Check if the bot's comment has a Thumbs Up (👍) reaction.
+        """
+        comments = self.pr.get_issue_comments()
+        for comment in comments:
+            if self.comment_tag in comment.body:
+                # Check reactions
+                reactions = comment.get_reactions()
+                for reaction in reactions:
+                    if reaction.content == "+1": # +1 corresponds to 👍
+                        return True
+        return False

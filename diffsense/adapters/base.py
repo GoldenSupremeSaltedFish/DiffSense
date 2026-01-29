@@ -15,3 +15,10 @@ class PlatformAdapter(ABC):
         Should handle update logic if applicable (e.g. edit existing comment).
         """
         pass
+
+    def is_approved(self) -> bool:
+        """
+        Check if the MR/PR is approved by a reviewer.
+        Default implementation returns False.
+        """
+        return False

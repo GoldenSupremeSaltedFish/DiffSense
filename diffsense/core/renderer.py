@@ -26,12 +26,9 @@ class MarkdownRenderer:
             
             lines.append("---")
             lines.append("**Required action:**")
-            lines.append("⚠️ **A human reviewer must explicitly acknowledge and approve this risk.**")
+            lines.append("This is a risk signal, not a block.")
             lines.append("")
-            lines.append("To acknowledge this risk and unblock the CI, please:")
-            lines.append("1. **Review** the changes carefully.")
-            lines.append("2. Add the **`risk-accepted`** label to this Pull Request.")
-            lines.append("3. Re-run this job.")
+            lines.append("👉 **Approve this PR** OR **React with 👍** to this comment, then **Re-run this job** to pass.")
             
         else:
             lines.append(f"# ✅ DiffSense Audit: {review_level}")
