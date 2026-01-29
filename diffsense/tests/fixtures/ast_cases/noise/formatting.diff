@@ -1,0 +1,12 @@
+diff --git a/application/src/main/java/run/halo/app/core/counter/CounterServiceImpl.java b/application/src/main/java/run/halo/app/core/counter/CounterServiceImpl.java
+index cea0ea7c2..634123b58 100644
+--- a/application/src/main/java/run/halo/app/core/counter/CounterServiceImpl.java
++++ b/application/src/main/java/run/halo/app/core/counter/CounterServiceImpl.java
+@@ -26,6 +26,7 @@ public class CounterServiceImpl implements CounterService {
+         this.client = client;
+     }
+ 
++
+     @Override
+     public Mono<Counter> getByName(String counterName) {
+         return client.fetch(Counter.class, counterName);

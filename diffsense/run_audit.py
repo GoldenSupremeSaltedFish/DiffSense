@@ -4,6 +4,7 @@ import sys
 from adapters.github_adapter import GitHubAdapter
 from adapters.gitlab_adapter import GitLabAdapter
 from core.parser import DiffParser
+from core.ast_detector import ASTDetector
 from core.rules import RuleEngine
 from core.evaluator import ImpactEvaluator
 from core.composer import DecisionComposer
@@ -18,13 +19,40 @@ def run_audit(adapter, rules_path):
         return
 
     print("Running Core Analyzer...")
-    # Core Logic (Reuse from main.py but modular)
+    
+    # 1. Parse Diff (Structural)
     parser = DiffParser()
     diff_data = parser.parse(diff_content)
     
+    # 2. Detect AST Signals (Semantic)
+    # This is the "First-Class Signal Source"
+    print("Detecting AST Signals...")
+    ast_detector = ASTDetector()
+    ast_signals = ast_detector.detect_signals(diff_data)
+    
+    # Debug: Print signals
+    for sig in ast_signals:
+        print(f"  [AST Signal] {sig.id} in {sig.file}")
+    
+    # 3. Evaluate Rules (Policy / Context)
+    # Rules now consume both diff_data (structure) and ast_signals (semantics)
     engine = RuleEngine(rules_path)
     evaluator = ImpactEvaluator(engine)
-    impacts = evaluator.evaluate(diff_data)
+    # Evaluator needs update to pass ast_signals or we pass it via engine directly?
+    # Actually ImpactEvaluator calls engine.evaluate. Let's see ImpactEvaluator.
+    # We might need to bypass ImpactEvaluator or update it. 
+    # For now, let's look at ImpactEvaluator content.
+    # Assuming ImpactEvaluator wraps engine.evaluate
+    
+    # We'll need to modify ImpactEvaluator or call engine directly if evaluator is just a thin wrapper.
+    # Let's check ImpactEvaluator first. Ideally we update it.
+    
+    # For now, I will modify this part after checking evaluator.
+    # But to proceed, I will assume I update ImpactEvaluator too or just call engine directly for this MVP integration
+    # The existing code used `evaluator.evaluate(diff_data)`.
+    # I should check `core/evaluator.py`.
+    
+    impacts = evaluator.evaluate(diff_data, ast_signals=ast_signals)
     
     composer = DecisionComposer()
     result = composer.compose(impacts)
@@ -35,7 +63,8 @@ def run_audit(adapter, rules_path):
         "details": {
             "files_changed": diff_data["files"],
             "stats": diff_data["stats"],
-            "raw_impacts": impacts
+            "raw_impacts": impacts,
+            "ast_signals": [s.to_dict() for s in ast_signals] # Add signals to report context
         }
     }
     

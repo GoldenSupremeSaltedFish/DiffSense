@@ -1,0 +1,17 @@
+diff --git a/config/src/main/java/com/alibaba/nacos/config/server/service/dump/processor/DumpAllProcessor.java b/config/src/main/java/com/alibaba/nacos/config/server/service/dump/processor/DumpAllProcessor.java
+index 1234567..890abcd 100644
+--- a/config/src/main/java/com/alibaba/nacos/config/server/service/dump/processor/DumpAllProcessor.java
++++ b/config/src/main/java/com/alibaba/nacos/config/server/service/dump/processor/DumpAllProcessor.java
+@@ -66,9 +66,8 @@ public boolean process(NacosTask task) {
+         long lastMaxId = 0;
+         ThreadPoolExecutor executorService = null;
+         if (dumpAllTask.isStartUp()) {
+-            executorService = new ThreadPoolExecutor(Runtime.getRuntime().availableProcessors(),
+-                    Runtime.getRuntime().availableProcessors(), 60L, TimeUnit.SECONDS,
+-                    new LinkedBlockingQueue<>(PropertyUtil.getAllDumpPageSize() * 2),
+-                    r -> new Thread(r, "dump all executor"), new ThreadPoolExecutor.CallerRunsPolicy());
++            executorService = new ThreadPoolExecutor(0, Integer.MAX_VALUE, 60L, TimeUnit.SECONDS,
++                    new SynchronousQueue<>(),
++                    r -> new Thread(r, "dump all executor"), new ThreadPoolExecutor.CallerRunsPolicy());
+         } else {
+             executorService = new ThreadPoolExecutor(1, 1, 60L, TimeUnit.SECONDS, new SynchronousQueue<>(),

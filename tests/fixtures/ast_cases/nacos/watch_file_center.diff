@@ -1,0 +1,13 @@
+diff --git a/sys/src/main/java/com/alibaba/nacos/sys/file/WatchFileCenter.java b/sys/src/main/java/com/alibaba/nacos/sys/file/WatchFileCenter.java
+index 9876543..1234567 100644
+--- a/sys/src/main/java/com/alibaba/nacos/sys/file/WatchFileCenter.java
++++ b/sys/src/main/java/com/alibaba/nacos/sys/file/WatchFileCenter.java
+@@ -100,7 +100,7 @@ public class WatchFileCenter {
+      * @param fileDir file directory
+      * @param watcher watcher
+      */
+-    public static synchronized boolean registerWatcher(String fileDir, WatchFileChangeable watcher) {
++    public static boolean registerWatcher(String fileDir, WatchFileChangeable watcher) {
+         if (!watchers.containsKey(fileDir)) {
+             Map<String, WatchFileChangeable> map = new ConcurrentHashMap<>();
+             map.put(watcher.getClass().getCanonicalName(), watcher);

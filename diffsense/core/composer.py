@@ -1,10 +1,11 @@
 from typing import Dict, Any, List
 
 class DecisionComposer:
-    def compose(self, triggered_rules: List[Dict[str, Any]], diff_files: List[str]) -> Dict[str, Any]:
+    def compose(self, triggered_rules: List[Dict[str, Any]], diff_files: List[str] = None) -> Dict[str, Any]:
         """
         Synthesizes triggered rules into a final decision adhering to the Parser Contract.
         """
+        diff_files = diff_files or []
         reasons = []
         details = []
         impacts_map = {}
