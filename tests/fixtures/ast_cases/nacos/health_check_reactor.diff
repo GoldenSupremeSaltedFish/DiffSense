@@ -1,0 +1,12 @@
+diff --git a/naming/src/main/java/com/alibaba/nacos/naming/healthcheck/HealthCheckReactor.java b/naming/src/main/java/com/alibaba/nacos/naming/healthcheck/HealthCheckReactor.java
+index abcdef1..2345678 100644
+--- a/naming/src/main/java/com/alibaba/nacos/naming/healthcheck/HealthCheckReactor.java
++++ b/naming/src/main/java/com/alibaba/nacos/naming/healthcheck/HealthCheckReactor.java
+@@ -35,7 +35,7 @@
+ @SuppressWarnings("PMD.ThreadPoolCreationRule")
+ public class HealthCheckReactor {
+ 
+-    private static Map<String, ScheduledFuture> futureMap = new ConcurrentHashMap<>();
++    private static Map<String, ScheduledFuture> futureMap = new HashMap<>();
+ 
+     private static ScheduledExecutorService executorService;
