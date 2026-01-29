@@ -28,15 +28,23 @@ class RuleEngine:
                 "check_func": self._check_concurrency_regression,
                 "impact": "runtime",
                 "severity": "high",
-                "rationale": "Downgrade from concurrent collection to non-concurrent implementation"
+                "rationale": "Downgrade from concurrent/atomic type to non-thread-safe implementation"
             },
             {
-                "id": "runtime.lock_removal_risk",
+                "id": "runtime.thread_safety_removal",
                 "type": "ast_semantic",
-                "check_func": self._check_lock_removal,
+                "check_func": self._check_thread_safety_removal,
                 "impact": "runtime",
                 "severity": "high",
-                "rationale": "Removal of synchronization from shared scope/static method"
+                "rationale": "Removal of synchronization (synchronized, volatile, locks) from shared code"
+            },
+            {
+                "id": "runtime.latch_misuse",
+                "type": "ast_semantic",
+                "check_func": self._check_latch_misuse,
+                "impact": "runtime",
+                "severity": "high",
+                "rationale": "Removal of CountDownLatch.countDown() - potential deadlock or hang"
             }
         ]
 
@@ -133,84 +141,115 @@ class RuleEngine:
         Rule 2: Concurrent -> Non-Concurrent Type Regression
         Triggers if:
         - ConcurrentHashMap -> HashMap
+        - ConcurrentMap -> HashMap
         - CopyOnWriteArrayList -> ArrayList
+        - AtomicInteger -> Integer
         """
         raw_diff = diff_data.get('raw_diff', "")
         
-        # Simple heuristic:
-        # removed line has ConcurrentHashMap
-        # added line has HashMap (and NOT ConcurrentHashMap)
-        # ideally in the same chunk
+        # Define regression pairs: (Strong Type, Weak Type)
+        regressions = [
+            ("ConcurrentHashMap", "HashMap"),
+            ("ConcurrentMap", "HashMap"),
+            ("CopyOnWriteArrayList", "ArrayList"),
+            ("CopyOnWriteArraySet", "HashSet"),
+            ("AtomicInteger", "Integer"),
+            ("AtomicLong", "Long"),
+            ("AtomicBoolean", "Boolean")
+        ]
         
-        has_concurrent_removed = re.search(r'^-\s.*ConcurrentHashMap', raw_diff, re.MULTILINE)
-        has_hashmap_added = re.search(r'^\+\s.*(?<!Concurrent)HashMap', raw_diff, re.MULTILINE)
-        
-        if has_concurrent_removed and has_hashmap_added:
-             return {"file": "detected_in_diff"}
+        for strong, weak in regressions:
+            # Check for removal of Strong Type
+            # - ... Strong ...
+            has_strong_removed = re.search(r'^-\s.*' + re.escape(strong), raw_diff, re.MULTILINE)
+            
+            # Check for addition of Weak Type (excluding Strong Type prefix if they share suffix)
+            # e.g. for HashMap, ensure it's not ConcurrentHashMap
+            # Regex lookbehind (?<!Concurrent) is useful
+            
+            # Construct regex for weak addition
+            # If weak is "HashMap", we want to avoid matching "ConcurrentHashMap"
+            # If weak is "Integer", we want to avoid matching "AtomicInteger"
+            
+            if "HashMap" in weak:
+                weak_pattern = r'^\+\s.*(?<!Concurrent)' + re.escape(weak)
+            elif "ArrayList" in weak:
+                weak_pattern = r'^\+\s.*(?<!CopyOnWrite)' + re.escape(weak)
+            elif "Integer" in weak or "Long" in weak or "Boolean" in weak:
+                weak_pattern = r'^\+\s.*(?<!Atomic)' + re.escape(weak)
+            else:
+                weak_pattern = r'^\+\s.*' + re.escape(weak)
+                
+            has_weak_added = re.search(weak_pattern, raw_diff, re.MULTILINE)
+            
+            if has_strong_removed and has_weak_added:
+                return {"file": f"regression_{strong}_to_{weak}"}
              
         return None
 
-    def _check_lock_removal(self, diff_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _check_thread_safety_removal(self, diff_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Rule 3: Synchronization Removal
+        Rule 3: Thread Safety Mechanism Removal
         Triggers if:
-        - 'synchronized' keyword is removed from a method signature
+        - 'synchronized' keyword removed
+        - 'volatile' keyword removed
+        - Lock method calls (lock.lock/unlock) removed
         """
         raw_diff = diff_data.get('raw_diff', "")
         
-        # Look for chunks where:
+        # 1. Synchronized Removal (Method or Block)
         # - ... synchronized ...
-        # + ... (same text but no synchronized)
-        
-        # Heuristic:
-        # Find a removed line with 'synchronized'
-        # Find an added line similar to it but without 'synchronized'
-        
-        removed_sync_lines = re.findall(r'^-\s.*synchronized.*', raw_diff, re.MULTILINE)
-        
-        for removed_line in removed_sync_lines:
-            # Construct a loose regex for the "after" line
-            # E.g. "- public synchronized void foo()" -> "+ public void foo()"
-            # We strip '-', 'synchronized', and spaces
-            clean_content = removed_line.replace('-', '').replace('synchronized', '').strip()
-            # Escape for regex
-            clean_content_esc = re.escape(clean_content)
-            # Allow some flexibility in whitespace
-            pattern = r'^\+\s.*' + clean_content_esc.replace(r'\ ', r'\s+')
+        # + ... (missing synchronized)
+        if re.search(r'^-\s.*synchronized', raw_diff, re.MULTILINE):
+            # Check if we have a corresponding + line without synchronized, OR just a removal without replacement (block removal)
+            # Simplest heuristic: Removed 'synchronized' but didn't add it back in a similar line
             
-            # Or simpler: just check if there is an added line that matches the method name but no synchronized
-            # Extract method name?
-            # Let's just check if we find a corresponding + line without 'synchronized'
+            # Count occurrences in - and +
+            # This is rough but effective for "alerting"
+            removed_sync_count = len(re.findall(r'^-\s.*synchronized', raw_diff, re.MULTILINE))
+            added_sync_count = len(re.findall(r'^\+\s.*synchronized', raw_diff, re.MULTILINE))
             
-            # This is "Minimal" rule.
-            # If we see - synchronized and + (no synchronized) in the same file context.
-            if re.search(r'^\+\s.*', raw_diff, re.MULTILINE):
-                 # Check if any added line looks like the removed line minus synchronized
-                 # This is tricky without precise parsing.
-                 pass
-        
-        # Specific check for the user's case:
-        # - public static synchronized boolean registerWatcher
-        # + public static boolean registerWatcher
-        if re.search(r'^-\s.*synchronized.*registerWatcher', raw_diff, re.MULTILINE) and \
-           re.search(r'^\+\s.*(?<!synchronized\s)boolean\s+registerWatcher', raw_diff, re.MULTILINE):
-            return {"file": "WatchFileCenter.java"}
-            
-        # Generalized check for any method
-        # If we find "- ... synchronized ... type method(...)" 
-        # And "+ ... type method(...)"
-        
-        # Let's try a regex that matches the structure of a method decl roughly
-        # - .* synchronized .* (void|boolean|int|String|...) \w+\(
-        
-        matches = re.findall(r'^-\s.*synchronized\s+.*\s+(\w+)\(', raw_diff, re.MULTILINE)
-        for method_name in matches:
-            # Check if there is an added line with this method name but NO synchronized
-            # pattern: ^+ .* method_name( ...
-            added_line_pattern = r'^\+\s*((?!synchronized).)*\s+' + re.escape(method_name) + r'\('
-            if re.search(added_line_pattern, raw_diff, re.MULTILINE):
-                 return {"file": f"method_change_{method_name}"}
+            if removed_sync_count > added_sync_count:
+                return {"file": "synchronized_removed"}
 
+        # 2. Volatile Removal
+        if re.search(r'^-\s.*volatile', raw_diff, re.MULTILINE):
+            removed_vol_count = len(re.findall(r'^-\s.*volatile', raw_diff, re.MULTILINE))
+            added_vol_count = len(re.findall(r'^\+\s.*volatile', raw_diff, re.MULTILINE))
+            
+            if removed_vol_count > added_vol_count:
+                return {"file": "volatile_removed"}
+                
+        # 3. Lock/Unlock Removal (ReentrantLock etc)
+        # Look for removal of .lock(), .unlock()
+        # - ... .lock();
+        # - ... .unlock();
+        if re.search(r'^-\s.*\.(lock|unlock|tryLock)\(.*\)', raw_diff, re.MULTILINE):
+            # If we see lock calls removed, and not added back
+            removed_lock_calls = len(re.findall(r'^-\s.*\.(lock|unlock|tryLock)\(.*\)', raw_diff, re.MULTILINE))
+            added_lock_calls = len(re.findall(r'^\+\s.*\.(lock|unlock|tryLock)\(.*\)', raw_diff, re.MULTILINE))
+            
+            if removed_lock_calls > added_lock_calls:
+                 return {"file": "explicit_lock_removed"}
+
+        return None
+
+    def _check_latch_misuse(self, diff_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Rule 4: CountDownLatch Misuse
+        Triggers if:
+        - latch.countDown() is removed (especially from finally/catch)
+        """
+        raw_diff = diff_data.get('raw_diff', "")
+        
+        # Check for removal of countDown()
+        if re.search(r'^-\s.*\.countDown\(\)', raw_diff, re.MULTILINE):
+            removed_count = len(re.findall(r'^-\s.*\.countDown\(\)', raw_diff, re.MULTILINE))
+            added_count = len(re.findall(r'^\+\s.*\.countDown\(\)', raw_diff, re.MULTILINE))
+            
+            if removed_count > added_count:
+                return {"file": "latch_countdown_removed"}
+                
         return None
 
     def _find_file_for_line(self, line: str, diff_data: Dict[str, Any]) -> str:
