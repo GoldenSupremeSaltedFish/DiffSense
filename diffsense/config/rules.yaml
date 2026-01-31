@@ -3,24 +3,83 @@ rules:
     # Use AST Signal instead of regex match
     signal: "runtime.concurrency.synchronized"
     # match: "(?i)(thread|async|lock|synchronized)"  <-- Removed regex
+    action: "added"
     file: "**/core/**"
     impact: runtime
     severity: high
     rationale: "Concurrency changes (synchronized) in core modules pose high stability risk"
 
+  - id: runtime.concurrency_synchronized_removed_critical
+    signal: "runtime.concurrency.synchronized"
+    action: "removed"
+    file: "**"
+    impact: runtime
+    severity: critical
+    rationale: "CRITICAL: Removal of synchronized block/keyword detected! This is a major stability risk."
+
   - id: runtime.concurrency_lock_risk
     signal: "runtime.concurrency.lock"
+    action: "added"
     file: "**/core/**"
     impact: runtime
     severity: high
     rationale: "Explicit lock usage in core modules"
 
+  - id: runtime.concurrency_lock_removed_critical
+    signal: "runtime.concurrency.lock"
+    action: "removed"
+    file: "**"
+    impact: runtime
+    severity: critical
+    rationale: "CRITICAL: Removal of lock/concurrency protection detected! This may lead to race conditions."
+
   - id: runtime.concurrency_volatile_risk
     signal: "runtime.concurrency.volatile"
+    action: "added"
     file: "**/core/**"
     impact: runtime
     severity: high
     rationale: "Volatile field usage in core modules"
+
+  - id: runtime.concurrency_volatile_removed_risk
+    signal: "runtime.concurrency.volatile"
+    action: "removed"
+    file: "**"
+    impact: runtime
+    severity: critical
+    rationale: "CRITICAL: Removal of volatile keyword detected! This may cause visibility issues across threads."
+
+  - id: runtime.concurrency_map_removed_risk
+    signal: "runtime.concurrency.concurrent_map"
+    action: "removed"
+    file: "**"
+    impact: runtime
+    severity: high
+    rationale: "Removal of ConcurrentHashMap detected. Ensure it is not replaced by a non-thread-safe collection."
+
+  - id: runtime.concurrency.thread_safety_downgrade
+    signal: "runtime.concurrency.thread_safety_downgrade"
+    action: "downgrade"
+    file: "**"
+    impact: runtime
+    severity: critical
+    rationale: "CRITICAL: Detected downgrade from ThreadSafe type to Non-ThreadSafe type (e.g., ConcurrentHashMap -> HashMap). High risk of race conditions!"
+
+  - id: runtime.concurrency.static_unsafe_collection
+    signal: "runtime.concurrency.static_unsafe_collection"
+    action: "added"
+    file: "**"
+    impact: runtime
+    severity: high
+    rationale: "Usage of static non-thread-safe collection detected. This is a common cause of race conditions in multi-threaded environments."
+
+  - id: runtime.performance.sleep_added
+    signal: "runtime.performance.sleep_added"
+    action: "added"
+    file: "**"
+    impact: performance
+    severity: medium
+    rationale: "Thread.sleep() introduced. This may indicate poor concurrency handling or debug code left in production."
 
   - id: runtime.service_layer
     file: "**/service/**"

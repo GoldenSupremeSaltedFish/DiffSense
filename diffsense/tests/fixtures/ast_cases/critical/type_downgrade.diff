@@ -1,0 +1,11 @@
+diff --git a/diffsense/core/Cache.java b/diffsense/core/Cache.java
+index 1234567..890abcd 100644
+--- a/diffsense/core/Cache.java
++++ b/diffsense/core/Cache.java
+@@ -10,7 +10,7 @@ public class Cache {
+     // Thread safe cache
+-    private final ConcurrentHashMap<String, String> cache = new ConcurrentHashMap<>();
++    private final HashMap<String, String> cache = new HashMap<>();
+ 
+     public void put(String key, String value) {
+         cache.put(key, value);
