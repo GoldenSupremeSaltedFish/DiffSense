@@ -1,8 +1,9 @@
 import re
 from typing import Dict, Any, List, Optional
-from core.rule_base import Rule
+from sdk.rule import BaseRule
+from sdk.signal import Signal
 
-class ThreadPoolSemanticChangeRule(Rule):
+class ThreadPoolSemanticChangeRule(BaseRule):
     @property
     def id(self) -> str:
         return "runtime.threadpool_semantic_change"
@@ -19,7 +20,7 @@ class ThreadPoolSemanticChangeRule(Rule):
     def rationale(self) -> str:
         return "High risk thread pool configuration detected (unbounded or zero core)"
 
-    def evaluate(self, diff_data: Dict[str, Any], ast_signals: List[Any]) -> Optional[Dict[str, Any]]:
+    def evaluate(self, diff_data: Dict[str, Any], signals: List[Signal]) -> Optional[Dict[str, Any]]:
         raw_diff = diff_data.get('raw_diff', "")
         
         if 'new ThreadPoolExecutor' not in raw_diff:
@@ -43,7 +44,7 @@ class ThreadPoolSemanticChangeRule(Rule):
         return diff_data.get('files', ["unknown"])[0]
 
 
-class ConcurrencyRegressionRule(Rule):
+class ConcurrencyRegressionRule(BaseRule):
     @property
     def id(self) -> str:
         return "runtime.concurrency_regression"
@@ -60,7 +61,13 @@ class ConcurrencyRegressionRule(Rule):
     def rationale(self) -> str:
         return "Downgrade from concurrent/atomic type to non-thread-safe implementation"
 
-    def evaluate(self, diff_data: Dict[str, Any], ast_signals: List[Any]) -> Optional[Dict[str, Any]]:
+    def evaluate(self, diff_data: Dict[str, Any], signals: List[Signal]) -> Optional[Dict[str, Any]]:
+        # Prefer Signal-based detection if available
+        for sig in signals:
+            if sig.id == "runtime.concurrency.thread_safety_downgrade":
+                return {"file": sig.file}
+
+        # Fallback to Regex (Legacy logic)
         raw_diff = diff_data.get('raw_diff', "")
         
         regressions = [
@@ -93,7 +100,7 @@ class ConcurrencyRegressionRule(Rule):
         return None
 
 
-class ThreadSafetyRemovalRule(Rule):
+class ThreadSafetyRemovalRule(BaseRule):
     @property
     def id(self) -> str:
         return "runtime.thread_safety_removal"
@@ -110,7 +117,7 @@ class ThreadSafetyRemovalRule(Rule):
     def rationale(self) -> str:
         return "Removal of synchronization (synchronized, volatile, locks) from shared code"
 
-    def evaluate(self, diff_data: Dict[str, Any], ast_signals: List[Any]) -> Optional[Dict[str, Any]]:
+    def evaluate(self, diff_data: Dict[str, Any], signals: List[Signal]) -> Optional[Dict[str, Any]]:
         raw_diff = diff_data.get('raw_diff', "")
         
         if re.search(r'^-\s.*synchronized', raw_diff, re.MULTILINE):
@@ -137,7 +144,7 @@ class ThreadSafetyRemovalRule(Rule):
         return None
 
 
-class LatchMisuseRule(Rule):
+class LatchMisuseRule(BaseRule):
     @property
     def id(self) -> str:
         return "runtime.latch_misuse"
@@ -154,7 +161,7 @@ class LatchMisuseRule(Rule):
     def rationale(self) -> str:
         return "Removal of CountDownLatch.countDown() - potential deadlock or hang"
 
-    def evaluate(self, diff_data: Dict[str, Any], ast_signals: List[Any]) -> Optional[Dict[str, Any]]:
+    def evaluate(self, diff_data: Dict[str, Any], signals: List[Signal]) -> Optional[Dict[str, Any]]:
         raw_diff = diff_data.get('raw_diff', "")
         
         if re.search(r'^-\s.*\.countDown\(\)', raw_diff, re.MULTILINE):
