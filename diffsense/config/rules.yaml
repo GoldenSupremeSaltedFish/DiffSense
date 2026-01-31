@@ -57,6 +57,30 @@ rules:
     severity: high
     rationale: "Removal of ConcurrentHashMap detected. Ensure it is not replaced by a non-thread-safe collection."
 
+  - id: runtime.concurrency.thread_safety_downgrade
+    signal: "runtime.concurrency.thread_safety_downgrade"
+    action: "downgrade"
+    file: "**"
+    impact: runtime
+    severity: critical
+    rationale: "CRITICAL: Detected downgrade from ThreadSafe type to Non-ThreadSafe type (e.g., ConcurrentHashMap -> HashMap). High risk of race conditions!"
+
+  - id: runtime.concurrency.static_unsafe_collection
+    signal: "runtime.concurrency.static_unsafe_collection"
+    action: "added"
+    file: "**"
+    impact: runtime
+    severity: high
+    rationale: "Usage of static non-thread-safe collection detected. This is a common cause of race conditions in multi-threaded environments."
+
+  - id: runtime.performance.sleep_added
+    signal: "runtime.performance.sleep_added"
+    action: "added"
+    file: "**"
+    impact: performance
+    severity: medium
+    rationale: "Thread.sleep() introduced. This may indicate poor concurrency handling or debug code left in production."
+
   - id: runtime.service_layer
     file: "**/service/**"
     impact: runtime
