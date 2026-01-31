@@ -21,6 +21,19 @@ class ASTDetector:
         if not file_patches and 'raw_diff' in diff_data:
              file_patches = [{'file': 'unknown', 'patch': diff_data['raw_diff']}]
              
+        # Determine Analysis Tier
+        java_files = [f for f in file_patches if f.get('file', '').endswith('.java')]
+        num_java_files = len(java_files)
+        
+        # Tier 3: Metadata Only (Mega Diff / Refactor)
+        if num_java_files > 30:
+            return [Change(kind=ChangeKind.UNKNOWN, file="meta", symbol="LargeRefactor", meta={"tier": 3})]
+            
+        # Tier 2: Lightweight (Tokenizer Only)
+        analysis_mode = "deep"
+        if 10 < num_java_files <= 30:
+            analysis_mode = "light"
+            
         for entry in file_patches:
             filename = entry.get('file', 'unknown')
             patch_content = entry.get('patch', '')
@@ -29,7 +42,7 @@ class ASTDetector:
             if not filename.endswith('.java'):
                 continue
                 
-            file_changes = self._detect_changes_in_patch(filename, patch_content)
+            file_changes = self._detect_changes_in_patch(filename, patch_content, mode=analysis_mode)
             changes.extend(file_changes)
             
         return changes
@@ -42,6 +55,12 @@ class ASTDetector:
         signals = []
         
         for ch in changes:
+            # Handle Tier 3 Signal
+            if ch.symbol == "LargeRefactor":
+                # We can map this to a generic signal or just ignore
+                # RuleEngine might not have a rule for this yet, but we avoid AST cost
+                continue
+
             # Map Change -> Signal ID
             sig_id = self._map_change_to_signal_id(ch)
             if sig_id:
@@ -105,7 +124,7 @@ class ASTDetector:
              return "changed"
         return "changed"
 
-    def _detect_changes_in_patch(self, filename: str, patch_content: str) -> List[Change]:
+    def _detect_changes_in_patch(self, filename: str, patch_content: str, mode: str = "deep") -> List[Change]:
         changes = []
         
         added_lines = []
@@ -124,7 +143,7 @@ class ASTDetector:
         
         if removed_lines:
              self._analyze_snippet_for_changes(removed_lines, filename, is_added=False, 
-                                               var_map=removed_vars, call_set=removed_calls, mod_set=removed_modifiers, changes=changes)
+                                               var_map=removed_vars, call_set=removed_calls, mod_set=removed_modifiers, changes=changes, mode=mode)
 
         # Analyze Added
         added_vars = {}
@@ -133,9 +152,10 @@ class ASTDetector:
         
         if added_lines:
              self._analyze_snippet_for_changes(added_lines, filename, is_added=True,
-                                               var_map=added_vars, call_set=added_calls, mod_set=added_modifiers, changes=changes)
+                                               var_map=added_vars, call_set=added_calls, mod_set=added_modifiers, changes=changes, mode=mode)
         
-        # Cross-Analyze: Type Downgrade
+        # Cross-Analyze: Type Downgrade (Only in Deep Mode or if we have enough info)
+        # Tokenizer might not give us full type info, so this is best effort in light mode
         for var_name, old_type in removed_vars.items():
             if var_name in added_vars:
                 new_type = added_vars[var_name]
@@ -152,7 +172,7 @@ class ASTDetector:
         return changes
 
     def _analyze_snippet_for_changes(self, lines: List[str], filename: str, is_added: bool, 
-                                     var_map: Dict, call_set: Set, mod_set: Set, changes: List[Change]):
+                                     var_map: Dict, call_set: Set, mod_set: Set, changes: List[Change], mode: str = "deep"):
         
         code_snippet = "\n".join(lines)
         
@@ -201,6 +221,18 @@ class ASTDetector:
                 tokens[i+2].value == "sleep"):
                 kind = ChangeKind.CALL_ADDED if is_added else ChangeKind.CALL_REMOVED
                 changes.append(Change(kind=kind, file=filename, symbol="sleep"))
+
+        # Token-based Fallback for Critical Calls (when AST parsing fails)
+        # Pattern: Identifier(critical) + (
+        for i in range(len(tokens) - 1):
+            if tokens[i].value in self.critical_calls and tokens[i+1].value == "(":
+                # Found a critical call!
+                kind = ChangeKind.CALL_ADDED if is_added else ChangeKind.CALL_REMOVED
+                changes.append(Change(kind=kind, file=filename, symbol=tokens[i].value))
+
+        # Stop here if mode is 'light'
+        if mode == "light":
+            return
 
         # 3. AST Parsing
         parsed = False

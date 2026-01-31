@@ -141,13 +141,13 @@ rules:
   - id: security.behavior_change_auth
     file: "**/auth/**"
     impact: security
-    severity: medium
+    severity: high
     rationale: "Changes in authentication modules detected. Requires careful security review."
 
   - id: security.behavior_change_security
     file: "**/security/**"
     impact: security
-    severity: medium
+    severity: high
     rationale: "Changes in security modules detected. Requires careful security review."
 
   - id: runtime.validation_removed
