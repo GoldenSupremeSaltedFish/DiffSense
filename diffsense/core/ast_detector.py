@@ -25,7 +25,8 @@ class ASTDetector:
             filename = entry.get('file', 'unknown')
             patch_content = entry.get('patch', '')
             
-            if not filename.endswith('.java') and filename != 'unknown':
+            # Strict check: must be .java
+            if not filename.endswith('.java'):
                 continue
                 
             file_changes = self._detect_changes_in_patch(filename, patch_content)
