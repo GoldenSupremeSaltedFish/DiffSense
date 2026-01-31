@@ -1,5 +1,5 @@
 import javalang
-from javalang.tree import SynchronizedStatement, MethodInvocation, FieldDeclaration, MethodDeclaration, LocalVariableDeclaration, VariableDeclarator
+from javalang.tree import SynchronizedStatement, MethodInvocation, FieldDeclaration, MethodDeclaration, LocalVariableDeclaration, VariableDeclarator, ForStatement, WhileStatement, DoStatement
 from typing import List, Set, Dict, Any, Tuple, Optional
 from .signal_model import Signal
 from .change import Change, ChangeKind
@@ -7,7 +7,8 @@ from .knowledge import is_thread_safe, is_lock_type
 
 class ASTDetector:
     def __init__(self):
-        pass
+        self.pagination_vars = {"pageNo", "pageSize", "start", "limit", "offset"}
+        self.critical_calls = {"encode", "decode", "validate", "check", "normalize", "sanitize"}
     
     def detect_changes(self, diff_data: Dict[str, Any]) -> List[Change]:
         """
@@ -77,9 +78,18 @@ class ASTDetector:
         if change.kind == ChangeKind.CALL_ADDED:
             if change.symbol == "sleep":
                 return "runtime.performance.sleep_added"
+            if change.symbol == "remove" and change.meta.get("in_loop"):
+                return "runtime.collection_mutation_inside_loop"
+
+        if change.kind == ChangeKind.CALL_REMOVED:
+            if change.symbol in self.critical_calls:
+                return "runtime.input_normalization_removed"
 
         if change.symbol == "ConcurrentHashMap":
              return "runtime.concurrency.concurrent_map"
+             
+        if change.symbol in self.pagination_vars:
+            return "data.pagination_semantic_change"
 
         return None
 
@@ -90,7 +100,9 @@ class ASTDetector:
             return "removed"
         if kind == ChangeKind.TYPE_CHANGED:
             return "downgrade" # Specific mapping for now
-        return "unknown"
+        if kind == ChangeKind.UNKNOWN and "action" in kind.name: # Fallback?
+             return "changed"
+        return "changed"
 
     def _detect_changes_in_patch(self, filename: str, patch_content: str) -> List[Change]:
         changes = []
@@ -166,6 +178,15 @@ class ASTDetector:
              if not is_added:
                  changes.append(Change(kind=ChangeKind.UNKNOWN, file=filename, symbol="ConcurrentHashMap", meta={"action": "removed"}))
 
+        # Check for pagination vars in tokens (fast check)
+        for val in token_values:
+            if val in self.pagination_vars:
+                # We found a pagination variable usage
+                # We can mark it as a generic change or specific kind
+                # For now, let's treat it as a generic symbol reference change
+                kind = ChangeKind.UNKNOWN # We don't have VARIABLE_USAGE yet, use UNKNOWN or extend
+                changes.append(Change(kind=kind, file=filename, symbol=val, meta={"action": "changed"}))
+
 
         for i in range(len(tokens) - 2):
             if (tokens[i].value == "." and 
@@ -237,12 +258,33 @@ class ASTDetector:
                          var_map[declarator.name] = node.type.name
 
             if isinstance(node, MethodInvocation):
-                if node.member == "lock":
-                    kind = ChangeKind.CALL_ADDED if is_added else ChangeKind.CALL_REMOVED
-                    changes.append(Change(kind=kind, file=filename, symbol="lock"))
+                call_name = node.member
                 
-                if node.member == "sleep":
-                    # Thread.sleep detection
-                    # Ideally check receiver "Thread" but simplistic for now
-                    kind = ChangeKind.CALL_ADDED if is_added else ChangeKind.CALL_REMOVED
+                # General call tracking
+                kind = ChangeKind.CALL_ADDED if is_added else ChangeKind.CALL_REMOVED
+                
+                # Special checks
+                if call_name == "lock":
+                    changes.append(Change(kind=kind, file=filename, symbol="lock"))
+                elif call_name == "sleep":
                     changes.append(Change(kind=kind, file=filename, symbol="sleep"))
+                
+                # Critical calls (input/validation)
+                if call_name in self.critical_calls and not is_added:
+                    changes.append(Change(kind=kind, file=filename, symbol=call_name))
+                
+                # Collection mutation in loop
+                if call_name == "remove" and is_added:
+                    # Check if inside a loop
+                    if self._is_inside_loop(path):
+                        changes.append(Change(kind=kind, file=filename, symbol="remove", meta={"in_loop": True}))
+
+    def _is_inside_loop(self, path: Tuple) -> bool:
+        """
+        Check if the current node (at the end of path) is inside a loop structure.
+        path is a list/tuple of parent nodes.
+        """
+        for node in reversed(path):
+            if isinstance(node, (ForStatement, WhileStatement, DoStatement)):
+                return True
+        return False

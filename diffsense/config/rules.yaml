@@ -101,10 +101,6 @@ rules:
     rationale: "SQL query modifications"
 
   - id: architecture.dependency_change
-    # Combining patterns for simplicity, or I can support list in code. 
-    # For now, let's stick to simple glob or regex.
-    # fnmatch doesn't support (a|b), so I will split into two rules or handle regex in file.
-    # Let's just use two rules for now to keep it simple and safe.
     file: "**/package.json"
     impact: architecture
     severity: high
@@ -115,3 +111,53 @@ rules:
     impact: architecture
     severity: high
     rationale: "Dependency changes affect build and security"
+
+  # --- Semantic Regression Rules (Added by Request) ---
+
+  - id: runtime.input_normalization_removed
+    signal: "runtime.input_normalization_removed"
+    action: "removed"
+    file: "**"
+    impact: runtime
+    severity: high
+    rationale: "CRITICAL: Removal of input normalization/validation call (encode/decode/validate/check). High risk of data integrity or security issues."
+
+  - id: data.pagination_semantic_change
+    signal: "data.pagination_semantic_change"
+    action: "changed"
+    file: "**"
+    impact: data
+    severity: high
+    rationale: "Changes to pagination logic (pageNo/pageSize/start/limit) detected. High risk of off-by-one errors or data loss."
+
+  - id: runtime.collection_mutation_inside_loop
+    signal: "runtime.collection_mutation_inside_loop"
+    action: "added"
+    file: "**"
+    impact: runtime
+    severity: high
+    rationale: "Collection modification (remove) detected inside a loop. This often leads to ConcurrentModificationException or undefined behavior."
+
+  - id: security.behavior_change_auth
+    file: "**/auth/**"
+    impact: security
+    severity: medium
+    rationale: "Changes in authentication modules detected. Requires careful security review."
+
+  - id: security.behavior_change_security
+    file: "**/security/**"
+    impact: security
+    severity: medium
+    rationale: "Changes in security modules detected. Requires careful security review."
+
+  - id: runtime.validation_removed
+    # This overlaps with input_normalization_removed, but we can add a specific one if needed.
+    # The user asked for it as a separate category, but we covered it with the signal above.
+    # Let's add a placeholder or duplicate if distinct signal is available.
+    # For now, relying on input_normalization_removed covers 'validate/check' calls.
+    # But let's add a rule that watches for 'validation' in filename or package.
+    file: "**/validation/**"
+    match: ".*" # Match any change
+    impact: runtime
+    severity: high
+    rationale: "Changes in validation logic modules."
