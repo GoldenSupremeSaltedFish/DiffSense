@@ -46,6 +46,12 @@ class RuleEngine:
             for sig in ast_signals:
                 if sig.id == target_signal:
                     # Signal Matched!
+                    
+                    # Check action constraint if present in rule
+                    if 'action' in rule:
+                        if rule['action'] != sig.action:
+                            continue # Action mismatch (e.g. rule wants 'removed', signal is 'added')
+                    
                     # Check if there are other constraints (like file)
                     if 'file' in rule:
                         if not fnmatch.fnmatch(sig.file, rule['file']):

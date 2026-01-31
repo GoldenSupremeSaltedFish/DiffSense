@@ -29,34 +29,56 @@ class ASTDetector:
             if not filename.endswith('.java') and filename != 'unknown':
                 continue
             
-            detected_ids = self._detect_in_patch(patch_content)
+            detected_results = self._detect_in_patch(patch_content)
             
-            for sig_id in detected_ids:
+            for result in detected_results:
                 signals.append(Signal(
-                    id=sig_id,
+                    id=result["id"],
                     file=filename,
-                    confidence=1.0
+                    confidence=1.0,
+                    action=result["action"]
                 ))
                 
         return signals
 
-    def _detect_in_patch(self, patch_content: str) -> Set[str]:
+    def _detect_in_patch(self, patch_content: str) -> List[Dict[str, str]]:
         """
         Analyzes a single file patch content.
+        Returns a list of dicts: {"id": signal_id, "action": "added"|"removed"}
         """
-        signals = set()
+        detected_results = []
         
-        # 1. Extract added lines
+        # 1. Extract added and removed lines
         added_lines = []
+        removed_lines = []
+        
         for line in patch_content.splitlines():
             if line.startswith('+') and not line.startswith('+++'):
                 added_lines.append(line[1:].strip())
+            elif line.startswith('-') and not line.startswith('---'):
+                removed_lines.append(line[1:].strip())
         
-        if not added_lines:
-            return signals
+        # Analyze Added
+        if added_lines:
+            signals_added = self._analyze_snippet(added_lines)
+            for sig in signals_added:
+                detected_results.append({"id": sig, "action": "added"})
 
-        code_snippet = "\n".join(added_lines)
+        # Analyze Removed
+        if removed_lines:
+            signals_removed = self._analyze_snippet(removed_lines)
+            for sig in signals_removed:
+                detected_results.append({"id": sig, "action": "removed"})
+                
+        return detected_results
 
+    def _analyze_snippet(self, lines: List[str]) -> Set[str]:
+        """
+        Analyzes a list of code lines for signals.
+        """
+        signals = set()
+        code_snippet = "\n".join(lines)
+        
         # 2. Tokenizer based detection
         try:
             tokens = list(javalang.tokenizer.tokenize(code_snippet))
@@ -70,6 +92,9 @@ class ASTDetector:
 
         if "volatile" in token_values:
             signals.add("runtime.concurrency.volatile")
+
+        if "ConcurrentHashMap" in token_values:
+            signals.add("runtime.concurrency.concurrent_map")
 
         for i in range(len(tokens) - 2):
             if (tokens[i].value == "." and 
@@ -113,6 +138,10 @@ class ASTDetector:
             if isinstance(node, FieldDeclaration):
                 if 'volatile' in node.modifiers:
                     signals.add("runtime.concurrency.volatile")
+                
+                # Check for ConcurrentHashMap type
+                if node.type and node.type.name == "ConcurrentHashMap":
+                    signals.add("runtime.concurrency.concurrent_map")
             
             if isinstance(node, MethodInvocation):
                 if node.member == "lock":

@@ -1,0 +1,16 @@
+diff --git a/diffsense/core/RaftNode.java b/diffsense/core/RaftNode.java
+index 1234567..890abcd 100644
+--- a/diffsense/core/RaftNode.java
++++ b/diffsense/core/RaftNode.java
+@@ -45,9 +45,9 @@ public class RaftNode {
+     public void onSnapshotSave() {
+-        lock.lock();
++        // lock.lock();
+         try {
+             saveSnapshot();
+         } finally {
+-            lock.unlock();
++            // lock.unlock();
+         }
+     }
+ }
