@@ -53,6 +53,9 @@ def main():
     # Now takes triggered_rules and list of files
     result = composer.compose(triggered_rules, diff_data.get('files', []))
     
+    # Add Rule Performance Metrics (Hidden field for replay tool)
+    result['_metrics'] = rule_engine.get_metrics()
+
     # 6. Output
     if args.format == "json":
         print(json.dumps(result, indent=2))
