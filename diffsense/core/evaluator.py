@@ -10,4 +10,17 @@ class ImpactEvaluator:
         Calculates impact by delegating to Rule Engine.
         Returns a list of triggered rule objects.
         """
+        ast_signals = ast_signals or []
+        
+        # Tier 3 Check: If Large Refactor detected, skip all other rules
+        for sig in ast_signals:
+            if sig.id == "meta.large_refactor":
+                return [{
+                    "id": "meta.large_refactor",
+                    "impact": "maintenance",
+                    "severity": "low", 
+                    "rationale": "Large refactor detected (>30 Java files). Deep analysis skipped.",
+                    "matched_file": "meta"
+                }]
+
         return self.rule_engine.evaluate(diff_data, ast_signals)

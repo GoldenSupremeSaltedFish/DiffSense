@@ -57,8 +57,13 @@ class ASTDetector:
         for ch in changes:
             # Handle Tier 3 Signal
             if ch.symbol == "LargeRefactor":
-                # We can map this to a generic signal or just ignore
-                # RuleEngine might not have a rule for this yet, but we avoid AST cost
+                signals.append(Signal(
+                    id="meta.large_refactor",
+                    file="meta",
+                    confidence=1.0,
+                    action="detected",
+                    meta=ch.meta
+                ))
                 continue
 
             # Map Change -> Signal ID
