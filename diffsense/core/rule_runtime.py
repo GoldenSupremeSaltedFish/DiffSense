@@ -1,7 +1,9 @@
 import yaml
 import time
-from typing import Dict, List, Any, Tuple
-from core.rule_base import Rule
+from typing import Dict, List, Any, Optional
+from sdk.rule import BaseRule
+from sdk.signal import Signal
+from governance.lifecycle import LifecycleManager
 from rules.concurrency import (
     ThreadPoolSemanticChangeRule,
     ConcurrencyRegressionRule,
@@ -10,10 +12,15 @@ from rules.concurrency import (
 )
 from rules.yaml_adapter import YamlRule
 
-class RuleEngine:
-    def __init__(self, rules_path: str):
-        self.rules: List[Rule] = []
-        self.metrics: Dict[str, Dict[str, Any]] = {} # id -> {calls, hits, time_ns, errors}
+class RuleRuntime:
+    """
+    The orchestrator for executing rules.
+    Handles Lifecycle, Metrics, Suppression, and Feedback.
+    """
+    def __init__(self, rules_path: str, config: Dict[str, Any] = None):
+        self.rules: List[BaseRule] = []
+        self.metrics: Dict[str, Dict[str, Any]] = {} 
+        self.lifecycle = LifecycleManager(config)
         
         # 1. Register Built-in Rules (Plugins)
         self._register_builtins()
@@ -23,7 +30,7 @@ class RuleEngine:
 
     def _register_builtins(self):
         """
-        Registers core rules that are implemented as Python classes.
+        Registers core rules. In a real OS, this would be a dynamic plugin loader.
         """
         self.rules.append(ThreadPoolSemanticChangeRule())
         self.rules.append(ConcurrencyRegressionRule())
@@ -31,9 +38,6 @@ class RuleEngine:
         self.rules.append(LatchMisuseRule())
 
     def _load_yaml_rules(self, path: str):
-        """
-        Loads YAML rules and adapts them using YamlRule adapter.
-        """
         try:
             with open(path, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f) or {}
@@ -43,14 +47,17 @@ class RuleEngine:
         except FileNotFoundError:
             pass
 
-    def evaluate(self, diff_data: Dict[str, Any], ast_signals: List[Any] = None) -> List[Dict[str, Any]]:
+    def execute(self, diff_data: Dict[str, Any], signals: List[Signal]) -> List[Dict[str, Any]]:
         """
-        Evaluates all registered rules against the diff.
+        Main execution pipeline.
         """
-        triggered_rules = []
-        ast_signals = ast_signals or []
+        findings = []
         
         for rule in self.rules:
+            # 1. Lifecycle Check
+            if not self.lifecycle.should_run(rule):
+                continue
+                
             rule_id = rule.id
             if rule_id not in self.metrics:
                 self.metrics[rule_id] = {"calls": 0, "hits": 0, "time_ns": 0, "errors": 0}
@@ -61,8 +68,8 @@ class RuleEngine:
             match_details = None
             
             try:
-                # Execute Rule (Plugin)
-                match_details = rule.evaluate(diff_data, ast_signals)
+                # 2. Execute Rule
+                match_details = rule.evaluate(diff_data, signals)
             except Exception:
                 self.metrics[rule_id]["errors"] += 1
             finally:
@@ -70,21 +77,23 @@ class RuleEngine:
                 self.metrics[rule_id]["time_ns"] += duration
             
             if match_details:
+                # 3. Suppress Check (TODO)
+                # if self.suppress.is_suppressed(rule_id, match_details): continue
+                
                 self.metrics[rule_id]["hits"] += 1
                 
-                # Transform Rule Object -> Output Dictionary (for Composer)
-                # This decouples the internal Rule object from the output format
-                triggered = {
+                # 4. Severity Adjustment
+                severity = self.lifecycle.adjust_severity(rule, rule.severity)
+                
+                findings.append({
                     "id": rule.id,
-                    "severity": rule.severity,
+                    "severity": severity,
                     "impact": rule.impact,
                     "rationale": rule.rationale,
                     "matched_file": match_details.get('file', 'unknown')
-                }
-                triggered_rules.append(triggered)
+                })
                 
-        return triggered_rules
+        return findings
     
     def get_metrics(self) -> Dict[str, Any]:
-        """Returns the collected performance metrics."""
         return self.metrics

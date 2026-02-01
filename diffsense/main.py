@@ -7,6 +7,7 @@ from core.rules import RuleEngine
 from core.evaluator import ImpactEvaluator
 from core.composer import DecisionComposer
 from core.renderer import MarkdownRenderer
+from core.ast_detector import ASTDetector
 
 def main():
     parser = argparse.ArgumentParser(description="DiffSense: Event-driven MR Audit Analyzer")
@@ -28,6 +29,10 @@ def main():
     diff_parser = DiffParser()
     diff_data = diff_parser.parse(diff_content)
     
+    # 2.5 Detect AST Signals
+    ast_detector = ASTDetector()
+    ast_signals = ast_detector.detect_signals(diff_data)
+    
     # 3. Init Engine & Evaluator
     # Use absolute path for default rules if relative path fails
     rules_path = args.rules
@@ -41,13 +46,16 @@ def main():
     
     # 4. Evaluate Impact
     # Now returns a list of triggered rules (List[Dict])
-    triggered_rules = evaluator.evaluate(diff_data)
+    triggered_rules = evaluator.evaluate(diff_data, ast_signals)
     
     # 5. Compose Decision
     composer = DecisionComposer()
     # Now takes triggered_rules and list of files
     result = composer.compose(triggered_rules, diff_data.get('files', []))
     
+    # Add Rule Performance Metrics (Hidden field for replay tool)
+    result['_metrics'] = rule_engine.get_metrics()
+
     # 6. Output
     if args.format == "json":
         print(json.dumps(result, indent=2))

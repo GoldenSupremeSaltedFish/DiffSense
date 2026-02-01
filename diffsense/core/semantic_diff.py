@@ -1,20 +1,25 @@
 import javalang
 from javalang.tree import SynchronizedStatement, MethodInvocation, FieldDeclaration, MethodDeclaration, LocalVariableDeclaration, VariableDeclarator, ForStatement, WhileStatement, DoStatement
 from typing import List, Set, Dict, Any, Tuple, Optional
-from .signal_model import Signal
+from sdk.signal import Signal
 from .change import Change, ChangeKind
 from .knowledge import is_thread_safe, is_lock_type
 
-class ASTDetector:
+class SemanticDiff:
+    """
+    L2 Semantic Analysis Engine.
+    Responsibility: Parse Diff -> Extract Semantic Signals.
+    Does NOT execute rules.
+    """
     def __init__(self):
         self.pagination_vars = {"pageNo", "pageSize", "start", "limit", "offset"}
         self.critical_calls = {"encode", "decode", "validate", "check", "normalize", "sanitize"}
     
-    def detect_changes(self, diff_data: Dict[str, Any]) -> List[Change]:
+    def detect_signals(self, diff_data: Dict[str, Any]) -> List[Signal]:
         """
-        New Entry Point: Returns semantic changes instead of raw signals.
+        Main Entry Point: Returns semantic signals.
         """
-        changes = []
+        signals = []
         file_patches = diff_data.get('file_patches', [])
         
         # Fallback if parser isn't upgraded
@@ -27,7 +32,13 @@ class ASTDetector:
         
         # Tier 3: Metadata Only (Mega Diff / Refactor)
         if num_java_files > 30:
-            return [Change(kind=ChangeKind.UNKNOWN, file="meta", symbol="LargeRefactor", meta={"tier": 3})]
+            return [Signal(
+                id="meta.large_refactor",
+                file="meta",
+                action="detected",
+                line=None,
+                meta={"tier": 3}
+            )]
             
         # Tier 2: Lightweight (Tokenizer Only)
         analysis_mode = "deep"
@@ -43,43 +54,34 @@ class ASTDetector:
                 continue
                 
             file_changes = self._detect_changes_in_patch(filename, patch_content, mode=analysis_mode)
-            changes.extend(file_changes)
             
-        return changes
-
-    def detect_signals(self, diff_data: Dict[str, Any]) -> List[Signal]:
-        """
-        Legacy Adapter: Converts Changes -> Signals for backward compatibility with RuleEngine.
-        """
-        changes = self.detect_changes(diff_data)
-        signals = []
-        
-        for ch in changes:
-            # Handle Tier 3 Signal
-            if ch.symbol == "LargeRefactor":
-                signals.append(Signal(
-                    id="meta.large_refactor",
-                    file="meta",
-                    confidence=1.0,
-                    action="detected",
-                    meta=ch.meta
-                ))
-                continue
-
-            # Map Change -> Signal ID
-            sig_id = self._map_change_to_signal_id(ch)
-            if sig_id:
-                # Map ChangeKind -> Action string
-                action = self._map_kind_to_action(ch.kind)
-                
-                signals.append(Signal(
-                    id=sig_id,
-                    file=ch.file,
-                    confidence=1.0,
-                    action=action,
-                    meta=ch.meta
-                ))
+            # Convert internal Changes to SDK Signals
+            for ch in file_changes:
+                sig = self._convert_change_to_signal(ch)
+                if sig:
+                    signals.append(sig)
+            
         return signals
+
+    def _convert_change_to_signal(self, ch: Change) -> Optional[Signal]:
+        """
+        Maps internal AST Change objects to standardized SDK Signals.
+        """
+        # Map Change -> Signal ID
+        sig_id = self._map_change_to_signal_id(ch)
+        if not sig_id:
+            return None
+
+        # Map ChangeKind -> Action string
+        action = self._map_kind_to_action(ch.kind)
+        
+        return Signal(
+            id=sig_id,
+            file=ch.file,
+            line=None, # TODO: Add line number tracking
+            action=action,
+            meta=ch.meta
+        )
 
     def _map_change_to_signal_id(self, change: Change) -> Optional[str]:
         # Mapping logic (Change -> Signal ID)
@@ -124,8 +126,8 @@ class ASTDetector:
         if kind in [ChangeKind.CALL_REMOVED, ChangeKind.FIELD_REMOVED, ChangeKind.MODIFIER_REMOVED]:
             return "removed"
         if kind == ChangeKind.TYPE_CHANGED:
-            return "downgrade" # Specific mapping for now
-        if kind == ChangeKind.UNKNOWN and "action" in kind.name: # Fallback?
+            return "downgrade" 
+        if kind == ChangeKind.UNKNOWN and "action" in kind.name: 
              return "changed"
         return "changed"
 
@@ -160,7 +162,6 @@ class ASTDetector:
                                                var_map=added_vars, call_set=added_calls, mod_set=added_modifiers, changes=changes, mode=mode)
         
         # Cross-Analyze: Type Downgrade (Only in Deep Mode or if we have enough info)
-        # Tokenizer might not give us full type info, so this is best effort in light mode
         for var_name, old_type in removed_vars.items():
             if var_name in added_vars:
                 new_type = added_vars[var_name]
@@ -199,18 +200,13 @@ class ASTDetector:
             changes.append(Change(kind=kind, file=filename, symbol="volatile"))
             
         if "ConcurrentHashMap" in token_values:
-             # Just tracking usage as symbol
-             # If removed, we might want to track it
              if not is_added:
                  changes.append(Change(kind=ChangeKind.UNKNOWN, file=filename, symbol="ConcurrentHashMap", meta={"action": "removed"}))
 
         # Check for pagination vars in tokens (fast check)
         for val in token_values:
             if val in self.pagination_vars:
-                # We found a pagination variable usage
-                # We can mark it as a generic change or specific kind
-                # For now, let's treat it as a generic symbol reference change
-                kind = ChangeKind.UNKNOWN # We don't have VARIABLE_USAGE yet, use UNKNOWN or extend
+                kind = ChangeKind.UNKNOWN 
                 changes.append(Change(kind=kind, file=filename, symbol=val, meta={"action": "changed"}))
 
 
@@ -227,11 +223,9 @@ class ASTDetector:
                 kind = ChangeKind.CALL_ADDED if is_added else ChangeKind.CALL_REMOVED
                 changes.append(Change(kind=kind, file=filename, symbol="sleep"))
 
-        # Token-based Fallback for Critical Calls (when AST parsing fails)
-        # Pattern: Identifier(critical) + (
+        # Token-based Fallback for Critical Calls
         for i in range(len(tokens) - 1):
             if tokens[i].value in self.critical_calls and tokens[i+1].value == "(":
-                # Found a critical call!
                 kind = ChangeKind.CALL_ADDED if is_added else ChangeKind.CALL_REMOVED
                 changes.append(Change(kind=kind, file=filename, symbol=tokens[i].value))
 
@@ -276,19 +270,19 @@ class ASTDetector:
                 
                 if node.type:
                     for declarator in node.declarators:
-                         var_map[declarator.name] = node.type.name
-                         
-                         if is_added and 'static' in node.modifiers:
-                             if not is_thread_safe(node.type.name):
-                                 risky_static_types = {"HashMap", "ArrayList", "HashSet", "TreeMap", "LinkedList"}
-                                 base_type = node.type.name.split('<')[0]
-                                 if base_type in risky_static_types:
-                                      changes.append(Change(
-                                          kind=ChangeKind.FIELD_ADDED,
-                                          file=filename,
-                                          symbol=declarator.name,
-                                          meta={"static_unsafe": True}
-                                      ))
+                        var_map[declarator.name] = node.type.name
+                        
+                        if is_added and 'static' in node.modifiers:
+                            if not is_thread_safe(node.type.name):
+                                risky_static_types = {"HashMap", "ArrayList", "HashSet", "TreeMap", "LinkedList"}
+                                base_type = node.type.name.split('<')[0]
+                                if base_type in risky_static_types:
+                                     changes.append(Change(
+                                         kind=ChangeKind.FIELD_ADDED,
+                                         file=filename,
+                                         symbol=declarator.name,
+                                         meta={"static_unsafe": True}
+                                     ))
 
             if isinstance(node, LocalVariableDeclaration):
                  if node.type:
