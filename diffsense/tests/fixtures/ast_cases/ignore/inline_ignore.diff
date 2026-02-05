@@ -1,0 +1,21 @@
+diff --git a/IgnoreTest.java b/IgnoreTest.java
+new file mode 100644
+index 0000000..1234567
+--- /dev/null
++++ b/IgnoreTest.java
+@@ -0,0 +1,15 @@
++public class IgnoreTest {
++    // diffsense-ignore: runtime.concurrency.lock
++    private final Lock lock = new ReentrantLock();
++    
++    public void test() {
++        // diffsense-ignore: runtime.concurrency.lock
++        lock.lock();
++        try {
++            // This one should trigger
++            lock.lock();
++        } finally {
++            lock.unlock();
++        }
++    }
++}
