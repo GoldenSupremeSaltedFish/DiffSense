@@ -86,7 +86,7 @@ jobs:
           
       # 安装插件依赖并构建
       - name: Build VSCode Extension
-        working-directory: plugin
+        working-directory: vscode-extension/plugin
         run: |
           echo "Building plugin in $(pwd)"
           echo "Directory contents and permissions before build:"

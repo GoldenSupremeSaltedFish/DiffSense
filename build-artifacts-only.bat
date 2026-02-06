@@ -2,6 +2,8 @@
 setlocal enabledelayedexpansion
 chcp 65001 >nul
 
+cd vscode-extension
+
 echo 🚀 构建 DiffSense Plugin 独立调试产物...
 echo ================================================
 echo.

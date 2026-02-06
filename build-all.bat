@@ -2,6 +2,8 @@
 setlocal enabledelayedexpansion
 chcp 65001 >nul
 
+cd vscode-extension
+
 echo 🚀 开始 DiffSense 完整构建流程...
 echo.
 
