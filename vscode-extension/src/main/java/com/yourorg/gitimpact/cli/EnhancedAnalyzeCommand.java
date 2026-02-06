@@ -220,7 +220,7 @@ public class EnhancedAnalyzeCommand implements Callable<Integer> {
             
             if (result.isRequiresJarAnalysis()) {
                 System.out.println("  • 项目需要JAR包分析，请确保已构建项目");
-                System.out.println("  • 建议运行: mvn clean package -DskipTests");
+                System.out.println("  • 建议运行: cd vscode-extension && mvn clean package -DskipTests");
             } else {
                 System.out.println("  • 项目可能使用其他部署方式，跳过JAR分析");
             }

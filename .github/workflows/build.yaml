@@ -17,10 +17,10 @@ jobs:
       packages: write
       
     env:
-      PLUGIN_DIR: ${{ github.workspace }}/plugin
-      UI_DIR: ${{ github.workspace }}/ui
-      FRONTEND_DIST: ${{ github.workspace }}/ui/diffsense-frontend/dist
-      FRONTEND_TARGET: ${{ github.workspace }}/plugin/ui/diffsense-frontend
+      PLUGIN_DIR: ${{ github.workspace }}/vscode-extension/plugin
+      UI_DIR: ${{ github.workspace }}/vscode-extension/ui
+      FRONTEND_DIST: ${{ github.workspace }}/vscode-extension/ui/diffsense-frontend/dist
+      FRONTEND_TARGET: ${{ github.workspace }}/vscode-extension/plugin/ui/diffsense-frontend
       VITE_OUT_DIR: dist
       
     steps:
@@ -36,6 +36,7 @@ jobs:
           
       # 构建Java分析器
       - name: Build Java Analyzer
+        working-directory: vscode-extension
         run: mvn clean package -DskipTests
       
       # 设置Node环境
@@ -45,12 +46,12 @@ jobs:
           node-version: '18'
           cache: 'npm'
           cache-dependency-path: |
-            ui/diffsense-frontend/package-lock.json
-            plugin/package-lock.json
+            vscode-extension/ui/diffsense-frontend/package-lock.json
+            vscode-extension/plugin/package-lock.json
 
       # 安装前端依赖并构建
       - name: Build Frontend
-        working-directory: ui/diffsense-frontend
+        working-directory: vscode-extension/ui/diffsense-frontend
         run: |
           echo "Building frontend in $(pwd)"
           echo "Frontend dist directory: $FRONTEND_DIST"
