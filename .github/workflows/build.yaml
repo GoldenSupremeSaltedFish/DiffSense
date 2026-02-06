@@ -107,12 +107,12 @@ jobs:
           
       # 使用与本地一致的 prepare-release 流程
       - name: Prepare Release Folder
-        working-directory: plugin
+        working-directory: vscode-extension/plugin
         run: npm run prepare-release
 
       # 在 release 目录打包 VSIX
       - name: Package VSIX from Release
-        working-directory: plugin/release
+        working-directory: vscode-extension/plugin/release
         run: |
           echo "Packaging VSIX in $(pwd)"
           npx vsce package --no-yarn
