@@ -1,0 +1,29 @@
+diffsense_check:
+  stage: test
+  image: python:3.12-slim
+  variables:
+    # 必须配置: 在 GitLab CI/CD Settings -> Variables 中添加 DIFFSENSE_TOKEN
+    # 权限要求: api (读写 MR)
+    DIFFSENSE_TOKEN: $DIFFSENSE_TOKEN 
+  rules:
+    # 仅在 Merge Request 触发时运行
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+  script:
+    - echo "🔍 Starting DiffSense Audit..."
+    
+    # 1. 拉取 DiffSense 代码 (假设您将 DiffSense 放在单独仓库或作为子模块)
+    # 方式 A: 直接 Clone (推荐)
+    - git clone https://github.com/your-org/diffsense.git /tmp/diffsense
+    - pip install -r /tmp/diffsense/requirements.txt
+    
+    # 2. 运行审计
+    # $CI_PROJECT_ID 和 $CI_MERGE_REQUEST_IID 是 GitLab 自动注入的变量
+    - python /tmp/diffsense/diffsense/run_audit.py \
+        --platform gitlab \
+        --token "$DIFFSENSE_TOKEN" \
+        --project-id "$CI_PROJECT_ID" \
+        --mr-iid "$CI_MERGE_REQUEST_IID" \
+        --gitlab-url "$CI_SERVER_URL"
+
+  # 3. 策略配置: 遇到 P0 风险直接失败 (Exit 1)
+  allow_failure: false 
