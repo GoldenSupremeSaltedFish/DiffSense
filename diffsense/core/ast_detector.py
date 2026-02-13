@@ -1,6 +1,6 @@
 import re
 import javalang
-from javalang.tree import SynchronizedStatement, MethodInvocation, FieldDeclaration, MethodDeclaration, LocalVariableDeclaration, VariableDeclarator, ForStatement, WhileStatement, DoStatement
+from javalang.tree import SynchronizedStatement, MethodInvocation, FieldDeclaration, MethodDeclaration, LocalVariableDeclaration, VariableDeclarator, ForStatement, WhileStatement, DoStatement, ClassCreator
 from typing import List, Set, Dict, Any, Tuple, Optional
 from .signal_model import Signal
 from .change import Change, ChangeKind
@@ -10,6 +10,7 @@ class ASTDetector:
     def __init__(self):
         self.pagination_vars = {"pageNo", "pageSize", "start", "limit", "offset"}
         self.critical_calls = {"encode", "decode", "validate", "check", "normalize", "sanitize"}
+        self.risky_executors = {"newFixedThreadPool", "newCachedThreadPool", "newSingleThreadExecutor"}
     
     def detect_changes(self, diff_data: Dict[str, Any]) -> List[Change]:
         """
@@ -129,6 +130,14 @@ class ASTDetector:
                 return "runtime.performance.sleep_added"
             if change.symbol == "remove" and change.meta.get("in_loop"):
                 return "runtime.collection_mutation_inside_loop"
+            if change.symbol == "newFixedThreadPool" or change.symbol == "newCachedThreadPool":
+                return "runtime.concurrency.executors_factory_risk"
+            if change.symbol == "get" and change.meta.get("blocking_get"):
+                return "runtime.concurrency.future_get_without_timeout"
+
+        if change.kind == ChangeKind.OBJECT_CREATION:
+            if change.symbol == "ThreadPoolExecutor":
+                return "runtime.concurrency.threadpool_creation"
 
         if change.kind == ChangeKind.CALL_REMOVED:
             if change.symbol in self.critical_calls:
@@ -143,7 +152,7 @@ class ASTDetector:
         return None
 
     def _map_kind_to_action(self, kind: ChangeKind) -> str:
-        if kind in [ChangeKind.CALL_ADDED, ChangeKind.FIELD_ADDED, ChangeKind.MODIFIER_ADDED]:
+        if kind in [ChangeKind.CALL_ADDED, ChangeKind.FIELD_ADDED, ChangeKind.MODIFIER_ADDED, ChangeKind.OBJECT_CREATION]:
             return "added"
         if kind in [ChangeKind.CALL_REMOVED, ChangeKind.FIELD_REMOVED, ChangeKind.MODIFIER_REMOVED]:
             return "removed"
@@ -353,6 +362,7 @@ class ASTDetector:
 
             if isinstance(node, MethodInvocation):
                 call_name = node.member
+                qualifier = node.qualifier
                 
                 # General call tracking
                 kind = ChangeKind.CALL_ADDED if is_added else ChangeKind.CALL_REMOVED
@@ -363,6 +373,18 @@ class ASTDetector:
                 elif call_name == "sleep":
                     changes.append(Change(kind=kind, file=filename, symbol="sleep", line_no=line_no))
                 
+                # Dubbo P0: Executors factory methods
+                if qualifier == "Executors" and call_name in ["newFixedThreadPool", "newCachedThreadPool"]:
+                     changes.append(Change(kind=kind, file=filename, symbol=call_name, meta={"risk": "threadpool_factory"}, line_no=line_no))
+
+                # Dubbo P0: Future.get() without timeout
+                # Heuristic: method is "get" and has 0 arguments. 
+                # Ideally check variable type in var_map, but qualifier might be complex expression.
+                if call_name == "get" and not node.arguments:
+                    # Optional: Check if qualifier is known Future/CompletableFuture (if simple var)
+                    # For now, aggressive match for P0
+                    changes.append(Change(kind=kind, file=filename, symbol="get", meta={"blocking_get": True}, line_no=line_no))
+
                 # Critical calls (input/validation)
                 if call_name in self.critical_calls and not is_added:
                     changes.append(Change(kind=kind, file=filename, symbol=call_name, line_no=line_no))
@@ -372,6 +394,14 @@ class ASTDetector:
                     # Check if inside a loop
                     if self._is_inside_loop(path):
                         changes.append(Change(kind=kind, file=filename, symbol="remove", meta={"in_loop": True}, line_no=line_no))
+
+            if isinstance(node, ClassCreator):
+                if node.type.name == "ThreadPoolExecutor":
+                    kind = ChangeKind.OBJECT_CREATION if is_added else ChangeKind.UNKNOWN # Only care about addition/change usually
+                    if is_added:
+                        # Could analyze arguments here for corePoolSize=0 etc.
+                        changes.append(Change(kind=kind, file=filename, symbol="ThreadPoolExecutor", line_no=line_no))
+
 
     def _is_inside_loop(self, path: Tuple) -> bool:
         """

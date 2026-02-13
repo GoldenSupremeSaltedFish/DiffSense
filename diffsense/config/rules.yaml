@@ -81,6 +81,30 @@ rules:
     severity: medium
     rationale: "Thread.sleep() introduced. This may indicate poor concurrency handling or debug code left in production."
 
+  - id: runtime.concurrency.executors_factory_risk
+    signal: "runtime.concurrency.executors_factory_risk"
+    action: "added"
+    file: "**"
+    impact: runtime
+    severity: critical
+    rationale: "CRITICAL: Use of Executors.newFixedThreadPool/newCachedThreadPool detected. These methods have unbounded queues or thread creation, which can lead to OOM in high-load scenarios. Use ThreadPoolExecutor manually."
+
+  - id: runtime.concurrency.future_get_without_timeout
+    signal: "runtime.concurrency.future_get_without_timeout"
+    action: "added"
+    file: "**"
+    impact: runtime
+    severity: critical
+    rationale: "CRITICAL: Future.get() called without timeout. This can cause thread blocking and cascading failures (Avalanche Effect). Always use get(timeout, unit)."
+
+  - id: runtime.concurrency.threadpool_creation
+    signal: "runtime.concurrency.threadpool_creation"
+    action: "added"
+    file: "**"
+    impact: runtime
+    severity: high
+    rationale: "ThreadPoolExecutor creation detected. Ensure corePoolSize, maxPoolSize, and queueCapacity are configured correctly to avoid OOM or thread explosion."
+
   - id: runtime.service_layer
     file: "**/service/**"
     impact: runtime
