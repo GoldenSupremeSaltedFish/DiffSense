@@ -1,0 +1,26 @@
+diff --git a/src/main/java/com/example/DubboRisk.java b/src/main/java/com/example/DubboRisk.java
+index 1234567..89abcde 100644
+--- a/src/main/java/com/example/DubboRisk.java
++++ b/src/main/java/com/example/DubboRisk.java
+@@ -10,6 +10,14 @@
+     public void threadPoolRisk() {
+         // Risk 7: Executors.newFixedThreadPool
+-        ExecutorService safePool = new ThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(1000));
++        ExecutorService riskyPool1 = Executors.newFixedThreadPool(10);
++        ExecutorService riskyPool2 = Executors.newCachedThreadPool();
++        
++        // Risk 6: ThreadPool parameter change (capacity increase risk)
+-        ThreadPoolExecutor tpe = new ThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(100));
++        ThreadPoolExecutor tpe = new ThreadPoolExecutor(5, 50, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(10000));
+     }
+ 
+     public void futureRisk(Future<String> future) {
+         try {
+             // Risk 8: Future.get() without timeout
+-            String result = future.get(1000, TimeUnit.MILLISECONDS);
++            String result = future.get();
+         } catch (Exception e) {
+             e.printStackTrace();
+         }
+     }
+}

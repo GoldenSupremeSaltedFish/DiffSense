@@ -2,6 +2,7 @@ import yaml
 import time
 from typing import Dict, List, Any, Tuple
 from core.rule_base import Rule
+from core.ignore_manager import IgnoreManager
 from rules.concurrency import (
     ThreadPoolSemanticChangeRule,
     ConcurrencyRegressionRule,
@@ -14,6 +15,7 @@ class RuleEngine:
     def __init__(self, rules_path: str):
         self.rules: List[Rule] = []
         self.metrics: Dict[str, Dict[str, Any]] = {} # id -> {calls, hits, time_ns, errors}
+        self.ignore_manager = IgnoreManager()
         
         # 1. Register Built-in Rules (Plugins)
         self._register_builtins()
@@ -63,6 +65,13 @@ class RuleEngine:
             try:
                 # Execute Rule (Plugin)
                 match_details = rule.evaluate(diff_data, ast_signals)
+                
+                # Check Ignore Manager
+                if match_details:
+                    matched_file = match_details.get('file', 'unknown')
+                    if self.ignore_manager.is_ignored(rule_id, matched_file):
+                        match_details = None # Suppress
+
             except Exception:
                 self.metrics[rule_id]["errors"] += 1
             finally:

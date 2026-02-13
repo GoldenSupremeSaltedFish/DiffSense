@@ -8,6 +8,7 @@ class Signal:
     confidence: float = 1.0
     meta: Dict[str, Any] = field(default_factory=dict)
     action: str = "added"  # "added" or "removed"
+    line: Optional[int] = None
     
     def to_dict(self):
         return {
@@ -15,5 +16,6 @@ class Signal:
             "file": self.file,
             "confidence": self.confidence,
             "meta": self.meta,
-            "action": self.action
+            "action": self.action,
+            "line": self.line
         }
