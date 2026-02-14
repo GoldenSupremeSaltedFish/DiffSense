@@ -10,6 +10,14 @@ class DiffParser:
         stats = {"add": 0, "del": 0}
         file_patches = []
         
+        # Check if content looks like JSON (GitLab API response leak)
+        if diff_content.strip().startswith('{') or diff_content.strip().startswith('['):
+            # It seems we got raw JSON instead of diff text.
+            # This happens if the fetcher returned API response text directly.
+            # Let's try to handle this edge case or return empty to fail safely.
+            print("Warning: Diff content looks like JSON. Parser expects Unified Diff format.")
+            return {"files": [], "file_patches": [], "stats": stats, "change_types": [], "raw_diff": diff_content}
+
         lines = diff_content.splitlines()
         current_file = None
         current_patch_lines = []
