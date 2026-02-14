@@ -39,6 +39,12 @@ class GitLabAdapter(PlatformAdapter):
             response = requests.get(diff_url, headers=headers)
             response.raise_for_status()
             content = response.text
+            
+            # Validation: Check if it's JSON (API error or wrong endpoint behavior)
+            if content.strip().startswith('{') and '"id":' in content:
+                 print("Warning: .diff endpoint returned JSON. Falling back to changes API.")
+                 return self._fetch_diff_fallback()
+
             if not content.strip():
                  print("Warning: Raw diff is empty. Trying fallback to changes API.")
                  return self._fetch_diff_fallback()
