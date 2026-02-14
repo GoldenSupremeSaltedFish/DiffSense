@@ -19,13 +19,15 @@ class GitLabAdapter(PlatformAdapter):
         self.token = token # store for manual request if needed
 
     def fetch_diff(self) -> str:
-        # GitLab python lib doesn't seem to export raw diff easily via .changes() (returns dict)
-        # We can use the .diff() method on MR but that returns list of diff dicts.
-        # It's better to fetch the .diff endpoint directly to get unified diff.
-        # Endpoint: /projects/:id/merge_requests/:merge_request_iid.diff
+        # GitLab API returns diffs in list of dicts via /changes
+        # or we can get unified diff via .diff endpoint.
+        # However, for large MRs, the .diff endpoint might be paginated or truncated?
+        # Let's try to use the project.mergerequests.changes() method which gives structured diffs
+        # and reconstruct unified diff if needed, OR just use the raw diff endpoint.
         
-        # Construct URL
-        # self.gl.url usually is 'https://gitlab.com' or 'https://gitlab.example.com'
+        # Issue: If the raw diff endpoint returns something unexpected or empty.
+        # Let's try to use the changes API as a fallback or primary source if raw fails.
+        
         base_url = self.gl.url.rstrip('/')
         diff_url = f"{base_url}/api/v4/projects/{self.project.id}/merge_requests/{self.mr.iid}.diff"
         
@@ -33,9 +35,47 @@ class GitLabAdapter(PlatformAdapter):
             'PRIVATE-TOKEN': self.token
         }
         
-        response = requests.get(diff_url, headers=headers)
-        response.raise_for_status()
-        return response.text
+        try:
+            response = requests.get(diff_url, headers=headers)
+            response.raise_for_status()
+            content = response.text
+            if not content.strip():
+                 print("Warning: Raw diff is empty. Trying fallback to changes API.")
+                 return self._fetch_diff_fallback()
+            return content
+        except Exception as e:
+            print(f"Warning: Failed to fetch raw diff: {e}. Trying fallback.")
+            return self._fetch_diff_fallback()
+
+    def _fetch_diff_fallback(self) -> str:
+        # Fallback: Use python-gitlab changes() API and reconstruct unified-like diff
+        # This is robust because it uses the official API structure
+        mr_changes = self.mr.changes()
+        diffs = mr_changes.get('changes', [])
+        
+        unified_diff = []
+        for d in diffs:
+            old_path = d.get('old_path')
+            new_path = d.get('new_path')
+            diff_text = d.get('diff', '')
+            
+            unified_diff.append(f"diff --git a/{old_path} b/{new_path}")
+            if d.get('new_file'):
+                unified_diff.append(f"--- /dev/null")
+                unified_diff.append(f"+++ b/{new_path}")
+            elif d.get('deleted_file'):
+                unified_diff.append(f"--- a/{old_path}")
+                unified_diff.append(f"+++ /dev/null")
+            elif d.get('renamed_file'):
+                unified_diff.append(f"--- a/{old_path}")
+                unified_diff.append(f"+++ b/{new_path}")
+            else:
+                unified_diff.append(f"--- a/{old_path}")
+                unified_diff.append(f"+++ b/{new_path}")
+                
+            unified_diff.append(diff_text)
+            
+        return "\n".join(unified_diff)
 
     def post_comment(self, content: str):
         # Check for existing comment
