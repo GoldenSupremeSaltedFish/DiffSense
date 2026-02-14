@@ -1,6 +1,6 @@
 # DiffSense
 
-**DiffSense** is a powerful code change impact analysis tool provided as a VSCode extension. It helps developers quickly understand the scope and risk of code changes through static code analysis and version difference comparison.
+**DiffSense** is an automated code audit and risk governance platform designed for **CI/CD pipelines**. It proactively blocks risky changes before they merge by analyzing semantic differences, while offering a VSCode extension for developers to self-check locally.
 
 [![Version](https://img.shields.io/badge/version-0.2.1-blue.svg)](https://github.com/GoldenSupremeSaltedFish/DiffSense)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](./LICENSE.txt)
@@ -9,6 +9,16 @@
 [![DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/GoldenSupremeSaltedFish/DiffSense)
 
 ## ✨ Key Features
+
+- 🚀 **CI/CD Pipeline Integration**
+  - **Automated Auditing**: Seamless integration with GitLab CI and GitHub Actions to audit every MR/PR.
+  - **Bot Feedback**: Posts detailed impact analysis reports directly to code review comments.
+  - **Click-to-Ack**: Innovative workflow where high-risk changes require explicit approval to pass build checks.
+
+- 🛡️ **Automated Risk Governance**
+  - **Semantic Risk Analysis**: Deep understanding of code changes using AST signals (e.g., concurrency modifications, type downgrades).
+  - **Smart Policy Enforcement**: Automatically block CI pipelines for elevated/critical risks until reviewed/approved.
+  - **Dynamic Risk Levels**: Real-time classification of changes into Normal, Elevated, or Critical risk categories.
 
 - 🔍 **Multi-language Support**
   - Java backend analysis (Spring Boot, Maven/Gradle projects)
@@ -38,7 +48,24 @@
 
 ## 🚀 Quick Start
 
-### Installation
+### CI/CD Pipeline Setup (Primary)
+
+DiffSense is designed to be integrated directly into your CI/CD pipeline to automatically audit code changes.
+
+#### GitLab CI Example
+Add the following to your `.gitlab-ci.yml`:
+```yaml
+diffsense_check:
+  stage: test
+  image: python:3.12-slim
+  script:
+    - git clone https://github.com/GoldenSupremeSaltedFish/DiffSense.git /tmp/diffsense
+    - pip install -r /tmp/diffsense/diffsense/requirements.txt
+    - python /tmp/diffsense/diffsense/run_audit.py --platform gitlab --token "$DIFFSENSE_TOKEN"
+  allow_failure: false
+```
+
+### VSCode Extension Installation (Optional)
 
 #### Option 1: Install from VSCode Marketplace (Recommended)
 1. Open VSCode
@@ -58,7 +85,7 @@
 3. Click the "..." menu and select "Install from VSIX..."
 4. Choose the downloaded VSIX file
 
-### Usage
+### VSCode Usage
 1. Open any Git repository project
 2. Find the DiffSense icon in VSCode sidebar
 3. Select commit range or branch to analyze
@@ -147,6 +174,8 @@ npm run package
 ```
 
 ## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](diffsense/CONTRIBUTING.md) for details on how to submit pull requests, report issues, and contribute to the code.
 
 1. Fork the project to your GitHub
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)

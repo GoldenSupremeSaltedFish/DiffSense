@@ -1,6 +1,6 @@
 # DiffSense
 
-DiffSense 是一款强大的代码变更影响分析工具，以 VSCode 插件形式提供。它通过静态代码分析和版本差异比对，帮助开发者快速理解代码变更的影响范围和风险。
+DiffSense 是专为 **CI/CD 流水线** 设计的自动化代码审计与风险治理平台。它能在代码合并前主动拦截高风险变更，并提供 VSCode 插件供开发者在本地进行自测。
 
 [![Version](https://img.shields.io/badge/version-0.1.12-blue.svg)](https://github.com/GoldenSupremeSaltedFish/DiffSense)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](./LICENSE.txt)
@@ -8,6 +8,16 @@ DiffSense 是一款强大的代码变更影响分析工具，以 VSCode 插件�
 [![Marketplace](https://img.shields.io/badge/Marketplace-DiffSense-orange.svg)](https://marketplace.visualstudio.com/items?itemName=humphreyLi.diffsense)
 
 ## ✨ 主要特性
+
+- 🔄 **CI/CD 流水线集成**
+  - **自动化审计**：无缝集成 GitLab CI 和 GitHub Actions，对每个 MR/PR 进行审计。
+  - **机器人反馈**：直接在代码评审评论中发布详细的影响分析报告。
+  - **强制审批 (Click-to-Ack)**：创新的工作流，高风险变更需显式批准才能通过构建检查。
+
+- 🛡️ **自动化风险治理**
+  - **语义风险分析**：基于 AST 信号深度理解代码变更（如并发修改、类型降级）。
+  - **智能策略执行**：针对 Elevated/Critical 风险自动阻断 CI 流水线，直至审核/批准。
+  - **动态风险分级**：实时将变更分类为 Normal、Elevated 或 Critical 风险等级。
 
 - 🔍 **多语言支持**
   - Java 后端代码分析（Spring Boot、Maven/Gradle项目）
@@ -37,7 +47,24 @@ DiffSense 是一款强大的代码变更影响分析工具，以 VSCode 插件�
 
 ## 🚀 快速开始
 
-### 安装插件
+### CI/CD 集成配置（核心功能）
+
+DiffSense 专为 CI/CD 流水线设计，可自动审计代码变更并拦截风险。
+
+#### GitLab CI 示例
+在您的 `.gitlab-ci.yml` 中添加以下内容：
+```yaml
+diffsense_check:
+  stage: test
+  image: python:3.12-slim
+  script:
+    - git clone https://github.com/GoldenSupremeSaltedFish/DiffSense.git /tmp/diffsense
+    - pip install -r /tmp/diffsense/diffsense/requirements.txt
+    - python /tmp/diffsense/diffsense/run_audit.py --platform gitlab --token "$DIFFSENSE_TOKEN"
+  allow_failure: false
+```
+
+### 插件安装（可选辅助）
 
 #### 方式一：从 VSCode 插件市场安装（推荐）
 1. 打开 VSCode
@@ -57,7 +84,7 @@ DiffSense 是一款强大的代码变更影响分析工具，以 VSCode 插件�
 3. 点击 "..." 菜单，选择 "从 VSIX 安装..."
 4. 选择下载的 VSIX 文件
 
-### 使用步骤
+### 插件使用步骤
 1. 打开任意 Git 仓库项目
 2. 在 VSCode 侧边栏找到 DiffSense 图标
 3. 选择要分析的提交范围或分支
