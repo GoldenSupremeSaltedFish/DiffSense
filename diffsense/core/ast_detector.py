@@ -42,8 +42,10 @@ class ASTDetector:
             
             # Strict check: must be .java
             if not filename.endswith('.java'):
+                print(f"DEBUG: Skipping non-Java file: {filename}")
                 continue
-                
+            
+            print(f"DEBUG: Analyzing Java file: {filename}")
             file_changes = self._detect_changes_in_patch(filename, patch_content, mode=analysis_mode)
             changes.extend(file_changes)
             
