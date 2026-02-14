@@ -6,7 +6,7 @@ diffsense_audit:
   image: python:3.12-slim
   script:
     - pip install -r diffsense/requirements.txt
-    - python diffsense/run_audit.py --platform gitlab --token "$GITLAB_TOKEN" --project-id "$CI_PROJECT_ID" --mr-iid "$CI_MERGE_REQUEST_IID"
+    - python diffsense/run_audit.py --platform gitlab --token "$GITLAB_TOKEN" --project-id "$CI_PROJECT_ID" --mr-iid "$CI_MERGE_REQUEST_IID" --gitlab-url "$CI_SERVER_URL"
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
   variables:

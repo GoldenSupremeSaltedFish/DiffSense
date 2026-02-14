@@ -5,8 +5,16 @@ from .base import PlatformAdapter
 class GitLabAdapter(PlatformAdapter):
     def __init__(self, url: str, token: str, project_id: str, mr_iid: int):
         self.gl = gitlab.Gitlab(url, private_token=token)
-        self.project = self.gl.projects.get(project_id)
-        self.mr = self.project.mergerequests.get(mr_iid)
+        try:
+            self.project = self.gl.projects.get(project_id)
+            self.mr = self.project.mergerequests.get(mr_iid)
+        except gitlab.exceptions.GitlabGetError as e:
+            if e.response_code == 404:
+                print(f"❌ Error: Could not find Project {project_id} or MR {mr_iid} on {url}.")
+                print("   - Check if DIFFSENSE_TOKEN has 'api' scope.")
+                print("   - Ensure the token user is a member of the project.")
+                print("   - Verify the GitLab URL is correct (defaults to gitlab.com if not specified).")
+            raise e
         self.comment_tag = "<!-- diffsense_audit_report -->"
         self.token = token # store for manual request if needed
 
