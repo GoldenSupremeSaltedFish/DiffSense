@@ -14,7 +14,7 @@ diffsense_check:
     # 1. 拉取 DiffSense 代码 (假设您将 DiffSense 放在单独仓库或作为子模块)
     # 方式 A: 直接 Clone (推荐)
     - git clone https://github.com/your-org/diffsense.git /tmp/diffsense
-    - pip install -r /tmp/diffsense/requirements.txt
+    - pip install -r /tmp/diffsense/diffsense/requirements.txt
     
     # 2. 运行审计
     # $CI_PROJECT_ID 和 $CI_MERGE_REQUEST_IID 是 GitLab 自动注入的变量
