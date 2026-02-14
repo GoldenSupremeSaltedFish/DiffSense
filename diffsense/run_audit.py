@@ -14,6 +14,12 @@ def run_audit(adapter, rules_path):
     print("Fetching diff...")
     diff_content = adapter.fetch_diff()
     
+    print(f"DEBUG: Fetched diff content length: {len(diff_content)} chars")
+    if len(diff_content) < 500:
+        print(f"DEBUG: Diff content preview:\n{diff_content}")
+    else:
+        print(f"DEBUG: Diff content preview (first 500 chars):\n{diff_content[:500]}...")
+
     if not diff_content.strip():
         print("Diff is empty, skipping audit.")
         return
@@ -23,6 +29,9 @@ def run_audit(adapter, rules_path):
     # 1. Parse Diff (Structural)
     parser = DiffParser()
     diff_data = parser.parse(diff_content)
+    
+    print(f"DEBUG: Parsed {len(diff_data.get('files', []))} files: {diff_data.get('files', [])}")
+    print(f"DEBUG: File patches count: {len(diff_data.get('file_patches', []))}")
     
     # 2. Detect AST Signals (Semantic)
     # This is the "First-Class Signal Source"
