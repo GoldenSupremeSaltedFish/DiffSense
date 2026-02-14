@@ -10,57 +10,64 @@ class DiffParser:
         stats = {"add": 0, "del": 0}
         file_patches = []
         
-        # Split diff into file chunks
-        # A robust way is to split by "diff --git"
-        chunks = re.split(r'(^diff --git a/.* b/.*$)', diff_content, flags=re.MULTILINE)
-        
+        lines = diff_content.splitlines()
         current_file = None
-        current_patch = []
+        current_patch_lines = []
         
-        for chunk in chunks:
-            if not chunk.strip():
-                continue
+        for line in lines:
+            # Check for new file header
+            if line.startswith("diff --git"):
+                # Save previous patch if exists
+                if current_file and current_patch_lines:
+                    file_patches.append({
+                        "file": current_file,
+                        "patch": "\n".join(current_patch_lines)
+                    })
                 
-            # Check if this chunk is a header
-            if chunk.startswith("diff --git"):
-                # If we have a previous file, save it
-                if current_file and current_patch:
-                     file_patches.append({
-                         "file": current_file,
-                         "patch": "".join(current_patch)
-                     })
-                     current_patch = []
+                # Reset for new file
+                current_file = None
+                current_patch_lines = []
+            
+            # Capture filename from --- or +++
+            if line.startswith("--- "):
+                path = line[4:].strip()
+                if path != "/dev/null":
+                    # Remove prefix a/ if present
+                    if path.startswith("a/"):
+                        path = path[2:]
+                    if current_file is None:
+                        current_file = path
+
+            if line.startswith("+++ "):
+                path = line[4:].strip()
+                if path != "/dev/null":
+                    # Remove prefix b/ if present
+                    if path.startswith("b/"):
+                        path = path[2:]
+                    current_file = path # Prefer new filename
                 
-                # Extract filename from header? 
-                # Actually, "diff --git a/X b/Y"
-                # It's better to rely on "+++ b/" inside the patch for the final name
-                # But for now let's just use the chunk as context starter.
-                pass
-            
-            # Check for filename in the chunk (+++ b/...)
-            match = re.search(r'^\+\+\+ b/(.+)$', chunk, re.MULTILINE)
-            if match:
-                current_file = match.group(1)
-                files.append(current_file)
-            
-            # Accumulate patch
-            current_patch.append(chunk)
+                # If we found a file, add to list if not present
+                if current_file and current_file not in files:
+                    files.append(current_file)
 
-        # Add the last one
-        if current_file and current_patch:
-            file_patches.append({
-                "file": current_file,
-                "patch": "".join(current_patch)
-            })
+            # Accumulate patch lines
+            # We include headers in the patch content for context
+            current_patch_lines.append(line)
 
-        # Count additions and deletions
-        for line in diff_content.splitlines():
+            # Stats
             if line.startswith('+') and not line.startswith('+++'):
                 stats["add"] += 1
             elif line.startswith('-') and not line.startswith('---'):
                 stats["del"] += 1
-                
-        # Determine change types (mock logic for now, can be enhanced)
+
+        # Add the last patch
+        if current_file and current_patch_lines:
+            file_patches.append({
+                "file": current_file,
+                "patch": "\n".join(current_patch_lines)
+            })
+
+        # Determine change types
         change_types = set()
         for f in files:
             if f.endswith('.json') or f.endswith('.yaml') or f.endswith('.yml'):
@@ -77,5 +84,5 @@ class DiffParser:
             "file_patches": file_patches,
             "stats": stats,
             "change_types": list(change_types),
-            "raw_diff": diff_content # Keep raw diff for rule matching
+            "raw_diff": diff_content
         }
