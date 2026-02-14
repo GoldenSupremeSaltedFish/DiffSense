@@ -10,17 +10,19 @@ class MarkdownRenderer:
         
         lines = []
         
-        if review_level == "Elevated":
+        if review_level in ["Elevated", "Critical"]:
             lines.append(f"# 🚨 DiffSense Risk Signal: {review_level}")
             lines.append("")
             lines.append("**Detected high-risk changes:**")
             
             for d in details:
-                if d.get('severity') == 'high':
+                # Assuming details is a list of impact dicts
+                # Adjust based on what ImpactEvaluator returns
+                severity = d.get('severity', 'unknown')
+                if severity == 'high' or severity == 'critical':
                     lines.append(f"- **Dimension:** {d.get('impact', 'Unknown').capitalize()}")
                     lines.append(f"- **Rule:** `{d.get('rule_id')}`")
                     lines.append(f"- **File:** `{d.get('file')}`")
-                    lines.append("")
                     lines.append(f"> **Rationale:** {d.get('rationale')}")
                     lines.append("")
             
