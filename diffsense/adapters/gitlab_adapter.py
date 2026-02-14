@@ -114,11 +114,17 @@ class GitLabAdapter(PlatformAdapter):
             # Dubbo/OpenSource usually relies on 'approved' state.
             
             # Strategy 1: Check if any approval exists
-            if approvals.approved_by and len(approvals.approved_by) > 0:
+            # Note: approvals.approved_by is a list of users
+            if hasattr(approvals, 'approved_by') and approvals.approved_by and len(approvals.approved_by) > 0:
                 return True
                 
             # Strategy 2: Check approvals_left (if configured)
-            if approvals.approvals_left == 0:
+            # Note: approvals_left might not exist if no rules are set
+            if hasattr(approvals, 'approvals_left') and approvals.approvals_left == 0:
+                return True
+                
+            # Strategy 3: Check 'approved' attribute directly (some GitLab versions)
+            if hasattr(approvals, 'approved') and approvals.approved:
                 return True
                 
             return False
