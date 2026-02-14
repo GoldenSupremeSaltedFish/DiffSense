@@ -47,3 +47,67 @@ class GitLabAdapter(PlatformAdapter):
         else:
             self.mr.notes.create({'body': final_body})
             print("Created GitLab note")
+
+    def is_approved(self) -> bool:
+        """
+        Check if MR is approved using GitLab's Approvals API.
+        """
+        try:
+            # Need to fetch approvals explicitly
+            approvals = self.mr.approvals.get()
+            # Logic: If approved_by list is not empty, consider it approved?
+            # Or check approvals_left <= 0?
+            # Dubbo/OpenSource usually relies on 'approved' state.
+            
+            # Strategy 1: Check if any approval exists
+            if approvals.approved_by and len(approvals.approved_by) > 0:
+                return True
+                
+            # Strategy 2: Check approvals_left (if configured)
+            if approvals.approvals_left == 0:
+                return True
+                
+            return False
+        except Exception as e:
+            print(f"Warning: Failed to fetch GitLab approvals: {e}")
+            return False
+
+    def has_ack_reaction(self) -> bool:
+        """
+        Check if the bot's report comment has a 'thumbsup' or 'rocket' reaction.
+        This allows 'Click-to-Ack' flow without formal approval.
+        """
+        try:
+            notes = self.mr.notes.list(all=True)
+            target_note = None
+            for note in notes:
+                if self.comment_tag in note.body:
+                    target_note = note
+                    break
+            
+            if not target_note:
+                return False
+                
+            # Fetch award emojis for this note
+            # python-gitlab note object usually has 'awardemojis' manager?
+            # Or we need to fetch specifically.
+            
+            # Try efficient way first
+            # The list() might not include award_emoji info directly.
+            
+            # Using specific API call for the note
+            # endpoint: GET /projects/:id/merge_requests/:mr_iid/notes/:note_id/award_emoji
+            
+            # Note: python-gitlab objects are lazy. accessing .awardemojis might work if supported.
+            # Let's try standard way
+            
+            awards = target_note.awardemojis.list()
+            for award in awards:
+                if award.name in ['thumbsup', 'rocket', '+1']:
+                    return True
+            
+            return False
+            
+        except Exception as e:
+            print(f"Warning: Failed to check reaction: {e}")
+            return False

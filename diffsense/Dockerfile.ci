@@ -1,0 +1,19 @@
+# Dockerfile for DiffSense CI Runner
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Copy requirements first for caching
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy source code
+COPY . .
+
+# Set entrypoint to run the audit script
+ENTRYPOINT ["python", "run_audit.py"]
+
+# Default arguments (can be overridden by CMD or args in CI)
+# But in GitLab CI, usually we override entrypoint or just run command.
+# Let's keep it simple.
+CMD ["--help"]
