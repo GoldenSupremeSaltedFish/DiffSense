@@ -64,28 +64,34 @@ def run_audit(adapter, rules_path):
     impacts = evaluator.evaluate(diff_data, ast_signals=ast_signals)
     
     composer = DecisionComposer()
-    result = composer.compose(impacts)
+    # Ensure composer result matches structure expected by renderer
+    # result keys: review_level, details
+    result_decision = composer.compose(impacts)
     
-    # Prepare Output
-    output_data = {
-        "audit_result": result,
-        "details": {
-            "files_changed": diff_data["files"],
-            "stats": diff_data["stats"],
-            "raw_impacts": impacts,
-            "ast_signals": [s.to_dict() for s in ast_signals] # Add signals to report context
-        }
+    # Prepare Output for Renderer
+    # Renderer expects 'result' dict to have 'review_level' and 'details' directly?
+    # Or renderer.render takes the whole output_data?
+    # Looking at renderer.render:
+    # review_level = result.get("review_level", "unknown").capitalize()
+    # details = result.get("details", [])
+    
+    # So we need to construct a dict that matches this structure.
+    # composer.compose returns decision dict.
+    
+    render_input = {
+        "review_level": result_decision.get("review_level", "unknown"),
+        "details": impacts # Assuming impacts is a list of impact details
     }
     
     renderer = MarkdownRenderer()
-    report = renderer.render(output_data)
+    report = renderer.render(render_input)
     
     print("Posting comment...")
     adapter.post_comment(report)
     
     # Enforcement Logic: Click-to-Ack (Approve-to-Ack)
     # If risk is elevated/critical, require PR approval to pass CI.
-    review_level = result.get("review_level", "normal")
+    review_level = result_decision.get("review_level", "normal")
     if review_level in ["elevated", "critical"]:
         print(f"Risk level: {review_level}. Checking for approval or acknowledgement...")
         
