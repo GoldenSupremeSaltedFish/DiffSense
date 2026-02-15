@@ -1,0 +1,63 @@
+--- a/src/main/java/com/example/ConcurrencyIssues.java
++++ b/src/main/java/com/example/ConcurrencyIssues.java
+@@ -10,7 +10,7 @@
+     
+     // 1. thread_safety_downgrade
+-    private ConcurrentHashMap<String, String> cache = new ConcurrentHashMap<>();
++    private HashMap<String, String> cache = new HashMap<>();
+-    private AtomicInteger counter = new AtomicInteger(0);
++    private Integer counter = 0;
+ 
+     // 2. lock_removed
+     public void process() {
+-        lock.lock();
+         try {
+             doCritical();
+-        } finally {
+-            lock.unlock();
+         }
+     }
+ 
+     // 3. lock_scope_reduction
+     public void unsafeScope() {
+         lock.lock();
+         try {
+-            criticalOperation();
+         } finally {
+             lock.unlock();
+         }
++        criticalOperation();
+     }
+ 
+     // 4. volatile_removed
+-    private volatile boolean running = true;
++    private boolean running = true;
+ 
+     // 5. final_removed
+-    private final static Config config = new Config();
++    private static Config config = new Config();
+ 
+     // 6. atomic_to_non_atomic_write
+     public void update() {
+-        atomicCount.set(10);
++        count = 10;
+     }
+ 
+     // 7. static_unsafe_collection
+-    private static final Map<String, String> safeMap = new ConcurrentHashMap<>();
++    private static HashMap<String, String> unsafeMap = new HashMap<>();
+ 
+     // 8. threadpool_param_change
+-    ThreadPoolExecutor pool = new ThreadPoolExecutor(10, 20, 60, TimeUnit.SECONDS, queue);
++    ThreadPoolExecutor pool = new ThreadPoolExecutor(1, 20, 60, TimeUnit.SECONDS, queue);
+ 
+     // 9. threadpool_unbounded_queue
+-    BlockingQueue<Runnable> queue = new ArrayBlockingQueue<>(100);
++    BlockingQueue<Runnable> queue = new LinkedBlockingQueue<>();
+ 
+     // 10. sleep_or_busy_wait_added
+     public void waitLoop() {
+         while(true) {
++            try { Thread.sleep(1000); } catch (InterruptedException e) {}
+         }
+     }
