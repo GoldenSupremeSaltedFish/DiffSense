@@ -1,0 +1,13 @@
+# 减小镜像体积，避免把无关文件打进镜像
+__pycache__
+*.py[cod]
+*.pyo
+.pytest_cache
+.coverage
+htmlcov
+*.egg-info
+.git
+.gitignore
+*.md
+tests
+Dockerfile.ci
