@@ -48,22 +48,33 @@
 
 ## 🚀 Quick Start
 
-### CI/CD Pipeline Setup (Primary)
+### CI/CD 集成（GitLab）
 
-DiffSense is designed to be integrated directly into your CI/CD pipeline to automatically audit code changes.
+在你的项目里接入 MR 风险审计：使用官方镜像，无需 clone 或 pip。
 
-#### GitLab CI Example
-Add the following to your `.gitlab-ci.yml`:
+**1. 配置变量**  
+在 GitLab 项目的 **Settings → CI/CD → Variables** 中新增：
+
+- `DIFFSENSE_TOKEN`（Masked）：具备 API 权限的 Personal Access Token，用于读写 MR 评论。
+
+**2. 在 `.gitlab-ci.yml` 中增加 Job**
+
 ```yaml
-diffsense_check:
+diffsense_audit:
   stage: test
-  image: python:3.12-slim
+  image: ghcr.io/goldensupremesaltedfish/diffsense:1.0.0
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
   script:
-    - git clone https://github.com/GoldenSupremeSaltedFish/DiffSense.git /tmp/diffsense
-    - pip install -r /tmp/diffsense/diffsense/requirements.txt
-    - python /tmp/diffsense/diffsense/run_audit.py --platform gitlab --token "$DIFFSENSE_TOKEN"
+    - diffsense audit --platform gitlab
+        --token "$DIFFSENSE_TOKEN"
+        --project-id "$CI_PROJECT_ID"
+        --mr-iid "$CI_MERGE_REQUEST_IID"
+        --gitlab-url "${GITLAB_URL:-$CI_SERVER_URL}"
   allow_failure: false
 ```
+
+**可选**：固定版本请将镜像 tag 改为具体版本（如 `1.0.0`）；Runner 无法访问外网时，在 Variables 中配置 `DIFFSENSE_IMAGE`，Job 中写 `image: $DIFFSENSE_IMAGE` 使用内网镜像。
 
 ### VSCode Extension Installation (Optional)
 
