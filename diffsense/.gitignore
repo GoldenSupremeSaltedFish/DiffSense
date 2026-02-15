@@ -1,5 +1,7 @@
 # Python
 __pycache__/
+*.egg-info/
+*.egg
 *.pyc
 *.pyo
 *.pyd
@@ -19,3 +21,20 @@ coverage.xml
 *.cover
 *.log
 .pytest_cache/
+
+# Build & install
+build/
+dist/
+.eggs/
+*.manifest
+.installed.cfg
+
+# IDE & tools cache
+.idea/
+.vscode/
+*.swp
+*.swo
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+dmypy.json
