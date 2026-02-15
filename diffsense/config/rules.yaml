@@ -185,3 +185,101 @@ rules:
     impact: runtime
     severity: high
     rationale: "Changes in validation logic modules."
+
+  # --- New Semantic Signal Rules (P0/P1/P2) ---
+
+  - id: runtime.concurrency.lock_removed
+    signal: "runtime.concurrency.lock_removed"
+    action: "removed"
+    file: "**"
+    impact: runtime
+    severity: critical
+    rationale: "CRITICAL: Removal of Lock/Synchronized detected! This is a P0 stability risk (TOP1 accident cause)."
+
+  - id: runtime.concurrency.volatile_removed
+    signal: "runtime.concurrency.volatile_removed"
+    action: "removed"
+    file: "**"
+    impact: runtime
+    severity: critical
+    rationale: "CRITICAL: Removal of volatile keyword detected! This causes visibility issues."
+
+  - id: runtime.concurrency.final_removed
+    signal: "runtime.concurrency.final_removed"
+    action: "removed"
+    file: "**"
+    impact: runtime
+    severity: critical
+    rationale: "CRITICAL: Removal of final modifier detected! Immutable object might become mutable (thread-safety risk)."
+
+  - id: runtime.concurrency.atomic_to_non_atomic_write
+    signal: "runtime.concurrency.atomic_to_non_atomic_write"
+    action: "removed"
+    file: "**"
+    impact: runtime
+    severity: critical
+    rationale: "CRITICAL: Atomic write operation removed/replaced. This is a semantic downgrade."
+
+  - id: runtime.concurrency.threadpool_param_change
+    signal: "runtime.concurrency.threadpool_param_change"
+    action: "changed"
+    file: "**"
+    impact: runtime
+    severity: high
+    rationale: "ThreadPoolExecutor parameters changed. Verify corePoolSize/maxQueue/timeout logic."
+
+  - id: runtime.concurrency.threadpool_unbounded_queue
+    signal: "runtime.concurrency.threadpool_unbounded_queue"
+    action: "added"
+    file: "**"
+    impact: runtime
+    severity: critical
+    rationale: "CRITICAL: Unbounded queue (LinkedBlockingQueue without capacity) detected in ThreadPool. Risk of OOM."
+
+  - id: runtime.concurrency.busy_wait_added
+    signal: "runtime.concurrency.busy_wait_added"
+    action: "added"
+    file: "**"
+    impact: performance
+    severity: critical
+    rationale: "CRITICAL: Busy wait loop (while(true)) detected. High CPU usage risk."
+
+  - id: runtime.resource.try_with_resource_removed
+    signal: "runtime.resource.try_with_resource_removed"
+    action: "removed"
+    file: "**"
+    impact: runtime
+    severity: high
+    rationale: "Try-with-resources block removed. Verify resource closing logic to prevent leaks."
+
+  - id: runtime.resource.cache_eviction_removed
+    signal: "runtime.resource.cache_eviction_removed"
+    action: "removed"
+    file: "**"
+    impact: runtime
+    severity: high
+    rationale: "Cache eviction/TTL logic removed. Risk of memory leak/cache explosion."
+
+  - id: runtime.network.timeout_removed
+    signal: "runtime.network.timeout_removed"
+    action: "removed"
+    file: "**"
+    impact: runtime
+    severity: high
+    rationale: "Timeout setting removed. Risk of thread hanging/cascading failure."
+
+  - id: runtime.data.null_check_removed
+    signal: "runtime.data.null_check_removed"
+    action: "removed"
+    file: "**"
+    impact: runtime
+    severity: medium
+    rationale: "Null check removed. Potential NPE risk."
+
+  - id: runtime.data.equals_to_reference_compare
+    signal: "runtime.data.equals_to_reference_compare"
+    action: "changed"
+    file: "**"
+    impact: runtime
+    severity: high
+    rationale: "Semantic change: equals() replaced by == reference comparison."

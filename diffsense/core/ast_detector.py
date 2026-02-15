@@ -1,6 +1,7 @@
 import re
 import javalang
-from javalang.tree import SynchronizedStatement, MethodInvocation, FieldDeclaration, MethodDeclaration, LocalVariableDeclaration, VariableDeclarator, ForStatement, WhileStatement, DoStatement, ClassCreator
+from javalang.tokenizer import BasicType, Identifier
+from javalang.tree import SynchronizedStatement, MethodInvocation, FieldDeclaration, MethodDeclaration, LocalVariableDeclaration, VariableDeclarator, ForStatement, WhileStatement, DoStatement, ClassCreator, ReferenceType, BasicType as TreeBasicType, Assignment, TryResource, TryStatement, IfStatement, BinaryOperation, Literal
 from typing import List, Set, Dict, Any, Tuple, Optional
 from .signal_model import Signal
 from .change import Change, ChangeKind
@@ -118,14 +119,62 @@ class ASTDetector:
              if change.meta.get('static_unsafe'):
                  return "runtime.concurrency.static_unsafe_collection"
         
-        if change.symbol == "lock" or change.symbol == "unlock":
+        if change.symbol == "lock":
+             if change.kind == ChangeKind.CALL_REMOVED:
+                 return "runtime.concurrency.lock_removed"
              return "runtime.concurrency.lock"
              
         if change.symbol == "synchronized":
+             if change.kind == ChangeKind.MODIFIER_REMOVED:
+                 return "runtime.concurrency.lock_removed"
              return "runtime.concurrency.synchronized"
              
         if change.symbol == "volatile":
+             if change.kind == ChangeKind.MODIFIER_REMOVED:
+                 return "runtime.concurrency.volatile_removed"
              return "runtime.concurrency.volatile"
+
+        if change.symbol == "final":
+             if change.kind == ChangeKind.MODIFIER_REMOVED:
+                 return "runtime.concurrency.final_removed"
+
+        if change.symbol == "atomic_set" and change.kind == ChangeKind.CALL_REMOVED:
+             return "runtime.concurrency.atomic_to_non_atomic_write"
+
+        if change.symbol == "ThreadPoolExecutor":
+             if change.meta.get('param_change'):
+                 return "runtime.concurrency.threadpool_param_change"
+             if change.kind == ChangeKind.OBJECT_CREATION and change.meta.get('args_count'):
+                  return "runtime.concurrency.threadpool_creation"
+        
+        if change.symbol == "LinkedBlockingQueue":
+             if change.meta.get('unbounded'):
+                 return "runtime.concurrency.threadpool_unbounded_queue"
+
+        if change.symbol == "sleep":
+            if change.kind == ChangeKind.CALL_ADDED:
+                return "runtime.performance.sleep_added"
+        
+        if change.symbol == "while_true":
+             if change.kind == ChangeKind.CALL_ADDED:
+                 return "runtime.concurrency.busy_wait_added"
+
+        # P1 Resource
+        if change.symbol == "try_with_resources" and change.kind == ChangeKind.CALL_REMOVED:
+             return "runtime.resource.try_with_resource_removed"
+
+        if change.meta.get('cache_eviction'):
+             return "runtime.resource.cache_eviction_removed"
+
+        if change.meta.get('timeout_removed'):
+             return "runtime.network.timeout_removed"
+
+        # P2 Data
+        if change.symbol == "null_check" and change.meta.get('action') == "removed":
+             return "runtime.data.null_check_removed"
+
+        if change.symbol == "equals_to_ref":
+             return "runtime.data.equals_to_reference_compare"
 
         if change.kind == ChangeKind.CALL_ADDED:
             if change.symbol == "sleep":
@@ -209,6 +258,19 @@ class ASTDetector:
                         meta={"downgrade": True, "from": old_type, "to": new_type}
                     ))
         
+        # Cross-Analyze: ThreadPoolExecutor Param Change
+        tpe_removed = any(c.symbol == "ThreadPoolExecutor" and c.meta.get("action") == "removed" for c in changes)
+        tpe_added = any(c.symbol == "ThreadPoolExecutor" and c.meta.get("action") == "added" for c in changes)
+        
+        if tpe_removed and tpe_added:
+             changes.append(Change(kind=ChangeKind.UNKNOWN, file=filename, symbol="ThreadPoolExecutor", meta={"param_change": True}, line_no=None))
+
+        # Cross-Analyze: equals -> ==
+        equals_removed = any(c.symbol == "equals" and c.kind == ChangeKind.CALL_REMOVED for c in changes)
+        eq_added = any(c.symbol == "==" and c.kind == ChangeKind.CALL_ADDED for c in changes)
+        if equals_removed and eq_added:
+             changes.append(Change(kind=ChangeKind.UNKNOWN, file=filename, symbol="equals_to_ref", meta={"semantic": True}, line_no=None))
+
         return changes
 
     def _analyze_snippet_for_changes(self, lines: List[str], filename: str, is_added: bool, 
@@ -309,9 +371,79 @@ class ASTDetector:
                 parsed = True
             except Exception:
                 pass
-                
+        
+        # Fallback: Extract vars from tokens if parsing failed
+        if not parsed:
+             self._analyze_tokens_fallback(tokens, var_map, changes, filename, is_added)
+
         # Apply Ignores
         self._apply_ignores(changes, start_change_idx, ignores_map)
+
+    def _analyze_tokens_fallback(self, tokens, var_map, changes, filename, is_added):
+        i = 0
+        modifiers = set()
+        
+        while i < len(tokens) - 1:
+            token = tokens[i]
+            
+            # 1. Collect Modifiers
+            if token.value in ['private', 'public', 'protected', 'static', 'final', 'volatile', 'transient']:
+                modifiers.add(token.value)
+                i += 1
+                continue
+            
+            # 2. Check for Type
+            is_type = isinstance(token, (Identifier, BasicType))
+            
+            if not is_type:
+                modifiers = set()
+                i += 1
+                continue
+
+            current_type_name = token.value
+            
+            # Check for Generics
+            idx = i + 1
+            if idx < len(tokens) and tokens[idx].value == '<':
+                depth = 1
+                idx += 1
+                while idx < len(tokens) and depth > 0:
+                    if tokens[idx].value == '<': depth += 1
+                    elif tokens[idx].value == '>': depth -= 1
+                    idx += 1
+                if depth > 0: # Unbalanced
+                    i += 1
+                    continue
+            
+            # 3. Variable Name
+            if idx < len(tokens) and isinstance(tokens[idx], Identifier):
+                var_name = tokens[idx].value
+                # Check what follows (should be = or ; or ,)
+                idx2 = idx + 1
+                if idx2 < len(tokens) and tokens[idx2].value in ['=', ';', ',']:
+                    var_map[var_name] = current_type_name
+                    
+                    # Detect Signals
+                    line_no = token.position.line
+                    
+                    # static_unsafe_collection
+                    if is_added and 'static' in modifiers:
+                         risky_static_types = {"HashMap", "ArrayList", "HashSet", "TreeMap", "LinkedList"}
+                         if current_type_name in risky_static_types:
+                             changes.append(Change(kind=ChangeKind.FIELD_ADDED, file=filename, symbol=var_name, meta={"static_unsafe": True}, line_no=line_no))
+                    
+                    # final (if looks like field)
+                    is_field = any(m in modifiers for m in ['private', 'public', 'protected', 'static'])
+                    if is_field and 'final' in modifiers:
+                         kind = ChangeKind.MODIFIER_ADDED if is_added else ChangeKind.MODIFIER_REMOVED
+                         changes.append(Change(kind=kind, file=filename, symbol="final", line_no=line_no))
+
+                    i = idx2
+                    modifiers = set()
+                    continue
+            
+            modifiers = set()
+            i += 1
 
     def _apply_ignores(self, changes: List[Change], start_idx: int, ignores_map: Dict[int, Set[str]]):
         for i in range(start_idx, len(changes)):
@@ -326,83 +458,182 @@ class ASTDetector:
         for path, node in tree:
             line_no = (node.position.line - offset) if node.position else None
             
-            if isinstance(node, SynchronizedStatement):
+            # Context
+            self._update_context(node, var_map)
+
+            # Detectors
+            self._detect_concurrency_signals(node, filename, is_added, var_map, changes, line_no)
+            self._detect_resource_signals(node, filename, is_added, var_map, changes, line_no, path)
+            self._detect_data_signals(node, filename, is_added, var_map, changes, line_no, path)
+            self._detect_general_signals(node, filename, is_added, var_map, changes, line_no, path)
+
+    def _update_context(self, node, var_map: Dict):
+        if isinstance(node, FieldDeclaration):
+            if node.type:
+                for declarator in node.declarators:
+                    var_map[declarator.name] = node.type.name
+        elif isinstance(node, LocalVariableDeclaration):
+            if node.type:
+                for declarator in node.declarators:
+                    var_map[declarator.name] = node.type.name
+
+    def _detect_concurrency_signals(self, node, filename: str, is_added: bool, var_map: Dict, changes: List[Change], line_no: int):
+        # 1. lock_removed / synchronized / volatile / final
+        if isinstance(node, SynchronizedStatement):
+            kind = ChangeKind.MODIFIER_ADDED if is_added else ChangeKind.MODIFIER_REMOVED
+            changes.append(Change(kind=kind, file=filename, symbol="synchronized", line_no=line_no))
+            
+        if isinstance(node, MethodDeclaration):
+            if 'synchronized' in node.modifiers:
                 kind = ChangeKind.MODIFIER_ADDED if is_added else ChangeKind.MODIFIER_REMOVED
                 changes.append(Change(kind=kind, file=filename, symbol="synchronized", line_no=line_no))
+
+        if isinstance(node, FieldDeclaration):
+            if 'volatile' in node.modifiers:
+                kind = ChangeKind.MODIFIER_ADDED if is_added else ChangeKind.MODIFIER_REMOVED
+                changes.append(Change(kind=kind, file=filename, symbol="volatile", line_no=line_no))
             
-            if isinstance(node, MethodDeclaration):
-                if 'synchronized' in node.modifiers:
-                    kind = ChangeKind.MODIFIER_ADDED if is_added else ChangeKind.MODIFIER_REMOVED
-                    changes.append(Change(kind=kind, file=filename, symbol="synchronized", line_no=line_no))
+            if 'final' in node.modifiers:
+                kind = ChangeKind.MODIFIER_ADDED if is_added else ChangeKind.MODIFIER_REMOVED
+                changes.append(Change(kind=kind, file=filename, symbol="final", line_no=line_no))
 
-            if isinstance(node, FieldDeclaration):
-                if 'volatile' in node.modifiers:
-                    kind = ChangeKind.MODIFIER_ADDED if is_added else ChangeKind.MODIFIER_REMOVED
-                    changes.append(Change(kind=kind, file=filename, symbol="volatile", line_no=line_no))
-                
-                if node.type:
-                    for declarator in node.declarators:
-                        var_map[declarator.name] = node.type.name
-                        
-                        if is_added and 'static' in node.modifiers:
-                            if not is_thread_safe(node.type.name):
-                                risky_static_types = {"HashMap", "ArrayList", "HashSet", "TreeMap", "LinkedList"}
-                                base_type = node.type.name.split('<')[0]
-                                if base_type in risky_static_types:
-                                     changes.append(Change(
-                                         kind=ChangeKind.FIELD_ADDED,
-                                         file=filename,
-                                         symbol=declarator.name,
-                                         meta={"static_unsafe": True},
-                                         line_no=line_no
-                                     ))
+            # 7. static_unsafe_collection
+            if is_added and 'static' in node.modifiers and node.type:
+                # Basic type check
+                type_name = node.type.name if hasattr(node.type, 'name') else str(node.type)
+                if not is_thread_safe(type_name):
+                    risky_static_types = {"HashMap", "ArrayList", "HashSet", "TreeMap", "LinkedList"}
+                    base_type = type_name.split('<')[0]
+                    if base_type in risky_static_types:
+                        changes.append(Change(
+                            kind=ChangeKind.FIELD_ADDED,
+                            file=filename,
+                            symbol=node.declarators[0].name,
+                            meta={"static_unsafe": True},
+                            line_no=line_no
+                        ))
 
-            if isinstance(node, LocalVariableDeclaration):
-                 if node.type:
-                     for declarator in node.declarators:
-                         var_map[declarator.name] = node.type.name
+        if isinstance(node, MethodInvocation):
+            call_name = node.member
+            qualifier = node.qualifier
+            
+            # lock.lock(), semaphore.acquire(), latch.await()
+            if call_name == "lock" and (not qualifier or "lock" in qualifier.lower()):
+                 kind = ChangeKind.CALL_ADDED if is_added else ChangeKind.CALL_REMOVED
+                 changes.append(Change(kind=kind, file=filename, symbol="lock", line_no=line_no))
+            
+            if call_name == "acquire": 
+                 kind = ChangeKind.CALL_ADDED if is_added else ChangeKind.CALL_REMOVED
+                 changes.append(Change(kind=kind, file=filename, symbol="acquire", line_no=line_no))
 
-            if isinstance(node, MethodInvocation):
-                call_name = node.member
-                qualifier = node.qualifier
-                
-                # General call tracking
-                kind = ChangeKind.CALL_ADDED if is_added else ChangeKind.CALL_REMOVED
-                
-                # Special checks
-                if call_name == "lock":
-                    changes.append(Change(kind=kind, file=filename, symbol="lock", line_no=line_no))
-                elif call_name == "sleep":
-                    changes.append(Change(kind=kind, file=filename, symbol="sleep", line_no=line_no))
-                
-                # Dubbo P0: Executors factory methods
-                if qualifier == "Executors" and call_name in ["newFixedThreadPool", "newCachedThreadPool"]:
-                     changes.append(Change(kind=kind, file=filename, symbol=call_name, meta={"risk": "threadpool_factory"}, line_no=line_no))
+            if call_name == "await": 
+                 kind = ChangeKind.CALL_ADDED if is_added else ChangeKind.CALL_REMOVED
+                 changes.append(Change(kind=kind, file=filename, symbol="await", line_no=line_no))
+                 
+            # 10. sleep
+            if call_name == "sleep":
+                 kind = ChangeKind.CALL_ADDED if is_added else ChangeKind.CALL_REMOVED
+                 changes.append(Change(kind=kind, file=filename, symbol="sleep", line_no=line_no))
+                 
+            # 6. atomic_to_non_atomic_write (Call Removed: atomic.set)
+            if not is_added and call_name == "set":
+                 if qualifier and qualifier in var_map:
+                      var_type = var_map[qualifier]
+                      if var_type.startswith("Atomic"):
+                           changes.append(Change(kind=ChangeKind.CALL_REMOVED, file=filename, symbol="atomic_set", meta={"var": qualifier}, line_no=line_no))
 
-                # Dubbo P0: Future.get() without timeout
-                # Heuristic: method is "get" and has 0 arguments. 
-                # Ideally check variable type in var_map, but qualifier might be complex expression.
-                if call_name == "get" and not node.arguments:
-                    # Optional: Check if qualifier is known Future/CompletableFuture (if simple var)
-                    # For now, aggressive match for P0
-                    changes.append(Change(kind=kind, file=filename, symbol="get", meta={"blocking_get": True}, line_no=line_no))
+        # 8. threadpool_param_change & 9. threadpool_unbounded_queue
+        if isinstance(node, ClassCreator):
+             type_name = node.type.name
+             if type_name == "ThreadPoolExecutor":
+                  args = [str(arg) for arg in node.arguments] 
+                  kind = ChangeKind.OBJECT_CREATION
+                  action = "added" if is_added else "removed"
+                  changes.append(Change(kind=kind, file=filename, symbol="ThreadPoolExecutor", meta={"args_count": len(args), "param_change": True, "action": action}, line_no=line_no))
+             
+             if type_name == "LinkedBlockingQueue":
+                  if not node.arguments:
+                       kind = ChangeKind.OBJECT_CREATION
+                       changes.append(Change(kind=kind, file=filename, symbol="LinkedBlockingQueue", meta={"unbounded": True}, line_no=line_no))
+                  elif len(node.arguments) == 1 and "Integer.MAX_VALUE" in str(node.arguments[0]):
+                       kind = ChangeKind.OBJECT_CREATION
+                       changes.append(Change(kind=kind, file=filename, symbol="LinkedBlockingQueue", meta={"unbounded": True}, line_no=line_no))
 
-                # Critical calls (input/validation)
-                if call_name in self.critical_calls and not is_added:
-                    changes.append(Change(kind=kind, file=filename, symbol=call_name, line_no=line_no))
-                
-                # Collection mutation in loop
-                if call_name == "remove" and is_added:
-                    # Check if inside a loop
-                    if self._is_inside_loop(path):
-                        changes.append(Change(kind=kind, file=filename, symbol="remove", meta={"in_loop": True}, line_no=line_no))
+        # 10. while(true)
+        if isinstance(node, WhileStatement):
+             # Check if condition is true
+             is_true = False
+             if hasattr(node.condition, 'value') and node.condition.value == "true":
+                 is_true = True
+             if is_true:
+                  kind = ChangeKind.CALL_ADDED if is_added else ChangeKind.CALL_REMOVED
+                  changes.append(Change(kind=kind, file=filename, symbol="while_true", line_no=line_no))
 
-            if isinstance(node, ClassCreator):
-                if node.type.name == "ThreadPoolExecutor":
-                    kind = ChangeKind.OBJECT_CREATION if is_added else ChangeKind.UNKNOWN # Only care about addition/change usually
-                    if is_added:
-                        # Could analyze arguments here for corePoolSize=0 etc.
-                        changes.append(Change(kind=kind, file=filename, symbol="ThreadPoolExecutor", line_no=line_no))
+    def _detect_resource_signals(self, node, filename: str, is_added: bool, var_map: Dict, changes: List[Change], line_no: int, path: Any):
+        # 12. try_with_resource_removed
+        if isinstance(node, TryStatement):
+            if node.resources:
+                if not is_added: # Removed
+                    changes.append(Change(kind=ChangeKind.CALL_REMOVED, file=filename, symbol="try_with_resources", line_no=line_no))
+
+        if isinstance(node, MethodInvocation):
+             call_name = node.member
+             qualifier = str(node.qualifier).lower() if node.qualifier else ""
+             
+             # 13. cache_eviction_removed
+             if not is_added and call_name in ["expire", "setExpire", "setTTL", "evict", "clear"]:
+                  if "cache" in filename.lower() or "redis" in filename.lower() or "map" in qualifier:
+                       changes.append(Change(kind=ChangeKind.CALL_REMOVED, file=filename, symbol=call_name, meta={"cache_eviction": True}, line_no=line_no))
+
+             # 15. timeout_removed
+             if not is_added and ("timeout" in call_name.lower() or call_name == "setTimeout"): 
+                  changes.append(Change(kind=ChangeKind.CALL_REMOVED, file=filename, symbol=call_name, meta={"timeout_removed": True}, line_no=line_no))
+
+    def _detect_data_signals(self, node, filename: str, is_added: bool, var_map: Dict, changes: List[Change], line_no: int, path: Any):
+        # 18. equals_to_reference_compare
+        if isinstance(node, MethodInvocation):
+             if node.member == "equals" and not is_added:
+                  changes.append(Change(kind=ChangeKind.CALL_REMOVED, file=filename, symbol="equals", line_no=line_no))
+        
+        if isinstance(node, BinaryOperation):
+             if node.operator == "==" and is_added:
+                  changes.append(Change(kind=ChangeKind.CALL_ADDED, file=filename, symbol="==", line_no=line_no))
+        
+        # 19. null_check_removed
+        if isinstance(node, IfStatement) and not is_added:
+             cond = node.condition
+             if isinstance(cond, BinaryOperation) and cond.operator == "==":
+                  has_null = False
+                  if isinstance(cond.operandr, Literal) and cond.operandr.value == "null": has_null = True
+                  if isinstance(cond.operandl, Literal) and cond.operandl.value == "null": has_null = True
+                  
+                  if has_null:
+                       changes.append(Change(kind=ChangeKind.UNKNOWN, file=filename, symbol="null_check", meta={"action": "removed"}, line_no=line_no))
+
+    def _detect_general_signals(self, node, filename: str, is_added: bool, var_map: Dict, changes: List[Change], line_no: int, path: Any):
+        # Original logic for critical calls etc.
+        if isinstance(node, MethodInvocation):
+            call_name = node.member
+            qualifier = node.qualifier
+            
+            kind = ChangeKind.CALL_ADDED if is_added else ChangeKind.CALL_REMOVED
+
+            # Dubbo P0: Executors factory methods
+            if qualifier == "Executors" and call_name in ["newFixedThreadPool", "newCachedThreadPool"]:
+                 changes.append(Change(kind=kind, file=filename, symbol=call_name, meta={"risk": "threadpool_factory"}, line_no=line_no))
+
+            # Dubbo P0: Future.get() without timeout
+            if call_name == "get" and not node.arguments:
+                changes.append(Change(kind=kind, file=filename, symbol="get", meta={"blocking_get": True}, line_no=line_no))
+
+            # Critical calls (input/validation)
+            if call_name in self.critical_calls and not is_added:
+                changes.append(Change(kind=kind, file=filename, symbol=call_name, line_no=line_no))
+            
+            # Collection mutation in loop
+            if call_name == "remove" and is_added:
+                if self._is_inside_loop(path):
+                    changes.append(Change(kind=kind, file=filename, symbol="remove", meta={"in_loop": True}, line_no=line_no))
 
 
     def _is_inside_loop(self, path: Tuple) -> bool:
