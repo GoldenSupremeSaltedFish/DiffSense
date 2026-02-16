@@ -1,8 +1,10 @@
 # DiffSense：可发布制品接入。企业只接受 image: xxx/diffsense:1.0，能跑就行。
 # Variables: DIFFSENSE_TOKEN（api 权限）。内网配 DIFFSENSE_IMAGE 覆盖 image。
+# 必须加 entrypoint: [""]，否则 Runner 会把 script 当作 diffsense 的子命令传入，报 No such command 'sh'。
 diffsense_check:
   stage: diffsense
   image: ghcr.io/goldensupremesaltedfish/diffsense:1.0.0
+  entrypoint: [""]
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
   script:
