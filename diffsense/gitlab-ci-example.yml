@@ -1,6 +1,12 @@
 # DiffSense：可发布制品接入。企业只接受 image: xxx/diffsense:1.0，能跑就行。
-# Variables: DIFFSENSE_TOKEN（api 权限）。内网配 DIFFSENSE_IMAGE 覆盖 image。
-# 必须加 entrypoint: [""]，否则 Runner 会把 script 当作 diffsense 的子命令传入，报 No such command 'sh'。
+#
+# 【配置 GitLab Token】在项目内：Settings → CI/CD → Variables → Add variable
+#   Key:   DIFFSENSE_TOKEN
+#   Value: 你的 Personal Access Token（需勾选 api 权限）
+#   勾选 Mask variable
+#
+# 内网镜像：同路径增加 DIFFSENSE_IMAGE，job 里写 image: $DIFFSENSE_IMAGE
+# 必须加 entrypoint: [""]，否则会报 No such command 'sh'
 diffsense_check:
   stage: diffsense
   image: ghcr.io/goldensupremesaltedfish/diffsense:1.0.0

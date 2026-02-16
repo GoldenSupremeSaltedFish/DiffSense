@@ -52,10 +52,12 @@
 
 在你的项目里接入 MR 风险审计：使用官方镜像，无需 clone 或 pip。
 
-**1. 配置变量**  
-在 GitLab 项目的 **Settings → CI/CD → Variables** 中新增：
+**1. 配置 GitLab Token（必做）**  
+在**要接入 DiffSense 的 GitLab 项目**里：**Settings → CI/CD → Variables** → **Add variable**：
 
-- `DIFFSENSE_TOKEN`（Masked）：具备 API 权限的 Personal Access Token，用于读写 MR 评论。
+| Key   | Value | 说明 |
+|-------|--------|------|
+| `DIFFSENSE_TOKEN` | 你的 Personal Access Token | 在 GitLab 用户 **Preferences → Access Tokens** 创建，勾选 `api`；在 Variables 里勾选 **Mask variable**。用于读写当前项目的 MR 评论。 |
 
 **2. 在 `.gitlab-ci.yml` 中增加 Job**
 
