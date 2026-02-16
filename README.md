@@ -63,6 +63,7 @@
 diffsense_audit:
   stage: test
   image: ghcr.io/goldensupremesaltedfish/diffsense:1.0.0
+  entrypoint: [""]
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
   script:
