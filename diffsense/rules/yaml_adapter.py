@@ -30,22 +30,26 @@ class YamlRule(Rule):
         # Logic extracted from old RuleEngine._match_rule
         
         # 0. Check AST Signals (New First-Class Check)
-        if 'signal' in self._rule_dict:
-            target_signal = self._rule_dict['signal']
+        target_signal = self._rule_dict.get('signal')
+        if target_signal:
             # Look for this signal in ast_signals
             for sig in ast_signals:
                 if sig.id == target_signal:
                     # Signal Matched!
                     
                     # Check action constraint if present in rule
-                    if 'action' in self._rule_dict:
-                        if self._rule_dict['action'] != sig.action:
-                            continue # Action mismatch
+                    rule_action = self._rule_dict.get('action')
+                    if rule_action and rule_action != sig.action:
+                         continue # Action mismatch
                     
                     # Check if there are other constraints (like file)
-                    if 'file' in self._rule_dict:
-                        if not fnmatch.fnmatch(sig.file, self._rule_dict['file']):
-                            continue # Signal found but file doesn't match
+                    # We match file pattern against the signal's file
+                    rule_file_pattern = self._rule_dict.get('file')
+                    if rule_file_pattern:
+                        # Use fnmatch to check if sig.file matches pattern
+                        # But handle "**" and similar
+                        if rule_file_pattern != "**" and not fnmatch.fnmatch(sig.file, rule_file_pattern):
+                             continue
                     
                     return {"file": sig.file}
             
