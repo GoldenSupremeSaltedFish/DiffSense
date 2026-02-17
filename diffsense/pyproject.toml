@@ -17,6 +17,9 @@ dependencies = [
   "typer>=0.9.0",
 ]
 
+[project.optional-dependencies]
+dev = ["pytest"]
+
 [project.scripts]
 diffsense = "cli:app"
 
