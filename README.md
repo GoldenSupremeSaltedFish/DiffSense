@@ -79,6 +79,42 @@ diffsense_audit:
 
 **可选**：固定版本请将镜像 tag 改为具体版本（如 `1.0.0`）；Runner 无法访问外网时，在 Variables 中配置 `DIFFSENSE_IMAGE`，Job 中写 `image: $DIFFSENSE_IMAGE` 使用内网镜像。
 
+---
+
+#### CI/CD integration (English)
+
+Integrate MR risk audit into your GitLab project using the official image (no clone or pip).
+
+**1. Configure GitLab token (required)**  
+In the GitLab project: **Settings → CI/CD → Variables** → **Add variable**:
+
+| Key   | Value | Note |
+|-------|--------|------|
+| `DIFFSENSE_TOKEN` | Your Personal Access Token | Create under **Preferences → Access Tokens** with `api` scope; check **Mask variable** in Variables. Used to read/write MR comments. |
+
+**2. Add this job to `.gitlab-ci.yml`**
+
+```yaml
+diffsense_audit:
+  stage: test
+  image: ghcr.io/goldensupremesaltedfish/diffsense:1.0.0
+  entrypoint: [""]
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+  script:
+    - diffsense audit --platform gitlab
+        --token "$DIFFSENSE_TOKEN"
+        --project-id "$CI_PROJECT_ID"
+        --mr-iid "$CI_MERGE_REQUEST_IID"
+        --gitlab-url "${GITLAB_URL:-$CI_SERVER_URL}"
+  allow_failure: false
+```
+
+**Optional:** Pin the image tag (e.g. `1.0.0`). For air-gapped runners, set `DIFFSENSE_IMAGE` in Variables and use `image: $DIFFSENSE_IMAGE`.  
+Example files: `diffsense/gitlab-ci-example.yml` (CN+EN comments), `diffsense/gitlab-ci-example.en.yml` (EN only).
+
+---
+
 ### VSCode Extension Installation (Optional)
 
 #### Option 1: Install from VSCode Marketplace (Recommended)
