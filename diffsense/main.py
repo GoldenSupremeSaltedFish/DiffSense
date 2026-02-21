@@ -12,9 +12,10 @@ from core.ast_detector import ASTDetector
 def main():
     parser = argparse.ArgumentParser(description="DiffSense: Event-driven MR Audit Analyzer")
     parser.add_argument("diff_file", help="Path to the diff file")
-    parser.add_argument("--rules", default="config/rules.yaml", help="Path to rules config")
+    parser.add_argument("--rules", default="config/rules.yaml", help="Path to rules: single YAML file or directory of YAML files")
     parser.add_argument("--format", choices=["json", "markdown"], default="json", help="Output format")
-    
+    parser.add_argument("--profile", default=None, help="Profile: strict or lightweight")
+
     args = parser.parse_args()
     
     # 1. Read Diff
@@ -41,7 +42,7 @@ def main():
         script_dir = os.path.dirname(os.path.abspath(__file__))
         rules_path = os.path.join(script_dir, args.rules)
         
-    rule_engine = RuleEngine(rules_path)
+    rule_engine = RuleEngine(rules_path, profile=args.profile)
     evaluator = ImpactEvaluator(rule_engine)
     
     # 4. Evaluate Impact

@@ -3,3 +3,5 @@ PyGithub
 python-gitlab
 requests
 javalang
+typer>=0.9.0
+pytest

@@ -48,16 +48,18 @@
 
 ## 🚀 Quick Start
 
-### CI/CD 集成（GitLab）
+### CI/CD Integration (GitLab)
 
-在你的项目里接入 MR 风险审计：使用官方镜像，无需 clone 或 pip。
+Integrate MR risk audit into your GitLab project using the official image (no clone or pip).
 
-**1. 配置变量**  
-在 GitLab 项目的 **Settings → CI/CD → Variables** 中新增：
+**1. Configure GitLab token (required)**  
+In the GitLab project: **Settings → CI/CD → Variables** → **Add variable**:
 
-- `DIFFSENSE_TOKEN`（Masked）：具备 API 权限的 Personal Access Token，用于读写 MR 评论。
+| Key   | Value | Note |
+|-------|--------|------|
+| `DIFFSENSE_TOKEN` | Your Personal Access Token | Create under **Preferences → Access Tokens** with `api` scope; check **Mask variable** in Variables. Used to read/write MR comments. |
 
-**2. 在 `.gitlab-ci.yml` 中增加 Job**
+**2. Add this job to `.gitlab-ci.yml`**
 
 ```yaml
 diffsense_audit:
@@ -75,7 +77,10 @@ diffsense_audit:
   allow_failure: false
 ```
 
-**可选**：固定版本请将镜像 tag 改为具体版本（如 `1.0.0`）；Runner 无法访问外网时，在 Variables 中配置 `DIFFSENSE_IMAGE`，Job 中写 `image: $DIFFSENSE_IMAGE` 使用内网镜像。
+**Optional:** Pin the image tag (e.g. `1.0.0`). For air-gapped runners, set `DIFFSENSE_IMAGE` in Variables and use `image: $DIFFSENSE_IMAGE`.  
+Example files: `diffsense/gitlab-ci-example.yml` (CN+EN comments), `diffsense/gitlab-ci-example.en.yml` (EN only).
+
+---
 
 ### VSCode Extension Installation (Optional)
 
