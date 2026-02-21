@@ -9,8 +9,11 @@ from core.rules import RuleEngine
 from core.evaluator import ImpactEvaluator
 from core.composer import DecisionComposer
 from core.renderer import MarkdownRenderer
+from banner import print_banner
+
 
 def run_audit(adapter, rules_path):
+    print_banner()
     print("Fetching diff...")
     diff_content = adapter.fetch_diff()
     
