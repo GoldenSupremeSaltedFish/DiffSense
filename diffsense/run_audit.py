@@ -12,7 +12,7 @@ from core.renderer import MarkdownRenderer
 from banner import print_banner
 
 
-def run_audit(adapter, rules_path):
+def run_audit(adapter, rules_path, profile=None):
     print_banner()
     print("Fetching diff...")
     diff_content = adapter.fetch_diff()
@@ -48,7 +48,7 @@ def run_audit(adapter, rules_path):
     
     # 3. Evaluate Rules (Policy / Context)
     # Rules now consume both diff_data (structure) and ast_signals (semantics)
-    engine = RuleEngine(rules_path)
+    engine = RuleEngine(rules_path, profile=profile)
     evaluator = ImpactEvaluator(engine)
     # Evaluator needs update to pass ast_signals or we pass it via engine directly?
     # Actually ImpactEvaluator calls engine.evaluate. Let's see ImpactEvaluator.
@@ -131,7 +131,8 @@ def main():
     parser.add_argument("--mr-iid", type=int, help="GitLab Merge Request IID")
     
     # Config
-    parser.add_argument("--rules", default="config/rules.yaml", help="Path to rules config")
+    parser.add_argument("--rules", default="config/rules.yaml", help="Path to rules: single YAML file or directory")
+    parser.add_argument("--profile", default=None, help="Profile: strict or lightweight")
 
     args = parser.parse_args()
     
@@ -156,7 +157,7 @@ def main():
         script_dir = os.path.dirname(os.path.abspath(__file__))
         rules_path = os.path.join(script_dir, args.rules)
         
-    run_audit(adapter, rules_path)
+    run_audit(adapter, rules_path, profile=args.profile)
 
 if __name__ == "__main__":
     main()

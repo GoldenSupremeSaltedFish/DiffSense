@@ -31,6 +31,37 @@ class Rule(ABC):
         """Explanation of why this rule exists and what risk it prevents"""
         pass
 
+    # Optional metadata (defaults for built-in rules; YamlRule overrides from YAML)
+    @property
+    def category(self) -> str:
+        """Rule category: concurrency, performance, reliability, security, general"""
+        return "general"
+
+    @property
+    def confidence(self) -> float:
+        """Confidence score 0.0-1.0"""
+        return 1.0
+
+    @property
+    def tags(self) -> List[str]:
+        """Optional tags for filtering"""
+        return []
+
+    @property
+    def enabled(self) -> bool:
+        """Whether this rule is enabled (engine skips if False)"""
+        return True
+
+    @property
+    def language(self) -> str:
+        """Language scope: * for all, or java, go, js, etc."""
+        return "*"
+
+    @property
+    def scope(self) -> str:
+        """File scope pattern (e.g. ** or **/core/**)"""
+        return "**"
+
     @abstractmethod
     def evaluate(self, diff_data: Dict[str, Any], ast_signals: List[Any]) -> Optional[Dict[str, Any]]:
         """
