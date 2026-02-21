@@ -5,7 +5,7 @@ from core.ast_detector import ASTDetector
 
 class TestInlineIgnore(unittest.TestCase):
     def test_inline_ignore(self):
-        diff_path = Path(r"c:\Users\30871\Desktop\diffsense-work-space\DiffSense\diffsense\tests\fixtures\ast_cases\ignore\inline_ignore.diff")
+        diff_path = Path(__file__).parent / "fixtures" / "ast_cases" / "ignore" / "inline_ignore.diff"
         content = diff_path.read_text(encoding='utf-8')
         
         parser = DiffParser()

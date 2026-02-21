@@ -21,8 +21,8 @@ class TestSignalConsistency:
         Contract: `synchronized` keyword (method or block) triggers `runtime.concurrency.synchronized`
         """
         diff = load_diff("concurrency", "synchronized.diff")
-        # Mock diff_data structure as expected by new ASTDetector
-        diff_data = {'raw_diff': diff}
+        # ASTDetector requires file_patches with a .java file; fallback 'unknown' is skipped
+        diff_data = {'raw_diff': diff, 'file_patches': [{'file': 'Dummy.java', 'patch': diff}]}
         
         signals = self.detector.detect_signals(diff_data)
         signal_ids = {s.id for s in signals}
@@ -35,7 +35,7 @@ class TestSignalConsistency:
         Contract: `lock.lock()` calls trigger `runtime.concurrency.lock`
         """
         diff = load_diff("concurrency", "lock.diff")
-        diff_data = {'raw_diff': diff}
+        diff_data = {'raw_diff': diff, 'file_patches': [{'file': 'Dummy.java', 'patch': diff}]}
         
         signals = self.detector.detect_signals(diff_data)
         signal_ids = {s.id for s in signals}
@@ -47,7 +47,7 @@ class TestSignalConsistency:
         Contract: `volatile` field modifier triggers `runtime.concurrency.volatile`
         """
         diff = load_diff("concurrency", "volatile.diff")
-        diff_data = {'raw_diff': diff}
+        diff_data = {'raw_diff': diff, 'file_patches': [{'file': 'Dummy.java', 'patch': diff}]}
         
         signals = self.detector.detect_signals(diff_data)
         signal_ids = {s.id for s in signals}
@@ -59,7 +59,7 @@ class TestSignalConsistency:
         Contract: Whitespace/formatting changes MUST NOT trigger any signals.
         """
         diff = load_diff("noise", "formatting.diff")
-        diff_data = {'raw_diff': diff}
+        diff_data = {'raw_diff': diff, 'file_patches': [{'file': 'Dummy.java', 'patch': diff}]}
         
         signals = self.detector.detect_signals(diff_data)
         assert len(signals) == 0, f"Found unexpected signals in noise: {signals}"
