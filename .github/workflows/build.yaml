@@ -7,6 +7,20 @@ on:
     branches: ["main", "release/**"]
 
 jobs:
+  test-diffsense:
+    name: Test DiffSense (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install dependencies and run tests
+        run: |
+          pip install -e "diffsense[dev]"
+          python -m pytest diffsense/tests/ -v
+
   build:
     name: Build DiffSense
     runs-on: ubuntu-latest
