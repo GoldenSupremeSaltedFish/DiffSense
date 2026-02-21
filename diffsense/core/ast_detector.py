@@ -255,7 +255,7 @@ class ASTDetector:
                         symbol=var_name,
                         before=old_type,
                         after=new_type,
-                        meta={"downgrade": True, "from": old_type, "to": new_type}
+                        meta={"downgrade": True, "from": old_type, "to": new_type, "var": var_name}
                     ))
         
         # Cross-Analyze: ThreadPoolExecutor Param Change
