@@ -48,40 +48,7 @@
 
 ## 🚀 Quick Start
 
-### CI/CD 集成（GitLab）
-
-在你的项目里接入 MR 风险审计：使用官方镜像，无需 clone 或 pip。
-
-**1. 配置 GitLab Token（必做）**  
-在**要接入 DiffSense 的 GitLab 项目**里：**Settings → CI/CD → Variables** → **Add variable**：
-
-| Key   | Value | 说明 |
-|-------|--------|------|
-| `DIFFSENSE_TOKEN` | 你的 Personal Access Token | 在 GitLab 用户 **Preferences → Access Tokens** 创建，勾选 `api`；在 Variables 里勾选 **Mask variable**。用于读写当前项目的 MR 评论。 |
-
-**2. 在 `.gitlab-ci.yml` 中增加 Job**
-
-```yaml
-diffsense_audit:
-  stage: test
-  image: ghcr.io/goldensupremesaltedfish/diffsense:1.0.0
-  entrypoint: [""]
-  rules:
-    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-  script:
-    - diffsense audit --platform gitlab
-        --token "$DIFFSENSE_TOKEN"
-        --project-id "$CI_PROJECT_ID"
-        --mr-iid "$CI_MERGE_REQUEST_IID"
-        --gitlab-url "${GITLAB_URL:-$CI_SERVER_URL}"
-  allow_failure: false
-```
-
-**可选**：固定版本请将镜像 tag 改为具体版本（如 `1.0.0`）；Runner 无法访问外网时，在 Variables 中配置 `DIFFSENSE_IMAGE`，Job 中写 `image: $DIFFSENSE_IMAGE` 使用内网镜像。
-
----
-
-#### CI/CD integration (English)
+### CI/CD Integration (GitLab)
 
 Integrate MR risk audit into your GitLab project using the official image (no clone or pip).
 
