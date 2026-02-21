@@ -28,7 +28,8 @@ def audit(
     gitlab_url: str = typer.Option("https://gitlab.com", "--gitlab-url", help="GitLab instance URL"),
     project_id: str = typer.Option(None, "--project-id", help="GitLab project ID"),
     mr_iid: int = typer.Option(None, "--mr-iid", help="GitLab merge request IID"),
-    rules: str = typer.Option("config/rules.yaml", "--rules", help="Path to rules YAML"),
+    rules: str = typer.Option("config/rules.yaml", "--rules", help="Path to rules: single YAML file or directory of YAML files"),
+    profile: str = typer.Option(None, "--profile", help="Profile: strict (all rules) or lightweight (critical only)"),
 ) -> None:
     """Run MR/PR risk audit (GitLab or GitHub). Use in CI with image: ghcr.io/xxx/diffsense:1.0."""
     from adapters.github_adapter import GitHubAdapter
@@ -53,17 +54,21 @@ def audit(
         typer.echo(f"Error: platform must be github or gitlab, got {platform}", err=True)
         raise typer.Exit(1)
 
-    do_audit(adapter, rules_path)
+    do_audit(adapter, rules_path, profile=profile)
 
 
 @app.command()
 def replay(
     diff_file: str = typer.Argument(..., help="Path to .diff file"),
-    rules: str = typer.Option("config/rules.yaml", "--rules", help="Path to rules YAML"),
+    rules: str = typer.Option("config/rules.yaml", "--rules", help="Path to rules: single YAML file or directory of YAML files"),
     format: str = typer.Option("json", "--format", "-f", help="Output: json | markdown"),
+    profile: str = typer.Option(None, "--profile", help="Profile: strict or lightweight"),
 ) -> None:
     """Run audit on a local diff file (for replay/offline)."""
-    sys.argv = ["diffsense", diff_file, "--rules", rules, "--format", format]
+    args = ["diffsense", diff_file, "--rules", rules, "--format", format]
+    if profile:
+        args.extend(["--profile", profile])
+    sys.argv = args
     from main import main as replay_main
     replay_main()
 
@@ -72,7 +77,8 @@ rules_app = typer.Typer(help="Manage rules.")
 
 @rules_app.command("list")
 def rules_list(
-    rules_path: str = typer.Option(None, "--rules", help="Path to rules YAML"),
+    rules_path: str = typer.Option(None, "--rules", help="Path to rules: single YAML file or directory of YAML files"),
+    profile: str = typer.Option(None, "--profile", help="Profile: strict or lightweight (list only rules active in that profile)"),
 ) -> None:
     """List loaded rule IDs (built-in + YAML)."""
     from core.rules import RuleEngine
@@ -80,7 +86,7 @@ def rules_list(
     path = rules_path
     if not path or not os.path.exists(path):
         path = _default_rules_path()
-    engine = RuleEngine(path)
+    engine = RuleEngine(path, profile=profile)
     for r in engine.rules:
         typer.echo(r.id)
 

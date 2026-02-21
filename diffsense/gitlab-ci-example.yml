@@ -1,6 +1,14 @@
-# DiffSense：可发布制品接入。企业只接受 image: xxx/diffsense:1.0，能跑就行。
-# Variables: DIFFSENSE_TOKEN（api 权限）。内网配 DIFFSENSE_IMAGE 覆盖 image。
-# 必须加 entrypoint: [""]，否则 Runner 会把 script 当作 diffsense 的子命令传入，报 No such command 'sh'。
+# DiffSense MR 风险审计 Job
+# DiffSense MR risk audit job
+#
+# 前置（CN）：项目 Settings → CI/CD → Variables 新增 DIFFSENSE_TOKEN（Personal Access Token，scope=api，Mask 勾选）。
+# Prerequisite (EN): In project Settings → CI/CD → Variables, add DIFFSENSE_TOKEN (Personal Access Token, scope=api, Mask variable).
+#
+# 内网（CN）：Variables 新增 DIFFSENSE_IMAGE，下方 image 改为 image: $DIFFSENSE_IMAGE。
+# Intranet (EN): Add DIFFSENSE_IMAGE in Variables, then set image: $DIFFSENSE_IMAGE below.
+#
+# entrypoint（CN）：必填，否则 Runner 传入的 script 会被当作 diffsense 子命令导致报错。
+# entrypoint (EN): Required; otherwise the runner passes script as diffsense subcommand and the job fails.
 diffsense_check:
   stage: diffsense
   image: ghcr.io/goldensupremesaltedfish/diffsense:1.0.0

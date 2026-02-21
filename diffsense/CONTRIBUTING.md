@@ -67,6 +67,8 @@ If you are adding a new Rule (via `rules/*.yaml` or Python plugins), you **MUST*
 
 **Note**: Rules that cause high false positives or slow down the audit process will be rejected.
 
+**External rules and plugins**: You can ship rules via a separate package using the entry point group `diffsense.rules`. See [docs/rule-plugins.md](docs/rule-plugins.md) for the contract and examples.
+
 ---
 
 ## 5. Replay / Benchmark Contribution
@@ -100,7 +102,8 @@ Once you understand the philosophy above, here is the standard workflow:
 3.  **Develop & Test**:
     *   Add your logic to `core/` (Semantic Layer).
     *   Add your rule configuration to `config/rules.yaml` (Rule Layer).
-    *   Add tests in `tests/` and verify with `python -m unittest discover tests`.
+    *   Add tests in `tests/` and verify with `python -m unittest discover tests` or `pytest tests/ -v` (from repo root with `PYTHONPATH` set so that the `diffsense` package is importable).
+    *   **Test cleanup**: Tests must not write under `diffsense/config/` or `diffsense/rules/`. Use `tempfile.TemporaryDirectory()` or pytest's `tmp_path` for any temporary rule files. After running the test suite, `diffsense/config` and `diffsense/rules` should have no uncommitted or untracked changes.
 
 4.  **Submit Pull Request**:
     *   Describe the **Semantic Risk** you are addressing.

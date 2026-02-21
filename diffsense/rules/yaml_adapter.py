@@ -6,6 +6,7 @@ from core.rule_base import Rule
 class YamlRule(Rule):
     """
     Adapter to treat legacy YAML rules as first-class Plugins.
+    Supports full rule metadata: category, confidence, tags, enabled, language, scope.
     """
     def __init__(self, rule_dict: Dict[str, Any]):
         self._rule_dict = rule_dict
@@ -25,6 +26,34 @@ class YamlRule(Rule):
     @property
     def rationale(self) -> str:
         return self._rule_dict.get('rationale', '')
+
+    @property
+    def category(self) -> str:
+        return self._rule_dict.get('category', 'general')
+
+    @property
+    def confidence(self) -> float:
+        v = self._rule_dict.get('confidence', 1.0)
+        if isinstance(v, (int, float)):
+            return float(v)
+        return 1.0
+
+    @property
+    def tags(self) -> List[str]:
+        t = self._rule_dict.get('tags', [])
+        return list(t) if isinstance(t, (list, tuple)) else []
+
+    @property
+    def enabled(self) -> bool:
+        return self._rule_dict.get('enabled', True) is True
+
+    @property
+    def language(self) -> str:
+        return self._rule_dict.get('language', '*')
+
+    @property
+    def scope(self) -> str:
+        return self._rule_dict.get('scope', self._rule_dict.get('file', '**'))
 
     def evaluate(self, diff_data: Dict[str, Any], ast_signals: List[Any]) -> Optional[Dict[str, Any]]:
         # Logic extracted from old RuleEngine._match_rule
