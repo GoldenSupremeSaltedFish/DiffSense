@@ -1,8 +1,8 @@
 import unittest
-import os
 from diffsense.core.ast_detector import ASTDetector
 from diffsense.core.parser import DiffParser
 from diffsense.core.change import ChangeKind
+from diffsense.tests.regression_helpers import get_fixture_path
 
 class TestP0ConcurrencySignals(unittest.TestCase):
     def setUp(self):
@@ -10,10 +10,8 @@ class TestP0ConcurrencySignals(unittest.TestCase):
         self.parser = DiffParser()
 
     def test_p0_signals(self):
-        # Load the P0 diff
-        fixture_path = os.path.join(os.path.dirname(__file__), "fixtures/ast_cases/p0_concurrency.diff")
-        with open(fixture_path, 'r') as f:
-            diff_content = f.read()
+        fixture_path = get_fixture_path("ast_cases/p0_concurrency.diff")
+        diff_content = fixture_path.read_text(encoding="utf-8")
 
         # Parse
         diff_data = {'raw_diff': diff_content} # Simple parsing for test
