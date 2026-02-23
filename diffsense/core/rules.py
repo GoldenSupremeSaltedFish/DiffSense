@@ -9,6 +9,10 @@ try:
 except ImportError:
     entry_points = None  # type: ignore
 from core.ignore_manager import IgnoreManager
+try:
+    from ..governance.lifecycle import LifecycleManager
+except ImportError:
+    from governance.lifecycle import LifecycleManager
 from rules.concurrency import (
     ThreadPoolSemanticChangeRule,
     ConcurrencyRegressionRule,
@@ -18,11 +22,13 @@ from rules.concurrency import (
 from rules.yaml_adapter import YamlRule
 
 class RuleEngine:
-    def __init__(self, rules_path: str, profile: Optional[str] = None):
+    def __init__(self, rules_path: str, profile: Optional[str] = None, config: Optional[Dict[str, Any]] = None):
         self.rules: List[Rule] = []
-        self.metrics: Dict[str, Dict[str, Any]] = {} # id -> {calls, hits, time_ns, errors}
+        self.metrics: Dict[str, Dict[str, Any]] = {}  # id -> {calls, hits, time_ns, errors}
         self.ignore_manager = IgnoreManager()
         self.profile = profile
+        self.config = config or {}
+        self.lifecycle = LifecycleManager(self.config)
 
         # 1. Register Built-in Rules (Plugins)
         self._register_builtins()
@@ -107,9 +113,11 @@ class RuleEngine:
         for rule in self.rules:
             if not getattr(rule, 'enabled', True):
                 continue
+            if not self.lifecycle.should_run(rule):
+                continue
             rule_id = rule.id
             if rule_id not in self.metrics:
-                self.metrics[rule_id] = {"calls": 0, "hits": 0, "time_ns": 0, "errors": 0}
+                self.metrics[rule_id] = {"calls": 0, "hits": 0, "ignores": 0, "time_ns": 0, "errors": 0}
             
             self.metrics[rule_id]["calls"] += 1
             
@@ -117,15 +125,13 @@ class RuleEngine:
             match_details = None
             
             try:
-                # Execute Rule (Plugin)
                 match_details = rule.evaluate(diff_data, ast_signals)
-                
-                # Check Ignore Manager
                 if match_details:
                     matched_file = match_details.get('file', 'unknown')
                     if self.ignore_manager.is_ignored(rule_id, matched_file):
-                        match_details = None # Suppress
-
+                        self.metrics[rule_id]["hits"] += 1
+                        self.metrics[rule_id]["ignores"] += 1
+                        match_details = None
             except Exception:
                 self.metrics[rule_id]["errors"] += 1
             finally:
@@ -134,12 +140,10 @@ class RuleEngine:
             
             if match_details:
                 self.metrics[rule_id]["hits"] += 1
-                
-                # Transform Rule Object -> Output Dictionary (for Composer)
-                # This decouples the internal Rule object from the output format
+                severity = self.lifecycle.adjust_severity(rule, rule.severity)
                 triggered = {
                     "id": rule.id,
-                    "severity": rule.severity,
+                    "severity": severity,
                     "impact": rule.impact,
                     "rationale": rule.rationale,
                     "matched_file": match_details.get('file', 'unknown')
@@ -149,5 +153,26 @@ class RuleEngine:
         return triggered_rules
     
     def get_metrics(self) -> Dict[str, Any]:
-        """Returns the collected performance metrics."""
+        """Returns the collected performance metrics (calls, hits, ignores, time_ns, errors)."""
         return self.metrics
+
+    @staticmethod
+    def quality_report_from_metrics(metrics: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Builds rule quality report from metrics. Each row: rule_id, hits, accepts, ignores, fp_rate.
+        fp_rate = ignores/hits when hits > 0; used to flag noisy rules.
+        """
+        rows = []
+        for rule_id, m in metrics.items():
+            hits = m.get("hits", 0)
+            ignores = m.get("ignores", 0)
+            accepts = max(0, hits - ignores)
+            fp_rate = (ignores / hits) if hits else 0.0
+            rows.append({
+                "rule_id": rule_id,
+                "hits": hits,
+                "accepts": accepts,
+                "ignores": ignores,
+                "fp_rate": fp_rate,
+            })
+        return sorted(rows, key=lambda r: (-r["hits"], r["rule_id"]))

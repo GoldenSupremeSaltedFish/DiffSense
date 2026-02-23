@@ -1,12 +1,12 @@
 import unittest
-from pathlib import Path
-from core.parser import DiffParser
-from core.ast_detector import ASTDetector
+from diffsense.core.parser import DiffParser
+from diffsense.core.ast_detector import ASTDetector
+from diffsense.tests.regression_helpers import get_fixture_path
 
 class TestInlineIgnore(unittest.TestCase):
     def test_inline_ignore(self):
-        diff_path = Path(__file__).parent / "fixtures" / "ast_cases" / "ignore" / "inline_ignore.diff"
-        content = diff_path.read_text(encoding='utf-8')
+        diff_path = get_fixture_path("ast_cases/ignore/inline_ignore.diff")
+        content = diff_path.read_text(encoding="utf-8")
         
         parser = DiffParser()
         diff_data = parser.parse(content)

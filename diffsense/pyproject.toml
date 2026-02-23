@@ -25,7 +25,7 @@ diffsense = "cli:app"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["adapters*", "core*", "rules*", "config*", "sdk*"]
+include = ["adapters*", "core*", "governance*", "rules*", "config*", "sdk*"]
 
 [tool.setuptools.package-data]
 config = ["*.yaml"]

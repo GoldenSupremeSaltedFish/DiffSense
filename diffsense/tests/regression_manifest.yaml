@@ -1,0 +1,48 @@
+# 回归检测用例清单：每个 case 对应一个 diff fixture，断言期望的 signal/rule 结果。
+# 运行: pytest diffsense/tests/test_regression.py -v
+# 用于: 规则或引擎改动后跑全量回归，防止误伤或漏报。
+
+cases:
+  # --- AST signal 契约（detector 必须产出这些 signal_id）---
+  - id: concurrency_synchronized
+    fixture: ast_cases/concurrency/synchronized.diff
+    expect_signals: [runtime.concurrency.synchronized]
+    expect_signal_count: 1
+
+  - id: concurrency_lock
+    fixture: ast_cases/concurrency/lock.diff
+    expect_signals: [runtime.concurrency.lock]
+
+  - id: concurrency_volatile
+    fixture: ast_cases/concurrency/volatile.diff
+    expect_signals: [runtime.concurrency.volatile]
+
+  - id: noise_formatting
+    fixture: ast_cases/noise/formatting.diff
+    expect_no_signals: true
+
+  # --- 关键规则触发（parse -> signals -> rules 端到端）---
+  - id: critical_lock_removal
+    fixture: ast_cases/critical/lock_removal.diff
+    expect_signals_contain: [runtime.concurrency.lock_removed, runtime.concurrency.lock]
+    expect_rules_contain: []   # 至少一条 critical 且 id 含 lock_removed
+    expect_critical_rule: true
+    expect_critical_rule_id_contains: lock_removed
+
+  - id: critical_type_downgrade
+    fixture: ast_cases/critical/type_downgrade.diff
+    expect_signals_contain: [runtime.concurrency.thread_safety_downgrade]
+    expect_rules_contain: [runtime.concurrency.thread_safety_downgrade]
+    expect_critical_rule: true
+
+  # --- P0 并发场景（部分 signal 存在即可，用于回归不要求全部）---
+  - id: p0_concurrency
+    fixture: ast_cases/p0_concurrency.diff
+    expect_signals_contain: [runtime.concurrency.thread_safety_downgrade, runtime.concurrency.volatile]
+    # 可选: expect_rules_contain / expect_critical_rule
+
+  # --- 忽略行为（inline ignore：只保留未忽略的 signal）---
+  - id: inline_ignore
+    fixture: ast_cases/ignore/inline_ignore.diff
+    expect_signal_count: 1
+    expect_signals_contain: [runtime.concurrency.lock]

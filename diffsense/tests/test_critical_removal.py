@@ -1,21 +1,18 @@
 import unittest
-import os
 from diffsense.core.ast_detector import ASTDetector
 from diffsense.core.parser import DiffParser
 from diffsense.core.rules import RuleEngine
+from diffsense.tests.regression_helpers import get_fixture_path, get_rules_path
 
 class TestLockRemoval(unittest.TestCase):
     def setUp(self):
         self.detector = ASTDetector()
         self.parser = DiffParser()
-        # Point to real rules file
-        self.rules_engine = RuleEngine("diffsense/config/rules.yaml")
+        self.rules_engine = RuleEngine(get_rules_path())
 
     def test_lock_removal_critical(self):
-        # Load the critical case diff
-        fixture_path = os.path.join(os.path.dirname(__file__), "fixtures/ast_cases/critical/lock_removal.diff")
-        with open(fixture_path, 'r') as f:
-            diff_content = f.read()
+        fixture_path = get_fixture_path("ast_cases/critical/lock_removal.diff")
+        diff_content = fixture_path.read_text(encoding="utf-8")
 
         # Parse
         diff_data = self.parser.parse(diff_content)

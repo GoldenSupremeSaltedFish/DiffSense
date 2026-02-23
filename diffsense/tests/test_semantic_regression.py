@@ -77,9 +77,9 @@ class TestSemanticRegression(unittest.TestCase):
         # This tests RuleEngine directly since ASTDetector doesn't generate signals for file paths alone
         # We need to simulate RuleEngine evaluation
         from diffsense.core.rules import RuleEngine
-        
-        # Initialize RuleEngine
-        rule_engine = RuleEngine("diffsense/config/rules.yaml")
+        from diffsense.tests.regression_helpers import get_rules_path
+
+        rule_engine = RuleEngine(get_rules_path())
         
         diff_data = {
             "files": ["src/main/java/com/example/auth/LoginService.java"],

@@ -1,15 +1,11 @@
 import pytest
-import os
 from diffsense.core.ast_detector import ASTDetector
+from diffsense.tests.regression_helpers import get_fixture_path
 
-# Path to cases
-CASES_DIR = os.path.join(os.path.dirname(__file__), "fixtures", "ast_cases")
 
-def load_diff(category, filename):
-    path = os.path.join(CASES_DIR, category, filename)
-    print(f"DEBUG: Loading file from {path}")
-    with open(path, "r", encoding="utf-8") as f:
-        return f.read()
+def _load_diff(rel_path):
+    path = get_fixture_path(rel_path)
+    return path.read_text(encoding="utf-8")
 
 class TestSignalConsistency:
     
@@ -20,7 +16,7 @@ class TestSignalConsistency:
         """
         Contract: `synchronized` keyword (method or block) triggers `runtime.concurrency.synchronized`
         """
-        diff = load_diff("concurrency", "synchronized.diff")
+        diff = _load_diff("ast_cases/concurrency/synchronized.diff")
         # ASTDetector requires file_patches with a .java file; fallback 'unknown' is skipped
         diff_data = {'raw_diff': diff, 'file_patches': [{'file': 'Dummy.java', 'patch': diff}]}
         
@@ -34,7 +30,7 @@ class TestSignalConsistency:
         """
         Contract: `lock.lock()` calls trigger `runtime.concurrency.lock`
         """
-        diff = load_diff("concurrency", "lock.diff")
+        diff = _load_diff("ast_cases/concurrency/lock.diff")
         diff_data = {'raw_diff': diff, 'file_patches': [{'file': 'Dummy.java', 'patch': diff}]}
         
         signals = self.detector.detect_signals(diff_data)
@@ -46,7 +42,7 @@ class TestSignalConsistency:
         """
         Contract: `volatile` field modifier triggers `runtime.concurrency.volatile`
         """
-        diff = load_diff("concurrency", "volatile.diff")
+        diff = _load_diff("ast_cases/concurrency/volatile.diff")
         diff_data = {'raw_diff': diff, 'file_patches': [{'file': 'Dummy.java', 'patch': diff}]}
         
         signals = self.detector.detect_signals(diff_data)
@@ -58,7 +54,7 @@ class TestSignalConsistency:
         """
         Contract: Whitespace/formatting changes MUST NOT trigger any signals.
         """
-        diff = load_diff("noise", "formatting.diff")
+        diff = _load_diff("ast_cases/noise/formatting.diff")
         diff_data = {'raw_diff': diff, 'file_patches': [{'file': 'Dummy.java', 'patch': diff}]}
         
         signals = self.detector.detect_signals(diff_data)

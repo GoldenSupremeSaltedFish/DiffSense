@@ -55,6 +55,10 @@ class YamlRule(Rule):
     def scope(self) -> str:
         return self._rule_dict.get('scope', self._rule_dict.get('file', '**'))
 
+    @property
+    def status(self) -> str:
+        return str(self._rule_dict.get('status', 'experimental')).lower()
+
     def evaluate(self, diff_data: Dict[str, Any], ast_signals: List[Any]) -> Optional[Dict[str, Any]]:
         # Logic extracted from old RuleEngine._match_rule
         
