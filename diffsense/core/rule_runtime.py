@@ -1,3 +1,7 @@
+"""
+Legacy rule runtime. Prefer core.rules.RuleEngine as the single entry point;
+RuleEngine now integrates LifecycleManager, profile, directory/entry_point loading.
+"""
 import yaml
 import time
 from typing import Dict, List, Any, Optional

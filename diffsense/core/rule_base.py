@@ -62,6 +62,11 @@ class Rule(ABC):
         """File scope pattern (e.g. ** or **/core/**)"""
         return "**"
 
+    @property
+    def status(self) -> str:
+        """Lifecycle status: experimental, beta, stable, deprecated, disabled. Engine skips disabled."""
+        return "experimental"
+
     @abstractmethod
     def evaluate(self, diff_data: Dict[str, Any], ast_signals: List[Any]) -> Optional[Dict[str, Any]]:
         """
