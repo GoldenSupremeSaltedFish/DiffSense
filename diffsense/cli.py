@@ -91,6 +91,83 @@ def rules_list(
         typer.echo(r.id)
 
 
+@rules_app.command("report")
+def rules_report(
+    input_file: str = typer.Option(None, "--input", "-i", help="JSON file from replay (must contain _metrics). Default: stdin"),
+    noisy: int = typer.Option(0, "--noisy", "-n", help="Mark rules with fp_rate >= this percent as noisy (0 = show all)"),
+) -> None:
+    """Rule quality report: hits, accepts, ignores, fp_rate. Input = replay JSON with _metrics."""
+    import json
+    from core.rules import RuleEngine
+
+    if input_file:
+        with open(input_file, "r", encoding="utf-8-sig") as f:
+            data = json.load(f)
+    else:
+        data = json.load(sys.stdin)
+    metrics = data.get("_metrics") or {}
+    rows = RuleEngine.quality_report_from_metrics(metrics)
+    if not rows:
+        typer.echo("No metrics (run replay first and pass JSON with --input or stdin).")
+        return
+    # Table header
+    typer.echo(f"{'rule_id':<45} {'hits':>6} {'accepts':>7} {'ignores':>7} {'fp_rate':>8}")
+    typer.echo("-" * 76)
+    for r in rows:
+        fp_pct = r["fp_rate"] * 100
+        flag = "  noisy" if noisy and fp_pct >= noisy else ""
+        typer.echo(f"{r['rule_id']:<45} {r['hits']:>6} {r['accepts']:>7} {r['ignores']:>7} {fp_pct:>6.0f}%{flag}")
+
+
+@app.command("replay-coverage")
+def replay_coverage(
+    replay_dir: str = typer.Option(None, "--replay-dir", "-d", help="Directory of replay JSON outputs to aggregate"),
+    input_list: str = typer.Option(None, "--input", "-i", help="File listing replay JSON paths (one per line)"),
+) -> None:
+    """Replay coverage: aggregate many replay runs to compute hit rate (e.g. %% of MRs with risky diffs caught).
+    Input: directory of replay JSONs, or a file listing paths. Output: total MRs, triggered count, hit rate.
+    Example: diffsense replay-coverage --replay-dir ./replay_reports/
+    (Implementation: aggregate review_level and _metrics from each JSON; report total, triggered, hit_rate.)"""
+    if not replay_dir and not input_list:
+        typer.echo("Use --replay-dir or --input to pass replay results. Aggregation and hit-rate output coming next.")
+        raise typer.Exit(0)
+    typer.echo("replay-coverage: aggregation not yet implemented. Use rules report on single replay JSON for now.")
+
+
+@app.command("profile-rules")
+def profile_rules(
+    rules_path: str = typer.Option(None, "--rules", help="Path to rules: file or directory of YAML"),
+    diff_file: str = typer.Option(None, "--diff", "-d", help="Optional .diff file to run against; else minimal diff"),
+) -> None:
+    """Print top slow rules by execution time (from one run). Use after replay to see which rules cost the most."""
+    from core.rules import RuleEngine
+
+    path = rules_path
+    if not path or not os.path.exists(path):
+        path = _default_rules_path()
+    engine = RuleEngine(path)
+    if diff_file and os.path.exists(diff_file):
+        with open(diff_file, "r", encoding="utf-8") as f:
+            content = f.read()
+        from core.parser import DiffParser
+        from core.ast_detector import ASTDetector
+        parser = DiffParser()
+        diff_data = parser.parse(content)
+        ast_signals = ASTDetector().detect_signals(diff_data)
+    else:
+        diff_data = {"files": [], "raw_diff": ""}
+        ast_signals = []
+    engine.evaluate(diff_data, ast_signals)
+    metrics = engine.get_metrics()
+    # Sort by time_ns desc, show ms
+    items = [(rid, m.get("time_ns", 0)) for rid, m in metrics.items()]
+    items.sort(key=lambda x: -x[1])
+    typer.echo("Top slow rules (this run):")
+    for i, (rule_id, time_ns) in enumerate(items[:20], 1):
+        ms = time_ns / 1_000_000
+        typer.echo(f"  {i:>2}. {rule_id:<45} {ms:>8.2f} ms")
+
+
 app.add_typer(rules_app, name="rules")
 
 if __name__ == "__main__":
