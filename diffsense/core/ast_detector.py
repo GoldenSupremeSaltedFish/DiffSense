@@ -6,6 +6,7 @@ import javalang
 from javalang.tokenizer import BasicType, Identifier
 from javalang.tree import SynchronizedStatement, MethodInvocation, FieldDeclaration, MethodDeclaration, LocalVariableDeclaration, VariableDeclarator, ForStatement, WhileStatement, DoStatement, ClassCreator, ReferenceType, BasicType as TreeBasicType, Assignment, TryResource, TryStatement, IfStatement, BinaryOperation, Literal
 from typing import List, Set, Dict, Any, Tuple, Optional
+from . import CACHE_VERSION
 from .signal_model import Signal
 from .change import Change, ChangeKind
 from .knowledge import is_thread_safe, is_lock_type
@@ -21,11 +22,10 @@ class ASTDetector:
         base_dir = os.environ.get("DIFFSENSE_CACHE_DIR")
         if not base_dir:
             base_dir = os.path.join(os.path.expanduser("~"), ".diffsense", "cache")
-        return os.path.join(base_dir, "ast")
+        return os.path.join(base_dir, CACHE_VERSION, "ast")
 
     def _ast_cache_key(self, wrapper_type: str, wrapper_text: str) -> str:
         hasher = hashlib.sha1()
-        hasher.update(b"v1")
         hasher.update(wrapper_type.encode("utf-8", errors="ignore"))
         hasher.update(wrapper_text.encode("utf-8", errors="ignore"))
         return hasher.hexdigest()

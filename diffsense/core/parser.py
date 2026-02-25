@@ -3,6 +3,7 @@ import os
 import json
 import hashlib
 from typing import List, Dict, Any, Optional
+from . import CACHE_VERSION
 
 class DiffParser:
     def __init__(self, cache_dir: Optional[str] = None):
@@ -12,11 +13,11 @@ class DiffParser:
         base_dir = os.environ.get("DIFFSENSE_CACHE_DIR")
         if not base_dir:
             base_dir = os.path.join(os.path.expanduser("~"), ".diffsense", "cache")
-        return os.path.join(base_dir, "diff")
+        return os.path.join(base_dir, CACHE_VERSION, "diff")
 
     def _cache_key(self, diff_content: str) -> str:
         digest = hashlib.sha1(diff_content.encode("utf-8", errors="ignore")).hexdigest()
-        return f"v1_{digest}"
+        return digest
 
     def _cache_path(self, cache_key: str) -> str:
         return os.path.join(self.cache_dir, f"{cache_key}.json")
