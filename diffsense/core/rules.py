@@ -110,11 +110,36 @@ class RuleEngine:
         triggered_rules = []
         ast_signals = ast_signals or []
         
+        # Incremental Scheduling: Extract unique file extensions and paths from diff_data
+        changed_files = diff_data.get("files", [])
+        
         for rule in self.rules:
             if not getattr(rule, 'enabled', True):
                 continue
             if not self.lifecycle.should_run(rule):
                 continue
+                
+            # Incremental Filtering: Only run rule if it matches at least one changed file
+            rule_lang = getattr(rule, 'language', '*')
+            rule_scope = getattr(rule, 'scope', '**')
+            
+            should_run = False
+            if rule_lang == '*' and rule_scope == '**':
+                should_run = True
+            else:
+                for file_path in changed_files:
+                    # Simple language check
+                    if rule_lang != '*' and not file_path.endswith(f".{rule_lang}"):
+                        continue
+                    # Simple scope check (basic substring for now, could be improved to glob)
+                    if rule_scope != '**' and rule_scope not in file_path:
+                        continue
+                    should_run = True
+                    break
+            
+            if not should_run:
+                continue
+
             rule_id = rule.id
             if rule_id not in self.metrics:
                 self.metrics[rule_id] = {"calls": 0, "hits": 0, "ignores": 0, "time_ns": 0, "errors": 0}

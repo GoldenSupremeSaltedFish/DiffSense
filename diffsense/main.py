@@ -54,10 +54,48 @@ def main():
     # Now takes triggered_rules and list of files
     result = composer.compose(triggered_rules, diff_data.get('files', []))
     
-    # Add Rule Performance Metrics (Hidden field for replay tool)
+    # Add Rule Performance & Cache Metrics
     result['_metrics'] = rule_engine.get_metrics()
-
-    # 6. Output
+    result['_metrics']['cache'] = {
+        "diff": diff_parser.metrics,
+        "ast": ast_detector.metrics
+    }
+    
+    # 6. Output report summary to stderr for CI visibility
+    sys.stderr.write("\n" + "="*40 + "\n")
+    sys.stderr.write("🚀 DiffSense Performance Report\n")
+    sys.stderr.write("="*40 + "\n")
+    
+    # Diff Cache
+    d_m = diff_parser.metrics
+    d_total = d_m["hits"] + d_m["misses"]
+    d_rate = (d_m["hits"] / d_total * 100) if d_total > 0 else 0
+    sys.stderr.write(f"🔹 Diff Cache Hit: {d_rate:.1f}% ({d_m['hits']}/{d_total})\n")
+    
+    # AST Cache
+    a_m = ast_detector.metrics
+    a_total = a_m["hits"] + a_m["misses"]
+    a_rate = (a_m["hits"] / a_total * 100) if a_total > 0 else 0
+    sys.stderr.write(f"🔹 AST Cache Hit:  {a_rate:.1f}% ({a_m['hits']}/{a_total})\n")
+    
+    # Saved Time (Estimated)
+    # Total saved = (hits * avg_parse_time_from_misses)
+    # Since we only track duration on miss, we use it as the estimate for hits.
+    d_saved = d_m["hits"] * d_m["saved_ms"]
+    a_saved = a_m["hits"] * (a_m["saved_ms"] / a_m["misses"] if a_m["misses"] > 0 else 0)
+    total_saved = (d_saved + a_saved) / 1000
+    sys.stderr.write(f"⏱️  Estimated Saved Time: {total_saved:.2f}s\n")
+    
+    # Slowest Rules
+    sys.stderr.write("\n🐢 Top 3 Slowest Rules:\n")
+    r_metrics = rule_engine.get_metrics()
+    sorted_rules = sorted(r_metrics.items(), key=lambda x: x[1].get('time_ns', 0), reverse=True)
+    for r_id, r_m in sorted_rules[:3]:
+        r_time_ms = r_m.get('time_ns', 0) / 1_000_000
+        sys.stderr.write(f"  - {r_id}: {r_time_ms:.2f}ms\n")
+    sys.stderr.write("="*40 + "\n\n")
+ 
+    # 7. Output Result
     if args.format == "json":
         print(json.dumps(result, indent=2))
     elif args.format == "markdown":

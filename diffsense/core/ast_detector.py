@@ -17,6 +17,7 @@ class ASTDetector:
         self.critical_calls = {"encode", "decode", "validate", "check", "normalize", "sanitize"}
         self.risky_executors = {"newFixedThreadPool", "newCachedThreadPool", "newSingleThreadExecutor"}
         self.cache_dir = self._resolve_cache_dir()
+        self.metrics = {"hits": 0, "misses": 0, "saved_ms": 0}
 
     def _resolve_cache_dir(self) -> str:
         base_dir = os.environ.get("DIFFSENSE_CACHE_DIR")
@@ -61,15 +62,25 @@ class ASTDetector:
             pass
 
     def _parse_with_cache(self, wrapper_type: str, wrapper_text: str) -> Optional[Any]:
+        import time
+        start_time = time.time()
+        
         cache_key = self._ast_cache_key(wrapper_type, wrapper_text)
         cached = self._load_cached_tree(cache_key)
         if cached is not None:
+            self.metrics["hits"] += 1
             if cached.get("ok") is False:
                 return None
             return cached.get("tree")
+        
+        self.metrics["misses"] += 1
         try:
             tree = javalang.parse.parse(wrapper_text)
             self._save_cached_tree(cache_key, tree, ok=True)
+            
+            duration_ms = (time.time() - start_time) * 1000
+            self.metrics["saved_ms"] += duration_ms
+            
             return tree
         except Exception:
             self._save_cached_tree(cache_key, None, ok=False)

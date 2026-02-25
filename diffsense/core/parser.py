@@ -8,6 +8,7 @@ from . import CACHE_VERSION
 class DiffParser:
     def __init__(self, cache_dir: Optional[str] = None):
         self.cache_dir = cache_dir or self._resolve_cache_dir()
+        self.metrics = {"hits": 0, "misses": 0, "saved_ms": 0}
 
     def _resolve_cache_dir(self) -> str:
         base_dir = os.environ.get("DIFFSENSE_CACHE_DIR")
@@ -50,6 +51,9 @@ class DiffParser:
         """
         Parses a unified diff string and returns a structured object.
         """
+        import time
+        start_time = time.time()
+        
         files = []
         stats = {"add": 0, "del": 0}
         file_patches = []
@@ -57,7 +61,12 @@ class DiffParser:
         cache_key = self._cache_key(diff_content)
         cached = self._load_cache(cache_key)
         if cached:
+            self.metrics["hits"] += 1
+            # We don't know exactly how much time was saved, but we can estimate 
+            # or track average parse time. For now, let's just mark it.
             return cached
+
+        self.metrics["misses"] += 1
 
         # Check if content looks like JSON (GitLab API response leak)
         if diff_content.strip().startswith('{') or diff_content.strip().startswith('['):
@@ -145,5 +154,10 @@ class DiffParser:
             "change_types": list(change_types),
             "raw_diff": diff_content
         }
+        
+        # Track how much time this parse took to estimate future savings
+        duration_ms = (time.time() - start_time) * 1000
+        self.metrics["saved_ms"] = duration_ms # Proxy for saved time on hit
+        
         self._save_cache(cache_key, result)
         return result
