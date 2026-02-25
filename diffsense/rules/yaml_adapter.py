@@ -10,6 +10,14 @@ class YamlRule(Rule):
     """
     def __init__(self, rule_dict: Dict[str, Any]):
         self._rule_dict = rule_dict
+        self._file_pattern = self._rule_dict.get('file')
+        self._compiled_match = None
+        content_regex = self._rule_dict.get('match')
+        if content_regex:
+            try:
+                self._compiled_match = re.compile(content_regex, re.MULTILINE)
+            except re.error:
+                self._compiled_match = None
 
     @property
     def id(self) -> str:
@@ -93,8 +101,8 @@ class YamlRule(Rule):
         
         # 1. Check File Pattern
         matched_files = []
-        if 'file' in self._rule_dict:
-            pattern = self._rule_dict['file']
+        if self._file_pattern:
+            pattern = self._file_pattern
             for f in diff_data.get('files', []):
                 if fnmatch.fnmatch(f, pattern):
                     matched_files.append(f)
@@ -106,11 +114,11 @@ class YamlRule(Rule):
             matched_files = diff_data.get('files', [])
 
         # 2. Check Content Match (Regex)
-        if 'match' in self._rule_dict:
-            content_regex = self._rule_dict['match']
+        if self._rule_dict.get('match'):
             raw_diff = diff_data.get('raw_diff', "")
-            
-            if not re.search(content_regex, raw_diff, re.MULTILINE):
+            if not self._compiled_match:
+                return None
+            if not self._compiled_match.search(raw_diff):
                 return None
 
         # Return the first matched file for reporting purposes
