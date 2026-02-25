@@ -35,10 +35,15 @@ class DiffParser:
     def _save_cache(self, cache_key: str, data: Dict[str, Any]) -> None:
         os.makedirs(self.cache_dir, exist_ok=True)
         path = self._cache_path(cache_key)
+        tmp_path = f"{path}.{os.getpid()}.tmp"
         try:
-            with open(path, "w", encoding="utf-8") as f:
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump(data, f)
+            # Atomic rename (replace existing if any)
+            os.replace(tmp_path, path)
         except Exception:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
             pass
 
     def parse(self, diff_content: str) -> Dict[str, Any]:

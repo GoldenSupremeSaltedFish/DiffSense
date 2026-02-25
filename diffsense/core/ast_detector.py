@@ -49,10 +49,15 @@ class ASTDetector:
     def _save_cached_tree(self, cache_key: str, tree: Any, ok: bool) -> None:
         os.makedirs(self.cache_dir, exist_ok=True)
         path = self._cache_path(cache_key)
+        tmp_path = f"{path}.{os.getpid()}.tmp"
         try:
-            with open(path, "wb") as f:
+            with open(tmp_path, "wb") as f:
                 pickle.dump({"ok": ok, "tree": tree}, f)
+            # Atomic rename (replace existing if any)
+            os.replace(tmp_path, path)
         except Exception:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
             pass
 
     def _parse_with_cache(self, wrapper_type: str, wrapper_text: str) -> Optional[Any]:
