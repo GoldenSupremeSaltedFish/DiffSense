@@ -9,6 +9,7 @@ from core.ast_detector import ASTDetector
 from core.rules import RuleEngine
 from core.rule_base import Rule
 from core import CACHE_VERSION
+from main import _baseline_items, _baseline_set, _baseline_key
 
 class MockRule(Rule):
     def __init__(self, rule_id, lang='*', scope='**'):
@@ -34,6 +35,29 @@ class MockRule(Rule):
         self.evaluated = True
         return None
 
+class MatchRule(Rule):
+    def __init__(self, rule_id, severity="high"):
+        self._id = rule_id
+        self._severity = severity
+        self.evaluated = False
+
+    @property
+    def id(self): return self._id
+    @property
+    def severity(self): return self._severity
+    @property
+    def impact(self): return "runtime"
+    @property
+    def rationale(self): return "test"
+    @property
+    def language(self): return "*"
+    @property
+    def scope(self): return "**"
+
+    def evaluate(self, diff_data, ast_signals):
+        self.evaluated = True
+        return {"file": diff_data.get("files", ["unknown"])[0]}
+
 class TestCacheAndScheduling(unittest.TestCase):
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
@@ -43,6 +67,8 @@ class TestCacheAndScheduling(unittest.TestCase):
         shutil.rmtree(self.test_dir)
         if "DIFFSENSE_CACHE_DIR" in os.environ:
             del os.environ["DIFFSENSE_CACHE_DIR"]
+        if "DIFFSENSE_RULE_METRICS" in os.environ:
+            del os.environ["DIFFSENSE_RULE_METRICS"]
 
     def test_cache_versioning_isolation(self):
         """验证缓存版本隔离：不同版本应该存放在不同目录"""
@@ -108,6 +134,42 @@ class TestCacheAndScheduling(unittest.TestCase):
         parser.parse(diff_content)
         self.assertEqual(parser.metrics["misses"], 1)
         self.assertEqual(parser.metrics["hits"], 1)
+
+    def test_rule_quality_disable(self):
+        metrics_path = os.path.join(self.test_dir, "rule_metrics.json")
+        os.environ["DIFFSENSE_RULE_METRICS"] = metrics_path
+        rule = MatchRule("quality_rule")
+        engine = RuleEngine("config/rules.yaml", config={"rule_quality": {"auto_tune": True, "min_samples": 1}})
+        engine.rules = [rule]
+        engine.ignore_manager.ignores = [{"rule": "quality_rule", "files": ["*"]}]
+        diff_data = {"files": ["a.py"]}
+        engine.evaluate(diff_data, [])
+        engine.persist_rule_quality()
+        engine2 = RuleEngine("config/rules.yaml", config={"rule_quality": {"auto_tune": True, "min_samples": 1}})
+        engine2.rules = [MatchRule("quality_rule")]
+        engine2.evaluate(diff_data, [])
+        self.assertFalse(engine2.rules[0].evaluated)
+
+    def test_rule_quality_degrade(self):
+        metrics_path = os.path.join(self.test_dir, "rule_metrics.json")
+        os.environ["DIFFSENSE_RULE_METRICS"] = metrics_path
+        data = {"rules": {"quality_rule": {"hits": 10, "confirmed": 4, "false_positive": 6, "precision": 0.4}}}
+        with open(metrics_path, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+        rule = MatchRule("quality_rule", severity="high")
+        engine = RuleEngine("config/rules.yaml", config={"rule_quality": {"auto_tune": True, "min_samples": 1}})
+        engine.rules = [rule]
+        diff_data = {"files": ["a.py"]}
+        triggered = engine.evaluate(diff_data, [])
+        self.assertEqual(len(triggered), 1)
+        self.assertEqual(triggered[0]["severity"], "medium")
+
+    def test_baseline_helpers(self):
+        rules = [{"id": "r1", "matched_file": "a.py"}, {"id": "r2", "matched_file": "b.py"}]
+        items = _baseline_items(rules)
+        data = {"items": items}
+        keys = _baseline_set(data)
+        self.assertIn(_baseline_key(rules[0]), keys)
 
 if __name__ == "__main__":
     unittest.main()

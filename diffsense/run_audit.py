@@ -8,11 +8,12 @@ from core.ast_detector import ASTDetector
 from core.rules import RuleEngine
 from core.evaluator import ImpactEvaluator
 from core.composer import DecisionComposer
-from core.renderer import MarkdownRenderer
+from core.renderer import MarkdownRenderer, HtmlRenderer
 from banner import print_banner
+from main import _load_baseline, _save_baseline, _baseline_items, _baseline_set, _baseline_key, _build_inline_comments, _write_json
 
 
-def run_audit(adapter, rules_path, profile=None):
+def run_audit(adapter, rules_path, profile=None, baseline=False, since_baseline=False, baseline_file=".diffsense-baseline.json", report_json="diffsense-report.json", report_html="diffsense-report.html", comments_json="diffsense-comments.json", quality_auto_tune=False, quality_disable_threshold=0.3, quality_downgrade_threshold=0.5, quality_min_samples=30):
     print_banner()
     print("Fetching diff...")
     diff_content = adapter.fetch_diff()
@@ -48,7 +49,13 @@ def run_audit(adapter, rules_path, profile=None):
     
     # 3. Evaluate Rules (Policy / Context)
     # Rules now consume both diff_data (structure) and ast_signals (semantics)
-    engine = RuleEngine(rules_path, profile=profile)
+    quality_config = {
+        "auto_tune": quality_auto_tune,
+        "disable_threshold": quality_disable_threshold,
+        "degrade_threshold": quality_downgrade_threshold,
+        "min_samples": quality_min_samples
+    }
+    engine = RuleEngine(rules_path, profile=profile, config={"rule_quality": quality_config})
     evaluator = ImpactEvaluator(engine)
     # Evaluator needs update to pass ast_signals or we pass it via engine directly?
     # Actually ImpactEvaluator calls engine.evaluate. Let's see ImpactEvaluator.
@@ -65,6 +72,12 @@ def run_audit(adapter, rules_path, profile=None):
     # I should check `core/evaluator.py`.
     
     impacts = evaluator.evaluate(diff_data, ast_signals=ast_signals)
+    if baseline:
+        _save_baseline(baseline_file, _baseline_items(impacts))
+    if since_baseline:
+        baseline_data = _load_baseline(baseline_file)
+        baseline_keys = _baseline_set(baseline_data)
+        impacts = [r for r in impacts if _baseline_key(r) not in baseline_keys]
     
     composer = DecisionComposer()
     # Ensure composer result matches structure expected by renderer
@@ -88,9 +101,26 @@ def run_audit(adapter, rules_path, profile=None):
     
     renderer = MarkdownRenderer()
     report = renderer.render(render_input)
+    rule_metrics = engine.get_metrics()
+    render_input["_metrics"] = rule_metrics
+    render_input["_metrics"]["cache"] = {"diff": parser.metrics, "ast": ast_detector.metrics}
+    render_input["_rule_quality"] = engine.get_rule_quality_metrics()
+    render_input["_quality_warnings"] = engine.get_quality_warnings()
+    engine.persist_rule_quality()
+    _write_json(report_json, render_input)
+    html_report = HtmlRenderer().render(render_input)
+    with open(report_html, "w", encoding="utf-8") as f:
+        f.write(html_report)
+    inline_comments = _build_inline_comments(impacts, diff_data)
+    _write_json(comments_json, inline_comments)
     
     print("Posting comment...")
     adapter.post_comment(report)
+    if hasattr(adapter, "post_inline_comments"):
+        try:
+            adapter.post_inline_comments(inline_comments)
+        except Exception:
+            pass
     
     # Enforcement Logic: Click-to-Ack (Approve-to-Ack)
     # If risk is elevated/critical, require PR approval to pass CI.
@@ -114,6 +144,8 @@ def run_audit(adapter, rules_path, profile=None):
             print("CI Failed to ensure awareness.")
             sys.exit(1)
             
+    for w in render_input["_quality_warnings"]:
+        print(f"⚠️ Low quality rule: {w.get('rule_id')} precision {w.get('precision'):.2f} (hits {w.get('hits')})")
     print("Audit finished successfully.")
 
 def main():
@@ -133,6 +165,16 @@ def main():
     # Config
     parser.add_argument("--rules", default="config/rules.yaml", help="Path to rules: single YAML file or directory")
     parser.add_argument("--profile", default=None, help="Profile: strict or lightweight")
+    parser.add_argument("--baseline", action="store_true", help="Generate baseline file for existing issues")
+    parser.add_argument("--since-baseline", action="store_true", help="Only report findings not in baseline")
+    parser.add_argument("--baseline-file", default=".diffsense-baseline.json", help="Baseline file path")
+    parser.add_argument("--report-json", default="diffsense-report.json", help="Report JSON output path")
+    parser.add_argument("--report-html", default="diffsense-report.html", help="Report HTML output path")
+    parser.add_argument("--comments-json", default="diffsense-comments.json", help="Inline comments JSON output path")
+    parser.add_argument("--quality-auto-tune", action="store_true", help="Enable quality auto tune (skip/downgrade)")
+    parser.add_argument("--quality-disable-threshold", type=float, default=0.3, help="Disable threshold")
+    parser.add_argument("--quality-downgrade-threshold", type=float, default=0.5, help="Downgrade threshold")
+    parser.add_argument("--quality-min-samples", type=int, default=30, help="Minimum samples before actions")
 
     args = parser.parse_args()
     
@@ -157,7 +199,7 @@ def main():
         script_dir = os.path.dirname(os.path.abspath(__file__))
         rules_path = os.path.join(script_dir, args.rules)
         
-    run_audit(adapter, rules_path, profile=args.profile)
+    run_audit(adapter, rules_path, profile=args.profile, baseline=args.baseline, since_baseline=args.since_baseline, baseline_file=args.baseline_file, report_json=args.report_json, report_html=args.report_html, comments_json=args.comments_json, quality_auto_tune=args.quality_auto_tune, quality_disable_threshold=args.quality_disable_threshold, quality_downgrade_threshold=args.quality_downgrade_threshold, quality_min_samples=args.quality_min_samples)
 
 if __name__ == "__main__":
     main()

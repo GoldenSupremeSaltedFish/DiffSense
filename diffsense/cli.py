@@ -30,6 +30,16 @@ def audit(
     mr_iid: int = typer.Option(None, "--mr-iid", help="GitLab merge request IID"),
     rules: str = typer.Option("config/rules.yaml", "--rules", help="Path to rules: single YAML file or directory of YAML files"),
     profile: str = typer.Option(None, "--profile", help="Profile: strict (all rules) or lightweight (critical only)"),
+    baseline: bool = typer.Option(False, "--baseline", help="Generate baseline file for existing issues"),
+    since_baseline: bool = typer.Option(False, "--since-baseline", help="Only report findings not in baseline"),
+    baseline_file: str = typer.Option(".diffsense-baseline.json", "--baseline-file", help="Baseline file path"),
+    report_json: str = typer.Option("diffsense-report.json", "--report-json", help="Report JSON output path"),
+    report_html: str = typer.Option("diffsense-report.html", "--report-html", help="Report HTML output path"),
+    comments_json: str = typer.Option("diffsense-comments.json", "--comments-json", help="Inline comments JSON output path"),
+    quality_auto_tune: bool = typer.Option(False, "--quality-auto-tune", help="Enable quality auto tune (skip/downgrade)"),
+    quality_disable_threshold: float = typer.Option(0.3, "--quality-disable-threshold", help="Disable threshold"),
+    quality_downgrade_threshold: float = typer.Option(0.5, "--quality-downgrade-threshold", help="Downgrade threshold"),
+    quality_min_samples: int = typer.Option(30, "--quality-min-samples", help="Minimum samples before actions"),
 ) -> None:
     """Run MR/PR risk audit (GitLab or GitHub). Use in CI with image: ghcr.io/xxx/diffsense:1.0."""
     from adapters.github_adapter import GitHubAdapter
@@ -54,7 +64,7 @@ def audit(
         typer.echo(f"Error: platform must be github or gitlab, got {platform}", err=True)
         raise typer.Exit(1)
 
-    do_audit(adapter, rules_path, profile=profile)
+    do_audit(adapter, rules_path, profile=profile, baseline=baseline, since_baseline=since_baseline, baseline_file=baseline_file, report_json=report_json, report_html=report_html, comments_json=comments_json, quality_auto_tune=quality_auto_tune, quality_disable_threshold=quality_disable_threshold, quality_downgrade_threshold=quality_downgrade_threshold, quality_min_samples=quality_min_samples)
 
 
 @app.command()
@@ -63,11 +73,27 @@ def replay(
     rules: str = typer.Option("config/rules.yaml", "--rules", help="Path to rules: single YAML file or directory of YAML files"),
     format: str = typer.Option("json", "--format", "-f", help="Output: json | markdown"),
     profile: str = typer.Option(None, "--profile", help="Profile: strict or lightweight"),
+    baseline: bool = typer.Option(False, "--baseline", help="Generate baseline file for existing issues"),
+    since_baseline: bool = typer.Option(False, "--since-baseline", help="Only report findings not in baseline"),
+    baseline_file: str = typer.Option(".diffsense-baseline.json", "--baseline-file", help="Baseline file path"),
+    report_json: str = typer.Option("diffsense-report.json", "--report-json", help="Report JSON output path"),
+    report_html: str = typer.Option("diffsense-report.html", "--report-html", help="Report HTML output path"),
+    comments_json: str = typer.Option("diffsense-comments.json", "--comments-json", help="Inline comments JSON output path"),
+    quality_auto_tune: bool = typer.Option(False, "--quality-auto-tune", help="Enable quality auto tune (skip/downgrade)"),
+    quality_disable_threshold: float = typer.Option(0.3, "--quality-disable-threshold", help="Disable threshold"),
+    quality_downgrade_threshold: float = typer.Option(0.5, "--quality-downgrade-threshold", help="Downgrade threshold"),
+    quality_min_samples: int = typer.Option(30, "--quality-min-samples", help="Minimum samples before actions"),
 ) -> None:
     """Run audit on a local diff file (for replay/offline)."""
-    args = ["diffsense", diff_file, "--rules", rules, "--format", format]
+    args = ["diffsense", diff_file, "--rules", rules, "--format", format, "--baseline-file", baseline_file, "--report-json", report_json, "--report-html", report_html, "--comments-json", comments_json, "--quality-disable-threshold", str(quality_disable_threshold), "--quality-downgrade-threshold", str(quality_downgrade_threshold), "--quality-min-samples", str(quality_min_samples)]
     if profile:
         args.extend(["--profile", profile])
+    if baseline:
+        args.append("--baseline")
+    if since_baseline:
+        args.append("--since-baseline")
+    if quality_auto_tune:
+        args.append("--quality-auto-tune")
     sys.argv = args
     from main import main as replay_main
     replay_main()
@@ -89,6 +115,20 @@ def rules_list(
     engine = RuleEngine(path, profile=profile)
     for r in engine.rules:
         typer.echo(r.id)
+
+@rules_app.command("packs")
+def rules_packs() -> None:
+    from importlib.metadata import entry_points
+    eps = []
+    try:
+        eps = entry_points(group="diffsense.rules")
+    except TypeError:
+        eps = entry_points().get("diffsense.rules", [])
+    if not eps:
+        typer.echo("No rule packs installed.")
+        return
+    for ep in eps:
+        typer.echo(f"{ep.name} -> {ep.value}")
 
 
 @rules_app.command("report")

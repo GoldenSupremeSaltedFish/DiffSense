@@ -20,32 +20,35 @@ class DecisionComposer:
         max_score = 0
         
         for rule in triggered_rules:
-            # Extract fields
             rule_id = rule.get('id', 'unknown')
             impact_dim = rule.get('impact', 'general')
             severity = rule.get('severity', 'low')
             rationale = rule.get('rationale', '')
             matched_file = rule.get('matched_file', '')
+            precision = rule.get('precision')
+            quality_status = rule.get('quality_status')
             
-            # 1. Collect Reasons (Rule IDs)
             reasons.append(rule_id)
             
-            # 2. Build Details
-            details.append({
+            detail = {
                 "rule_id": rule_id,
                 "severity": severity,
                 "file": matched_file,
-                "rationale": rationale
-            })
+                "rationale": rationale,
+                "impact": impact_dim
+            }
+            if precision is not None:
+                detail["precision"] = precision
+            if quality_status is not None:
+                detail["quality_status"] = quality_status
+            details.append(detail)
             
-            # 3. Update Impacts Map (Highest severity per dimension)
             current_dim_score = severity_map.get(impacts_map.get(impact_dim, "low"), 0)
             new_score = severity_map.get(severity, 0)
             
             if new_score > current_dim_score:
                 impacts_map[impact_dim] = severity
                 
-            # 4. Track Global Max Score
             if new_score > max_score:
                 max_score = new_score
                 

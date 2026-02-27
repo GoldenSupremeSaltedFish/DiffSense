@@ -1,8 +1,10 @@
 import os
 import yaml
+import fnmatch
 import time
-from typing import Dict, List, Any, Tuple, Optional
+from typing import Dict, List, Any, Optional
 from core.rule_base import Rule
+from core.quality_manager import RuleQualityManager
 
 try:
     from importlib.metadata import entry_points
@@ -29,6 +31,7 @@ class RuleEngine:
         self.profile = profile
         self.config = config or {}
         self.lifecycle = LifecycleManager(self.config)
+        self.quality_manager = self._init_quality_manager()
 
         # 1. Register Built-in Rules (Plugins)
         self._register_builtins()
@@ -38,6 +41,7 @@ class RuleEngine:
 
         # 3. Load rules from pip-installed packages (entry point group: diffsense.rules)
         self._load_entry_point_rules()
+        self._load_rulesets_from_config()
 
         # 4. Apply profile filter (lightweight = only critical; strict/None = all)
         if profile == "lightweight":
@@ -103,6 +107,52 @@ class RuleEngine:
             except Exception:
                 pass  # skip broken plugin
 
+    def _init_quality_manager(self) -> RuleQualityManager:
+        cfg = self.config.get("rule_quality", {})
+        path = os.environ.get("DIFFSENSE_RULE_METRICS") or os.path.join(os.getcwd(), "rule_metrics.json")
+        auto_tune = cfg.get("auto_tune", False)
+        degrade = cfg.get("degrade_threshold", 0.5)
+        disable = cfg.get("disable_threshold", 0.3)
+        min_samples = cfg.get("min_samples", 30)
+        try:
+            degrade = float(degrade)
+        except Exception:
+            degrade = 0.5
+        try:
+            disable = float(disable)
+        except Exception:
+            disable = 0.3
+        try:
+            min_samples = int(min_samples)
+        except Exception:
+            min_samples = 30
+        auto_tune = bool(auto_tune)
+        return RuleQualityManager(path, auto_tune, degrade, disable, min_samples)
+
+    def _load_rulesets_from_config(self) -> None:
+        rulesets = []
+        cfg_sets = self.config.get("rulesets")
+        if isinstance(cfg_sets, list):
+            rulesets.extend([s for s in cfg_sets if isinstance(s, str)])
+        env_sets = os.environ.get("DIFFSENSE_RULESETS")
+        if env_sets:
+            for s in env_sets.split(","):
+                s = s.strip()
+                if s:
+                    rulesets.append(s)
+        for path in rulesets:
+            if os.path.exists(path):
+                self._load_yaml_rules(path)
+
+    def persist_rule_quality(self) -> None:
+        self.quality_manager.persist()
+
+    def get_rule_quality_metrics(self) -> Dict[str, Any]:
+        return self.quality_manager.get_metrics()
+
+    def get_quality_warnings(self) -> List[Dict[str, Any]]:
+        return self.quality_manager.warnings()
+
     def evaluate(self, diff_data: Dict[str, Any], ast_signals: List[Any] = None) -> List[Dict[str, Any]]:
         """
         Evaluates all registered rules against the diff.
@@ -132,7 +182,7 @@ class RuleEngine:
                     if rule_lang != '*' and not file_path.endswith(f".{rule_lang}"):
                         continue
                     # Simple scope check (basic substring for now, could be improved to glob)
-                    if rule_scope != '**' and rule_scope not in file_path:
+                    if rule_scope != '**' and not fnmatch.fnmatch(file_path, rule_scope):
                         continue
                     should_run = True
                     break
@@ -141,6 +191,8 @@ class RuleEngine:
                 continue
 
             rule_id = rule.id
+            if self.quality_manager.should_skip(rule_id):
+                continue
             if rule_id not in self.metrics:
                 self.metrics[rule_id] = {"calls": 0, "hits": 0, "ignores": 0, "time_ns": 0, "errors": 0}
             
@@ -156,6 +208,7 @@ class RuleEngine:
                     if self.ignore_manager.is_ignored(rule_id, matched_file):
                         self.metrics[rule_id]["hits"] += 1
                         self.metrics[rule_id]["ignores"] += 1
+                        self.quality_manager.record_false_positive(rule_id)
                         match_details = None
             except Exception:
                 self.metrics[rule_id]["errors"] += 1
@@ -165,13 +218,18 @@ class RuleEngine:
             
             if match_details:
                 self.metrics[rule_id]["hits"] += 1
+                quality_entry = self.quality_manager.record_hit(rule_id)
+                quality_status, precision, _ = self.quality_manager.status(rule_id)
                 severity = self.lifecycle.adjust_severity(rule, rule.severity)
+                severity = self.quality_manager.adjust_severity(severity, rule_id)
                 triggered = {
                     "id": rule.id,
                     "severity": severity,
                     "impact": rule.impact,
                     "rationale": rule.rationale,
-                    "matched_file": match_details.get('file', 'unknown')
+                    "matched_file": match_details.get('file', 'unknown'),
+                    "precision": quality_entry.get("precision", precision),
+                    "quality_status": quality_status
                 }
                 triggered_rules.append(triggered)
                 

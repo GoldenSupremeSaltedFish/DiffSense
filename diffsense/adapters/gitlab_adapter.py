@@ -102,6 +102,18 @@ class GitLabAdapter(PlatformAdapter):
             self.mr.notes.create({'body': final_body})
             print("Created GitLab note")
 
+    def post_inline_comments(self, comments):
+        if not comments:
+            return
+        lines = []
+        for c in comments:
+            path = c.get("path", "")
+            line = c.get("line", "")
+            body = c.get("body", "")
+            lines.append(f"{path}:{line} {body}")
+        content = "\n".join(lines)
+        self.post_comment(content)
+
     def is_approved(self) -> bool:
         """
         Check if MR is approved using GitLab's Approvals API.
