@@ -36,10 +36,10 @@ def audit(
     report_json: str = typer.Option("diffsense-report.json", "--report-json", help="Report JSON output path"),
     report_html: str = typer.Option("diffsense-report.html", "--report-html", help="Report HTML output path"),
     comments_json: str = typer.Option("diffsense-comments.json", "--comments-json", help="Inline comments JSON output path"),
-    quality_auto_tune: bool = typer.Option(False, "--quality-auto-tune", help="Enable quality auto tune (skip/downgrade)"),
-    quality_disable_threshold: float = typer.Option(0.3, "--quality-disable-threshold", help="Disable threshold"),
-    quality_downgrade_threshold: float = typer.Option(0.5, "--quality-downgrade-threshold", help="Downgrade threshold"),
-    quality_min_samples: int = typer.Option(30, "--quality-min-samples", help="Minimum samples before actions"),
+    quality_auto_tune: bool = typer.Option(False, "--quality-auto-tune", help="[DEPRECATED] Enable quality auto tune (now only affects reporting)"),
+    quality_disable_threshold: float = typer.Option(0.3, "--quality-disable-threshold", help="Disable threshold for reporting"),
+    quality_downgrade_threshold: float = typer.Option(0.5, "--quality-downgrade-threshold", help="Downgrade threshold for reporting"),
+    quality_min_samples: int = typer.Option(30, "--quality-min-samples", help="Minimum samples before quality warnings"),
 ) -> None:
     """Run MR/PR risk audit (GitLab or GitHub). Use in CI with image: ghcr.io/xxx/diffsense:1.0."""
     from adapters.github_adapter import GitHubAdapter
@@ -79,10 +79,10 @@ def replay(
     report_json: str = typer.Option("diffsense-report.json", "--report-json", help="Report JSON output path"),
     report_html: str = typer.Option("diffsense-report.html", "--report-html", help="Report HTML output path"),
     comments_json: str = typer.Option("diffsense-comments.json", "--comments-json", help="Inline comments JSON output path"),
-    quality_auto_tune: bool = typer.Option(False, "--quality-auto-tune", help="Enable quality auto tune (skip/downgrade)"),
-    quality_disable_threshold: float = typer.Option(0.3, "--quality-disable-threshold", help="Disable threshold"),
-    quality_downgrade_threshold: float = typer.Option(0.5, "--quality-downgrade-threshold", help="Downgrade threshold"),
-    quality_min_samples: int = typer.Option(30, "--quality-min-samples", help="Minimum samples before actions"),
+    quality_auto_tune: bool = typer.Option(False, "--quality-auto-tune", help="[DEPRECATED] Enable quality auto tune (now only affects reporting)"),
+    quality_disable_threshold: float = typer.Option(0.3, "--quality-disable-threshold", help="Disable threshold for reporting"),
+    quality_downgrade_threshold: float = typer.Option(0.5, "--quality-downgrade-threshold", help="Downgrade threshold for reporting"),
+    quality_min_samples: int = typer.Option(30, "--quality-min-samples", help="Minimum samples before quality warnings"),
 ) -> None:
     """Run audit on a local diff file (for replay/offline)."""
     args = ["diffsense", diff_file, "--rules", rules, "--format", format, "--baseline-file", baseline_file, "--report-json", report_json, "--report-html", report_html, "--comments-json", comments_json, "--quality-disable-threshold", str(quality_disable_threshold), "--quality-downgrade-threshold", str(quality_downgrade_threshold), "--quality-min-samples", str(quality_min_samples)]

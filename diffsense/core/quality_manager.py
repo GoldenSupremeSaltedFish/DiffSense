@@ -77,25 +77,18 @@ class RuleQualityManager:
         return "normal", precision, hits
 
     def should_skip(self, rule_id: str) -> bool:
-        if not self.auto_tune:
-            return False
-        status, _, _ = self.status(rule_id)
-        return status == "disabled"
+        """
+        [Architecture Principle Violation] NEVER automatically skip a rule based on quality.
+        Decision must be human-led.
+        """
+        return False
 
     def adjust_severity(self, severity: str, rule_id: str) -> str:
-        if not self.auto_tune:
-            return severity
-        status, _, _ = self.status(rule_id)
-        if status != "degraded":
-            return severity
-        order = ["low", "medium", "high", "critical"]
-        sev = (severity or "").lower()
-        if sev not in order:
-            return severity
-        idx = order.index(sev)
-        if idx <= 0:
-            return "low"
-        return order[idx - 1]
+        """
+        [Architecture Principle Violation] NEVER automatically downgrade severity.
+        Severity defines risk semantics, not frequency.
+        """
+        return severity
 
     def warnings(self) -> List[Dict[str, Any]]:
         rows = []
