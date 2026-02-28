@@ -99,16 +99,9 @@ class ASTDetector:
              
         # Determine Analysis Tier
         java_files = [f for f in file_patches if f.get('file', '').endswith('.java')]
-        num_java_files = len(java_files)
         
-        # Tier 3: Metadata Only (Mega Diff / Refactor)
-        if num_java_files > 30:
-            return [Change(kind=ChangeKind.UNKNOWN, file="meta", symbol="LargeRefactor", meta={"tier": 3})]
-            
-        # Tier 2: Lightweight (Tokenizer Only)
+        # Always use deep analysis to avoid "Security Blind Spots" (Architecture Principle Violation)
         analysis_mode = "deep"
-        if 10 < num_java_files <= 30:
-            analysis_mode = "light"
             
         for entry in file_patches:
             filename = entry.get('file', 'unknown')

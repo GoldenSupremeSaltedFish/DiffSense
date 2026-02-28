@@ -191,8 +191,6 @@ class RuleEngine:
                 continue
 
             rule_id = rule.id
-            if self.quality_manager.should_skip(rule_id):
-                continue
             if rule_id not in self.metrics:
                 self.metrics[rule_id] = {"calls": 0, "hits": 0, "ignores": 0, "time_ns": 0, "errors": 0}
             
@@ -221,7 +219,6 @@ class RuleEngine:
                 quality_entry = self.quality_manager.record_hit(rule_id)
                 quality_status, precision, _ = self.quality_manager.status(rule_id)
                 severity = self.lifecycle.adjust_severity(rule, rule.severity)
-                severity = self.quality_manager.adjust_severity(severity, rule_id)
                 triggered = {
                     "id": rule.id,
                     "severity": severity,
