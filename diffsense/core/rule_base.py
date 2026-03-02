@@ -63,6 +63,11 @@ class Rule(ABC):
         return "**"
 
     @property
+    def rule_type(self) -> str:
+        """Rule type: regression (depends on diff history) or absolute (context-independent)"""
+        return "absolute"
+
+    @property
     def status(self) -> str:
         """Lifecycle status: experimental, beta, stable, deprecated, disabled. Engine skips disabled."""
         return "experimental"

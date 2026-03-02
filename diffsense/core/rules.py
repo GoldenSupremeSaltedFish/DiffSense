@@ -162,13 +162,33 @@ class RuleEngine:
         
         # Incremental Scheduling: Extract unique file extensions and paths from diff_data
         changed_files = diff_data.get("files", [])
+        new_files = diff_data.get("new_files", [])
+        stats = diff_data.get("stats", {"add": 0, "del": 0})
         
+        # Adaptive Scheduling: If this is a "pure new project/file" diff, skip regression rules
+        # Logic: If deletions are very low compared to additions, it's likely new code.
+        total_changes = stats["add"] + stats["del"]
+        is_mostly_new = False
+        if total_changes > 10: # Only apply heuristic for non-trivial diffs
+             if stats["del"] / total_changes < 0.1: # Less than 10% deletions
+                  is_mostly_new = True
+        
+        # Another heuristic: If > 80% of files are new
+        if len(changed_files) > 0 and (len(new_files) / len(changed_files)) > 0.8:
+            is_mostly_new = True
+
         for rule in self.rules:
             if not getattr(rule, 'enabled', True):
                 continue
             if not self.lifecycle.should_run(rule):
                 continue
                 
+            # Adaptive Filter: Skip regression rules if the diff is mostly new files
+            rule_type = getattr(rule, 'rule_type', 'absolute')
+            if is_mostly_new and rule_type == 'regression':
+                # Skip regression rules for new projects/files as they are meaningless
+                continue
+
             # Incremental Filtering: Only run rule if it matches at least one changed file
             rule_lang = getattr(rule, 'language', '*')
             rule_scope = getattr(rule, 'scope', '**')
