@@ -59,3 +59,10 @@ def get_rules():
 
 - Package name convention: `diffsense-rules-<name>` (e.g. `diffsense-rules-enterprise`).
 - Publish to PyPI or an internal index; users run `pip install diffsense-rules-company` and use `diffsense audit` (or replay) with or without `--rules`; plugin rules are always merged in.
+
+## 示例规则包与 10 分钟上手
+
+- **示例包**：仓库内 `examples/diffsense-rules-example/`，含 entry point、1～2 条 YAML 规则与 README。  
+  - 安装：`cd examples/diffsense-rules-example && pip install -e .`  
+  - 验证：`diffsense rules list` 中应出现 `example.custom.*`。
+- **规则开发 10 分钟上手**：见 [rule-quickstart.md](rule-quickstart.md)（最小 YAML/Python 模板与 5 步流程）。

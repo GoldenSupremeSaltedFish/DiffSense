@@ -1,0 +1,12 @@
+# 阶段性汇报文档（Cursor / 里程碑）
+
+本目录为 **DiffSense 阶段性汇报与里程碑文档** 的统一存放位置，便于 Cursor 与协作方查阅。
+
+| 文档 | 说明 |
+|------|------|
+| [ROADMAP_12_MONTHS_CN.md](./ROADMAP_12_MONTHS_CN.md) | 12 个月路线图（Q1～Q4）、里程碑状态与 DoD |
+| [NEXT_STEPS_CN.md](./NEXT_STEPS_CN.md) | 接下来做（执行清单）、Q2/Q3 子任务、工程化检验清单 |
+| [ARCHITECTURE_PRINCIPLES.md](./ARCHITECTURE_PRINCIPLES.md) | 产品宗旨与架构原则（红线、护城河、Human-in-the-loop） |
+| [ENGINEERING_CHECK.md](./ENGINEERING_CHECK.md) | 工程化检查报告（测试、CI、文档一致性） |
+
+其他说明类文档（如 ignoring、ci-cache、performance、rule-plugins、rule-quickstart）仍在 **docs/** 下，本目录内通过相对路径 `../xxx.md` 引用。

@@ -22,6 +22,12 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Cache DiffSense (diff + AST)
+        uses: actions/cache@v4
+        with:
+          path: ~/.diffsense
+          key: diffsense-${{ runner.os }}-${{ hashFiles('**/requirements.txt') || 'default' }}
+
       - name: Install dependencies
         run: |
           pip install -r requirements.txt

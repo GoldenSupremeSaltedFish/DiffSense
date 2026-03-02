@@ -80,15 +80,8 @@
 ### PR 中的反馈模型
 ```text
 DiffSense Report
-
-🔥 critical (1)
-  - concurrency.lock_removed
-    synchronized removed in OrderService.java:142
-
-⚠️ elevated (2)
-  - timeout increased 2s → 60s
-  - retry removed
-
+🔥 critical (1)  - concurrency.lock_removed ...
+⚠️ elevated (2)  - timeout increased ...
 Cache hit: 87% | saved: 18.4s
 Rules executed: 12 / 64
 ```
@@ -96,13 +89,7 @@ Rules executed: 12 / 64
 
 ### 运行模型
 ```text
-Diff 
- → Parser 
- → Scheduler（language/scope） 
- → Incremental AST 
- → RuleEngine 
- → DecisionComposer 
- → Gate 
+Diff → Parser → Scheduler（language/scope） → Incremental AST → RuleEngine → DecisionComposer → Gate
 ```
 
 ---

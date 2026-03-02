@@ -127,7 +127,7 @@ def replay(
     replay_main()
 
 
-rules_app = typer.Typer(help="Manage rules.")
+rules_app = typer.Typer(help="Manage rules. Use 'rules report' for rule quality from replay JSON; use 'rules health' for persisted rule_metrics.json.")
 
 @rules_app.command("list")
 def rules_list(
@@ -164,7 +164,7 @@ def rules_report(
     input_file: str = typer.Option(None, "--input", "-i", help="JSON file from replay (must contain _metrics). Default: stdin"),
     noisy: int = typer.Option(0, "--noisy", "-n", help="Mark rules with fp_rate >= this percent as noisy (0 = show all)"),
 ) -> None:
-    """Rule quality report: hits, accepts, ignores, fp_rate. Input = replay JSON with _metrics."""
+    """Rule quality / rule health: hits, accepts, ignores, fp_rate from a single replay. Input = replay JSON with _metrics."""
     import json
     from core.rules import RuleEngine
 
@@ -185,6 +185,43 @@ def rules_report(
         fp_pct = r["fp_rate"] * 100
         flag = "  noisy" if noisy and fp_pct >= noisy else ""
         typer.echo(f"{r['rule_id']:<45} {r['hits']:>6} {r['accepts']:>7} {r['ignores']:>7} {fp_pct:>6.0f}%{flag}")
+
+
+@rules_app.command("health")
+def rules_health(
+    metrics_file: str = typer.Option(None, "--metrics", "-m", help="Path to rule_metrics.json (default: DIFFSENSE_RULE_METRICS or ./rule_metrics.json)"),
+) -> None:
+    """Rule health from persisted rule_metrics.json (hits, confirmed, false_positive, precision, quality_status)."""
+    import json
+    path = metrics_file or os.environ.get("DIFFSENSE_RULE_METRICS") or os.path.join(os.getcwd(), "rule_metrics.json")
+    if not os.path.exists(path):
+        typer.echo(f"No rule_metrics.json at {path}. Run audit/replay with quality tracking first.", err=True)
+        raise typer.Exit(1)
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    rules = data.get("rules") or {}
+    if not rules:
+        typer.echo("No rule entries in rule_metrics.json.")
+        return
+    typer.echo(f"{'rule_id':<45} {'hits':>6} {'confirmed':>9} {'false_positive':>14} {'precision':>9} {'status':>12}")
+    typer.echo("-" * 96)
+    for rule_id, entry in sorted(rules.items()):
+        if not isinstance(entry, dict):
+            continue
+        hits = entry.get("hits", 0)
+        confirmed = entry.get("confirmed", 0)
+        fp = entry.get("false_positive", 0)
+        prec = entry.get("precision", 1.0)
+        prec_str = f"{prec:.2f}" if isinstance(prec, (int, float)) else str(prec)
+        status = "normal"
+        if hits >= 30:
+            if prec < 0.3:
+                status = "disabled"
+            elif prec < 0.5:
+                status = "degraded"
+        elif hits > 0:
+            status = "insufficient"
+        typer.echo(f"{rule_id:<45} {hits:>6} {confirmed:>9} {fp:>14} {prec_str:>9} {status:>12}")
 
 
 @rules_app.command("sdk")

@@ -108,8 +108,7 @@ def run_audit(adapter, rules_path, profile=None, baseline=False, since_baseline=
     
     renderer = MarkdownRenderer()
     report = renderer.render(render_input)
-    rule_metrics = engine.get_metrics()
-    render_input["_metrics"] = rule_metrics
+    render_input["_metrics"] = dict(engine.get_metrics())
     render_input["_metrics"]["cache"] = {"diff": parser.metrics, "ast": ast_detector.metrics}
     render_input["_metrics"]["rule_stats"] = engine.get_rule_stats()
     render_input["_rule_quality"] = engine.get_rule_quality_metrics()

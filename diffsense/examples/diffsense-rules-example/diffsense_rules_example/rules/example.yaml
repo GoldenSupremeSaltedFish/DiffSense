@@ -1,0 +1,18 @@
+# 示例规则（与 docs/rule-plugins.md 契约一致）
+# 用于 Q3 示例包与 10 分钟上手
+rules:
+  - id: example.custom.risk
+    signal: "runtime.concurrency.synchronized"
+    action: "removed"
+    file: "**"
+    impact: runtime
+    severity: high
+    rationale: "Example: removal of synchronized in custom rule set."
+
+  - id: example.custom.added
+    signal: "runtime.concurrency.lock"
+    action: "added"
+    file: "**/core/**"
+    impact: runtime
+    severity: medium
+    rationale: "Example: lock usage in core."
