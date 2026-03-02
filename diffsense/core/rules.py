@@ -59,14 +59,14 @@ class RuleEngine:
     def _load_yaml_rules(self, path: str):
         """
         Loads YAML rules from a single file or a directory of .yaml files.
-        If path is a directory, loads all .yaml files in that directory (one level, no recursion).
+        If path is a directory, loads all .yaml files in that directory recursively.
         Each file must have top-level 'rules: [...]'. Load order is deterministic (sorted by name).
         """
         if os.path.isdir(path):
-            files = sorted(f for f in os.listdir(path) if f.endswith('.yaml'))
-            for name in files:
-                file_path = os.path.join(path, name)
-                self._load_yaml_file(file_path)
+            for root, _, files in os.walk(path):
+                for name in sorted(f for f in files if f.endswith('.yaml')):
+                    file_path = os.path.join(root, name)
+                    self._load_yaml_file(file_path)
         else:
             self._load_yaml_file(path)
 
@@ -246,7 +246,8 @@ class RuleEngine:
                     "rationale": rule.rationale,
                     "matched_file": match_details.get('file', 'unknown'),
                     "precision": quality_entry.get("precision", precision),
-                    "quality_status": quality_status
+                    "quality_status": quality_status,
+                    "is_blocking": getattr(rule, 'is_blocking', False)
                 }
                 triggered_rules.append(triggered)
                 

@@ -1,0 +1,15 @@
+rules:
+  - id: absolute.stability.catch_exception
+    rule_type: absolute
+    match: 'catch\s*\(\s*Exception\s+\w+\s*\)'
+    severity: medium
+    impact: maintenance
+    rationale: "Catching 'Exception' may hide critical runtime errors (e.g., NullPointerException)."
+
+  - id: absolute.stability.optional_get
+    rule_type: absolute
+    match: '\.get\(\)'
+    file: "**.java"
+    severity: high
+    impact: runtime
+    rationale: "Using Optional.get() without isPresent() check can cause NoSuchElementException."

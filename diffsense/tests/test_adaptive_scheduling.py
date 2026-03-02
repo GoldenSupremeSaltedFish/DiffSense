@@ -29,8 +29,8 @@ class TestAdaptiveScheduling(unittest.TestCase):
         triggered = engine.evaluate(diff_data, [])
         
         ids = [t["id"] for t in triggered]
-        # Should trigger runtime.concurrency.new_thread (from absolute.yaml)
-        self.assertIn("runtime.concurrency.new_thread", ids)
+        # Should trigger absolute.concurrency.new_thread (from absolute/concurrency.yaml)
+        self.assertIn("absolute.concurrency.new_thread", ids)
 
     def test_new_file_skips_regression_rule(self):
         # A diff that adds a new file with 'HashMap'
@@ -75,6 +75,29 @@ class TestAdaptiveScheduling(unittest.TestCase):
         
         ids = [t["id"] for t in triggered]
         self.assertIn("runtime.concurrency_regression", ids)
+
+    def test_blocking_rule_sets_critical_level(self):
+        # A diff that triggers a blocking rule (e.g. plaintext token)
+        diff_content = textwrap.dedent("""\
+            diff --git a/Secret.py b/Secret.py
+            --- a/Secret.py
+            +++ b/Secret.py
+            @@ -1 +1 @@
+            +API_KEY = "sk-abcdef1234567890abcdef1234567890"
+            """)
+        parser = DiffParser()
+        diff_data = parser.parse(diff_content)
+        
+        engine = RuleEngine(self.rules_path)
+        triggered = engine.evaluate(diff_data, [])
+        
+        from diffsense.core.composer import DecisionComposer
+        composer = DecisionComposer()
+        result = composer.compose(triggered)
+        
+        self.assertEqual(result["review_level"], "critical")
+        self.assertEqual(result["meta"]["suggested_action"], "block_pr")
+        self.assertIn("absolute.security.plaintext_token", result["reasons"])
 
 if __name__ == "__main__":
     unittest.main()

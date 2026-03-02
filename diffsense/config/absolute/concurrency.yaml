@@ -1,0 +1,22 @@
+rules:
+  - id: absolute.concurrency.new_thread
+    rule_type: absolute
+    is_blocking: true
+    match: 'new\s+Thread\(.*\)'
+    severity: high
+    impact: runtime
+    rationale: "Using 'new Thread()' bypasses managed thread pools, risking resource exhaustion."
+
+  - id: absolute.concurrency.fixed_threadpool_1
+    rule_type: absolute
+    match: 'Executors\.newFixedThreadPool\(1\)'
+    severity: medium
+    impact: runtime
+    rationale: "FixedThreadPool(1) can lead to request queuing and latency spikes under load."
+
+  - id: absolute.concurrency.sleep_long
+    rule_type: absolute
+    match: 'Thread\.sleep\(\d{4,}\)'
+    severity: high
+    impact: runtime
+    rationale: "Thread.sleep() for more than 1s detected. Potential for blocking I/O or deadlock."
