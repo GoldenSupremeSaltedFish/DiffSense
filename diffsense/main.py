@@ -111,6 +111,9 @@ def main():
     parser.add_argument("--quality-disable-threshold", type=float, default=0.3, help="Disable threshold")
     parser.add_argument("--quality-downgrade-threshold", type=float, default=0.5, help="Downgrade threshold")
     parser.add_argument("--quality-min-samples", type=int, default=30, help="Minimum samples before actions")
+    parser.add_argument("--experimental", action="store_true", help="Include experimental rules (report-only by default)")
+    parser.add_argument("--experimental-report-only", dest="experimental_report_only", action="store_true", default=True, help="Do not affect decision with experimental rules")
+    parser.add_argument("--experimental-affect-decision", dest="experimental_report_only", action="store_false", help="Allow experimental rules to affect decision")
 
     args = parser.parse_args()
     
@@ -144,7 +147,14 @@ def main():
         "degrade_threshold": args.quality_downgrade_threshold,
         "min_samples": args.quality_min_samples
     }
-    rule_engine = RuleEngine(rules_path, profile=args.profile, config={"rule_quality": quality_config})
+    rule_engine = RuleEngine(
+        rules_path,
+        profile=args.profile,
+        config={
+            "rule_quality": quality_config,
+            "experimental": {"enabled": args.experimental, "report_only": args.experimental_report_only},
+        },
+    )
     evaluator = ImpactEvaluator(rule_engine)
     
     # 4. Evaluate Impact
@@ -168,6 +178,7 @@ def main():
         "diff": diff_parser.metrics,
         "ast": ast_detector.metrics
     }
+    result["_metrics"]["rule_stats"] = rule_engine.get_rule_stats()
     result["_rule_quality"] = rule_engine.get_rule_quality_metrics()
     result["_quality_warnings"] = rule_engine.get_quality_warnings()
     
@@ -198,10 +209,10 @@ def main():
     
     # Slowest Rules
     sys.stderr.write("\n🐢 Top 3 Slowest Rules:\n")
-    r_metrics = rule_engine.get_metrics()
-    sorted_rules = sorted(r_metrics.items(), key=lambda x: x[1].get('time_ns', 0), reverse=True)
-    for r_id, r_m in sorted_rules[:3]:
-        r_time_ms = r_m.get('time_ns', 0) / 1_000_000
+    r_stats = result["_metrics"]["rule_stats"].get("top_slow", [])
+    for r in r_stats[:3]:
+        r_id = r.get("rule_id")
+        r_time_ms = r.get("time_ms", 0)
         sys.stderr.write(f"  - {r_id}: {r_time_ms:.2f}ms\n")
     for w in result["_quality_warnings"]:
         sys.stderr.write(f"⚠️ Low quality rule: {w.get('rule_id')} precision {w.get('precision'):.2f} (hits {w.get('hits')})\n")

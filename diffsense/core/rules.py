@@ -32,6 +32,9 @@ class RuleEngine:
         self.config = config or {}
         self.lifecycle = LifecycleManager(self.config)
         self.quality_manager = self._init_quality_manager()
+        exp_cfg = self.config.get("experimental", {})
+        self.experimental_enabled = bool(exp_cfg.get("enabled", False))
+        self.experimental_report_only = bool(exp_cfg.get("report_only", True))
 
         # 1. Register Built-in Rules (Plugins)
         self._register_builtins()
@@ -145,6 +148,7 @@ class RuleEngine:
                 self._load_yaml_rules(path)
 
     def persist_rule_quality(self) -> None:
+        self._update_quality_report()
         self.quality_manager.persist()
 
     def get_rule_quality_metrics(self) -> Dict[str, Any]:
@@ -152,6 +156,40 @@ class RuleEngine:
 
     def get_quality_warnings(self) -> List[Dict[str, Any]]:
         return self.quality_manager.warnings()
+
+    def get_rule_stats(self, limit: int = 10) -> Dict[str, Any]:
+        metrics = self.metrics
+        quality = self.get_rule_quality_metrics()
+        rows = []
+        for rule_id, m in metrics.items():
+            calls = int(m.get("calls", 0))
+            hits = int(m.get("hits", 0))
+            ignores = int(m.get("ignores", 0))
+            errors = int(m.get("errors", 0))
+            time_ns = int(m.get("time_ns", 0))
+            avg_time_ms = (time_ns / 1_000_000 / calls) if calls else 0.0
+            fp_rate = (ignores / hits) if hits else 0.0
+            q = quality.get(rule_id, {})
+            precision = q.get("precision") if isinstance(q, dict) else None
+            rows.append({
+                "rule_id": rule_id,
+                "calls": calls,
+                "hits": hits,
+                "ignores": ignores,
+                "errors": errors,
+                "time_ms": time_ns / 1_000_000,
+                "avg_time_ms": avg_time_ms,
+                "fp_rate": fp_rate,
+                "precision": precision
+            })
+        top_slow = sorted(rows, key=lambda r: r["time_ms"], reverse=True)[:limit]
+        top_noisy = sorted(rows, key=lambda r: r["fp_rate"], reverse=True)[:limit]
+        top_triggered = sorted(rows, key=lambda r: r["hits"], reverse=True)[:limit]
+        return {
+            "top_slow": top_slow,
+            "top_noisy": top_noisy,
+            "top_triggered": top_triggered
+        }
 
     def evaluate(self, diff_data: Dict[str, Any], ast_signals: List[Any] = None) -> List[Dict[str, Any]]:
         """
@@ -165,6 +203,11 @@ class RuleEngine:
         
         for rule in self.rules:
             if not getattr(rule, 'enabled', True):
+                continue
+            status = getattr(rule, "status", "stable")
+            if status == "disabled":
+                continue
+            if status == "experimental" and not self.experimental_enabled:
                 continue
             if not self.lifecycle.should_run(rule):
                 continue
@@ -191,6 +234,10 @@ class RuleEngine:
                 continue
 
             rule_id = rule.id
+            quality_status, precision, _ = self.quality_manager.status(rule_id)
+            if self.quality_manager.auto_tune and quality_status == "disabled":
+                continue
+            degrade_severity = self.quality_manager.auto_tune and quality_status == "degraded"
             if rule_id not in self.metrics:
                 self.metrics[rule_id] = {"calls": 0, "hits": 0, "ignores": 0, "time_ns": 0, "errors": 0}
             
@@ -217,8 +264,9 @@ class RuleEngine:
             if match_details:
                 self.metrics[rule_id]["hits"] += 1
                 quality_entry = self.quality_manager.record_hit(rule_id)
-                quality_status, precision, _ = self.quality_manager.status(rule_id)
                 severity = self.lifecycle.adjust_severity(rule, rule.severity)
+                if degrade_severity:
+                    severity = self._downgrade_severity(severity)
                 triggered = {
                     "id": rule.id,
                     "severity": severity,
@@ -228,6 +276,8 @@ class RuleEngine:
                     "precision": quality_entry.get("precision", precision),
                     "quality_status": quality_status
                 }
+                if status == "experimental" and self.experimental_report_only:
+                    triggered["experimental"] = True
                 triggered_rules.append(triggered)
                 
         return triggered_rules
@@ -235,6 +285,29 @@ class RuleEngine:
     def get_metrics(self) -> Dict[str, Any]:
         """Returns the collected performance metrics (calls, hits, ignores, time_ns, errors)."""
         return self.metrics
+
+    @staticmethod
+    def _downgrade_severity(severity: str) -> str:
+        order = ["critical", "high", "medium", "low"]
+        try:
+            idx = order.index(str(severity).lower())
+        except ValueError:
+            return severity
+        return order[min(idx + 1, len(order) - 1)]
+
+    def _rule_confidences(self) -> Dict[str, float]:
+        result = {}
+        for rule in self.rules:
+            try:
+                result[rule.id] = float(getattr(rule, "confidence", 1.0))
+            except Exception:
+                result[rule.id] = 1.0
+        return result
+
+    def _update_quality_report(self) -> None:
+        metrics = self.metrics
+        confidences = self._rule_confidences()
+        self.quality_manager.update_report(metrics, confidences)
 
     @staticmethod
     def quality_report_from_metrics(metrics: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:

@@ -65,7 +65,7 @@ class Rule(ABC):
     @property
     def status(self) -> str:
         """Lifecycle status: experimental, beta, stable, deprecated, disabled. Engine skips disabled."""
-        return "experimental"
+        return "stable"
 
     @abstractmethod
     def evaluate(self, diff_data: Dict[str, Any], ast_signals: List[Any]) -> Optional[Dict[str, Any]]:

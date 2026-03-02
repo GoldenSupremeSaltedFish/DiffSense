@@ -35,7 +35,7 @@ class BaseRule(ABC):
     @property
     def status(self) -> str:
         """Lifecycle status: experimental, beta, stable, deprecated, disabled"""
-        return "experimental"
+        return "stable"
 
     @abstractmethod
     def evaluate(self, diff_data: Dict[str, Any], signals: List[Signal]) -> Optional[Dict[str, Any]]:
