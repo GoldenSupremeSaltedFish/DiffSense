@@ -68,6 +68,11 @@ class Rule(ABC):
         return "absolute"
 
     @property
+    def is_blocking(self) -> bool:
+        """If True, any hit will force a 'critical' review level and suggested 'block_pr' action"""
+        return False
+
+    @property
     def status(self) -> str:
         """Lifecycle status: experimental, beta, stable, deprecated, disabled. Engine skips disabled."""
         return "experimental"
