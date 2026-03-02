@@ -67,6 +67,22 @@ class YamlRule(Rule):
     def status(self) -> str:
         return str(self._rule_dict.get('status', 'experimental')).lower()
 
+    @property
+    def rule_type(self) -> str:
+        """
+        Determines if the rule is 'regression' or 'absolute'.
+        Defaults to 'regression' if action is 'removed' or 'changed'.
+        """
+        explicit = self._rule_dict.get('rule_type')
+        if explicit:
+            return str(explicit)
+        
+        action = self._rule_dict.get('action', '').lower()
+        if action in ['removed', 'deleted', 'changed', 'modified']:
+            return 'regression'
+        
+        return 'absolute'
+
     def evaluate(self, diff_data: Dict[str, Any], ast_signals: List[Any]) -> Optional[Dict[str, Any]]:
         # Logic extracted from old RuleEngine._match_rule
         

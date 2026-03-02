@@ -11,12 +11,12 @@ app = typer.Typer(help="DiffSense: MR/PR risk audit. Use 'diffsense audit' in CI
 
 
 def _default_rules_path() -> str:
-    # 开发: 同目录下 config/rules.yaml；安装后: 使用 config 包位置
+    # 开发: 同目录下 config/；安装后: 使用 config 包位置
     try:
         import config as config_pkg
-        return str(Path(config_pkg.__file__).resolve().parent / "rules.yaml")
+        return str(Path(config_pkg.__file__).resolve().parent)
     except Exception:
-        return str(Path(__file__).resolve().parent / "config" / "rules.yaml")
+        return str(Path(__file__).resolve().parent / "config")
 
 
 @app.command()
@@ -28,7 +28,7 @@ def audit(
     gitlab_url: str = typer.Option("https://gitlab.com", "--gitlab-url", help="GitLab instance URL"),
     project_id: str = typer.Option(None, "--project-id", help="GitLab project ID"),
     mr_iid: int = typer.Option(None, "--mr-iid", help="GitLab merge request IID"),
-    rules: str = typer.Option("config/rules.yaml", "--rules", help="Path to rules: single YAML file or directory of YAML files"),
+    rules: str = typer.Option(None, "--rules", help="Path to rules: single YAML file or directory of YAML files"),
     profile: str = typer.Option(None, "--profile", help="Profile: strict (all rules) or lightweight (critical only)"),
     baseline: bool = typer.Option(False, "--baseline", help="Generate baseline file for existing issues"),
     since_baseline: bool = typer.Option(False, "--since-baseline", help="Only report findings not in baseline"),
@@ -47,7 +47,7 @@ def audit(
     from run_audit import run_audit as do_audit
 
     rules_path = rules
-    if not os.path.exists(rules_path):
+    if not rules_path or not os.path.exists(rules_path):
         rules_path = _default_rules_path()
 
     if platform == "github":
@@ -70,7 +70,7 @@ def audit(
 @app.command()
 def replay(
     diff_file: str = typer.Argument(..., help="Path to .diff file"),
-    rules: str = typer.Option("config/rules.yaml", "--rules", help="Path to rules: single YAML file or directory of YAML files"),
+    rules: str = typer.Option(None, "--rules", help="Path to rules: single YAML file or directory of YAML files"),
     format: str = typer.Option("json", "--format", "-f", help="Output: json | markdown"),
     profile: str = typer.Option(None, "--profile", help="Profile: strict or lightweight"),
     baseline: bool = typer.Option(False, "--baseline", help="Generate baseline file for existing issues"),
@@ -85,7 +85,11 @@ def replay(
     quality_min_samples: int = typer.Option(30, "--quality-min-samples", help="Minimum samples before quality warnings"),
 ) -> None:
     """Run audit on a local diff file (for replay/offline)."""
-    args = ["diffsense", diff_file, "--rules", rules, "--format", format, "--baseline-file", baseline_file, "--report-json", report_json, "--report-html", report_html, "--comments-json", comments_json, "--quality-disable-threshold", str(quality_disable_threshold), "--quality-downgrade-threshold", str(quality_downgrade_threshold), "--quality-min-samples", str(quality_min_samples)]
+    rules_path = rules
+    if not rules_path or not os.path.exists(rules_path):
+        rules_path = _default_rules_path()
+
+    args = ["diffsense", diff_file, "--rules", rules_path, "--format", format, "--baseline-file", baseline_file, "--report-json", report_json, "--report-html", report_html, "--comments-json", comments_json, "--quality-disable-threshold", str(quality_disable_threshold), "--quality-downgrade-threshold", str(quality_downgrade_threshold), "--quality-min-samples", str(quality_min_samples)]
     if profile:
         args.extend(["--profile", profile])
     if baseline:
