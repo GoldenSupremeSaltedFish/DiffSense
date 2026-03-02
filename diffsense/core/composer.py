@@ -27,6 +27,7 @@ class DecisionComposer:
             matched_file = rule.get('matched_file', '')
             precision = rule.get('precision')
             quality_status = rule.get('quality_status')
+            is_experimental = bool(rule.get("experimental"))
             
             reasons.append(rule_id)
             
@@ -41,16 +42,18 @@ class DecisionComposer:
                 detail["precision"] = precision
             if quality_status is not None:
                 detail["quality_status"] = quality_status
+            if is_experimental:
+                detail["experimental"] = True
             details.append(detail)
-            
-            current_dim_score = severity_map.get(impacts_map.get(impact_dim, "low"), 0)
-            new_score = severity_map.get(severity, 0)
-            
-            if new_score > current_dim_score:
-                impacts_map[impact_dim] = severity
+            if not is_experimental:
+                current_dim_score = severity_map.get(impacts_map.get(impact_dim, "low"), 0)
+                new_score = severity_map.get(severity, 0)
                 
-            if new_score > max_score:
-                max_score = new_score
+                if new_score > current_dim_score:
+                    impacts_map[impact_dim] = severity
+                    
+                if new_score > max_score:
+                    max_score = new_score
                 
         # Determine Review Level
         review_level = "normal"

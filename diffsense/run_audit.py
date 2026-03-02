@@ -13,7 +13,7 @@ from banner import print_banner
 from main import _load_baseline, _save_baseline, _baseline_items, _baseline_set, _baseline_key, _build_inline_comments, _write_json
 
 
-def run_audit(adapter, rules_path, profile=None, baseline=False, since_baseline=False, baseline_file=".diffsense-baseline.json", report_json="diffsense-report.json", report_html="diffsense-report.html", comments_json="diffsense-comments.json", quality_auto_tune=False, quality_disable_threshold=0.3, quality_downgrade_threshold=0.5, quality_min_samples=30):
+def run_audit(adapter, rules_path, profile=None, baseline=False, since_baseline=False, baseline_file=".diffsense-baseline.json", report_json="diffsense-report.json", report_html="diffsense-report.html", comments_json="diffsense-comments.json", quality_auto_tune=False, quality_disable_threshold=0.3, quality_downgrade_threshold=0.5, quality_min_samples=30, experimental=False, experimental_report_only=True):
     print_banner()
     print("Fetching diff...")
     diff_content = adapter.fetch_diff()
@@ -55,7 +55,14 @@ def run_audit(adapter, rules_path, profile=None, baseline=False, since_baseline=
         "degrade_threshold": quality_downgrade_threshold,
         "min_samples": quality_min_samples
     }
-    engine = RuleEngine(rules_path, profile=profile, config={"rule_quality": quality_config})
+    engine = RuleEngine(
+        rules_path,
+        profile=profile,
+        config={
+            "rule_quality": quality_config,
+            "experimental": {"enabled": experimental, "report_only": experimental_report_only},
+        },
+    )
     evaluator = ImpactEvaluator(engine)
     # Evaluator needs update to pass ast_signals or we pass it via engine directly?
     # Actually ImpactEvaluator calls engine.evaluate. Let's see ImpactEvaluator.
@@ -104,6 +111,7 @@ def run_audit(adapter, rules_path, profile=None, baseline=False, since_baseline=
     rule_metrics = engine.get_metrics()
     render_input["_metrics"] = rule_metrics
     render_input["_metrics"]["cache"] = {"diff": parser.metrics, "ast": ast_detector.metrics}
+    render_input["_metrics"]["rule_stats"] = engine.get_rule_stats()
     render_input["_rule_quality"] = engine.get_rule_quality_metrics()
     render_input["_quality_warnings"] = engine.get_quality_warnings()
     engine.persist_rule_quality()
@@ -175,6 +183,9 @@ def main():
     parser.add_argument("--quality-disable-threshold", type=float, default=0.3, help="Disable threshold")
     parser.add_argument("--quality-downgrade-threshold", type=float, default=0.5, help="Downgrade threshold")
     parser.add_argument("--quality-min-samples", type=int, default=30, help="Minimum samples before actions")
+    parser.add_argument("--experimental", action="store_true", help="Include experimental rules (report-only by default)")
+    parser.add_argument("--experimental-report-only", dest="experimental_report_only", action="store_true", default=True, help="Do not affect decision with experimental rules")
+    parser.add_argument("--experimental-affect-decision", dest="experimental_report_only", action="store_false", help="Allow experimental rules to affect decision")
 
     args = parser.parse_args()
     
@@ -199,7 +210,23 @@ def main():
         script_dir = os.path.dirname(os.path.abspath(__file__))
         rules_path = os.path.join(script_dir, args.rules)
         
-    run_audit(adapter, rules_path, profile=args.profile, baseline=args.baseline, since_baseline=args.since_baseline, baseline_file=args.baseline_file, report_json=args.report_json, report_html=args.report_html, comments_json=args.comments_json, quality_auto_tune=args.quality_auto_tune, quality_disable_threshold=args.quality_disable_threshold, quality_downgrade_threshold=args.quality_downgrade_threshold, quality_min_samples=args.quality_min_samples)
+    run_audit(
+        adapter,
+        rules_path,
+        profile=args.profile,
+        baseline=args.baseline,
+        since_baseline=args.since_baseline,
+        baseline_file=args.baseline_file,
+        report_json=args.report_json,
+        report_html=args.report_html,
+        comments_json=args.comments_json,
+        quality_auto_tune=args.quality_auto_tune,
+        quality_disable_threshold=args.quality_disable_threshold,
+        quality_downgrade_threshold=args.quality_downgrade_threshold,
+        quality_min_samples=args.quality_min_samples,
+        experimental=args.experimental,
+        experimental_report_only=args.experimental_report_only,
+    )
 
 if __name__ == "__main__":
     main()

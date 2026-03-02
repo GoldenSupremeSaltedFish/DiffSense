@@ -106,3 +106,12 @@ class RuleQualityManager:
                     "status": status
                 })
         return sorted(rows, key=lambda r: (r["status"], r["precision"]))
+
+    def update_report(self, metrics: Dict[str, Dict[str, Any]], confidences: Dict[str, float]) -> None:
+        for rule_id, m in metrics.items():
+            entry = self._entry(rule_id)
+            calls = int(m.get("calls", 0))
+            time_ns = int(m.get("time_ns", 0))
+            avg_time_ms = (time_ns / 1_000_000 / calls) if calls else 0.0
+            entry["avg_time_ms"] = avg_time_ms
+            entry["confidence"] = float(confidences.get(rule_id, entry.get("confidence", 1.0)))

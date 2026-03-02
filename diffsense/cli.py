@@ -40,6 +40,8 @@ def audit(
     quality_disable_threshold: float = typer.Option(0.3, "--quality-disable-threshold", help="Disable threshold for reporting"),
     quality_downgrade_threshold: float = typer.Option(0.5, "--quality-downgrade-threshold", help="Downgrade threshold for reporting"),
     quality_min_samples: int = typer.Option(30, "--quality-min-samples", help="Minimum samples before quality warnings"),
+    experimental: bool = typer.Option(False, "--experimental", help="Include experimental rules (report-only by default)"),
+    experimental_report_only: bool = typer.Option(True, "--experimental-report-only/--experimental-affect-decision", help="Do not affect decision with experimental rules"),
 ) -> None:
     """Run MR/PR risk audit (GitLab or GitHub). Use in CI with image: ghcr.io/xxx/diffsense:1.0."""
     from adapters.github_adapter import GitHubAdapter
@@ -64,7 +66,23 @@ def audit(
         typer.echo(f"Error: platform must be github or gitlab, got {platform}", err=True)
         raise typer.Exit(1)
 
-    do_audit(adapter, rules_path, profile=profile, baseline=baseline, since_baseline=since_baseline, baseline_file=baseline_file, report_json=report_json, report_html=report_html, comments_json=comments_json, quality_auto_tune=quality_auto_tune, quality_disable_threshold=quality_disable_threshold, quality_downgrade_threshold=quality_downgrade_threshold, quality_min_samples=quality_min_samples)
+    do_audit(
+        adapter,
+        rules_path,
+        profile=profile,
+        baseline=baseline,
+        since_baseline=since_baseline,
+        baseline_file=baseline_file,
+        report_json=report_json,
+        report_html=report_html,
+        comments_json=comments_json,
+        quality_auto_tune=quality_auto_tune,
+        quality_disable_threshold=quality_disable_threshold,
+        quality_downgrade_threshold=quality_downgrade_threshold,
+        quality_min_samples=quality_min_samples,
+        experimental=experimental,
+        experimental_report_only=experimental_report_only,
+    )
 
 
 @app.command()
@@ -83,6 +101,8 @@ def replay(
     quality_disable_threshold: float = typer.Option(0.3, "--quality-disable-threshold", help="Disable threshold for reporting"),
     quality_downgrade_threshold: float = typer.Option(0.5, "--quality-downgrade-threshold", help="Downgrade threshold for reporting"),
     quality_min_samples: int = typer.Option(30, "--quality-min-samples", help="Minimum samples before quality warnings"),
+    experimental: bool = typer.Option(False, "--experimental", help="Include experimental rules (report-only by default)"),
+    experimental_report_only: bool = typer.Option(True, "--experimental-report-only/--experimental-affect-decision", help="Do not affect decision with experimental rules"),
 ) -> None:
     """Run audit on a local diff file (for replay/offline)."""
     args = ["diffsense", diff_file, "--rules", rules, "--format", format, "--baseline-file", baseline_file, "--report-json", report_json, "--report-html", report_html, "--comments-json", comments_json, "--quality-disable-threshold", str(quality_disable_threshold), "--quality-downgrade-threshold", str(quality_downgrade_threshold), "--quality-min-samples", str(quality_min_samples)]
@@ -94,6 +114,10 @@ def replay(
         args.append("--since-baseline")
     if quality_auto_tune:
         args.append("--quality-auto-tune")
+    if experimental:
+        args.append("--experimental")
+    if not experimental_report_only:
+        args.append("--experimental-affect-decision")
     sys.argv = args
     from main import main as replay_main
     replay_main()
@@ -159,6 +183,26 @@ def rules_report(
         typer.echo(f"{r['rule_id']:<45} {r['hits']:>6} {r['accepts']:>7} {r['ignores']:>7} {fp_pct:>6.0f}%{flag}")
 
 
+@rules_app.command("sdk")
+def rules_sdk() -> None:
+    typer.echo("Minimal SDK example:")
+    typer.echo("from diffsense.core.rule_base import Rule")
+    typer.echo("")
+    typer.echo("class MyRule(Rule):")
+    typer.echo("    @property")
+    typer.echo("    def id(self): return \"custom.rule\"")
+    typer.echo("    @property")
+    typer.echo("    def severity(self): return \"high\"")
+    typer.echo("    @property")
+    typer.echo("    def impact(self): return \"runtime\"")
+    typer.echo("    @property")
+    typer.echo("    def rationale(self): return \"why this matters\"")
+    typer.echo("    @property")
+    typer.echo("    def status(self): return \"experimental\"")
+    typer.echo("    def evaluate(self, diff_data, ast_signals):")
+    typer.echo("        return None")
+
+
 @app.command("replay-coverage")
 def replay_coverage(
     replay_dir: str = typer.Option(None, "--replay-dir", "-d", help="Directory of replay JSON outputs to aggregate"),
@@ -169,9 +213,154 @@ def replay_coverage(
     Example: diffsense replay-coverage --replay-dir ./replay_reports/
     (Implementation: aggregate review_level and _metrics from each JSON; report total, triggered, hit_rate.)"""
     if not replay_dir and not input_list:
-        typer.echo("Use --replay-dir or --input to pass replay results. Aggregation and hit-rate output coming next.")
+        typer.echo("Use --replay-dir or --input to pass replay results.")
         raise typer.Exit(0)
-    typer.echo("replay-coverage: aggregation not yet implemented. Use rules report on single replay JSON for now.")
+    paths = []
+    if replay_dir:
+        for root, _, files in os.walk(replay_dir):
+            for name in files:
+                if name.endswith(".json"):
+                    paths.append(os.path.join(root, name))
+    if input_list:
+        with open(input_list, "r", encoding="utf-8") as f:
+            for line in f:
+                p = line.strip()
+                if p:
+                    paths.append(p)
+    if not paths:
+        typer.echo("No replay JSON files found.")
+        raise typer.Exit(0)
+    total = 0
+    triggered = 0
+    for path in paths:
+        try:
+            import json
+            with open(path, "r", encoding="utf-8-sig") as f:
+                data = json.load(f)
+            total += 1
+            level = str(data.get("review_level", "normal")).lower()
+            if level in ["elevated", "critical"]:
+                triggered += 1
+        except Exception:
+            continue
+    hit_rate = (triggered / total * 100) if total else 0
+    typer.echo(f"Total: {total}")
+    typer.echo(f"Triggered: {triggered}")
+    typer.echo(f"Hit Rate: {hit_rate:.1f}%")
+
+
+@app.command("benchmark")
+def benchmark(
+    manifest: str = typer.Option("benchmarks/manifest.yaml", "--manifest", "-m", help="Benchmark manifest YAML path"),
+    output: str = typer.Option("benchmarks/benchmark_report.json", "--output", "-o", help="Benchmark report JSON output path"),
+    rules: str = typer.Option("config/rules.yaml", "--rules", help="Path to rules: single YAML file or directory of YAML files"),
+    profile: str = typer.Option(None, "--profile", help="Profile: strict or lightweight"),
+    experimental: bool = typer.Option(False, "--experimental", help="Include experimental rules (report-only by default)"),
+    experimental_report_only: bool = typer.Option(True, "--experimental-report-only/--experimental-affect-decision", help="Do not affect decision with experimental rules"),
+) -> None:
+    import json
+    import time
+    import tracemalloc
+    import yaml
+    from core.parser import DiffParser
+    from core.ast_detector import ASTDetector
+    from core.rules import RuleEngine
+
+    if not os.path.exists(manifest):
+        typer.echo(f"Manifest not found: {manifest}")
+        raise typer.Exit(1)
+    with open(manifest, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+    cases = data.get("cases", [])
+    if not isinstance(cases, list) or not cases:
+        typer.echo("No benchmark cases found.")
+        raise typer.Exit(1)
+    base_dir = os.path.dirname(os.path.abspath(manifest))
+    rules_path = rules
+    if not os.path.exists(rules_path):
+        rules_path = _default_rules_path()
+    engine = RuleEngine(
+        rules_path,
+        profile=profile,
+        config={"experimental": {"enabled": experimental, "report_only": experimental_report_only}},
+    )
+    parser = DiffParser()
+    detector = ASTDetector()
+    total_tp = 0
+    total_fp = 0
+    total_expected = 0
+    total_cases = 0
+    runtimes = []
+    peak_mem_kb = []
+    case_reports = []
+    for case in cases:
+        fixture = case.get("fixture")
+        if not fixture:
+            continue
+        path = fixture if os.path.isabs(fixture) else os.path.join(base_dir, fixture)
+        if not os.path.exists(path):
+            continue
+        content = Path(path).read_text(encoding="utf-8")
+        start = time.perf_counter()
+        tracemalloc.start()
+        diff_data = parser.parse(content)
+        if not diff_data.get("file_patches") and content.strip():
+            diff_data.setdefault("file_patches", [])
+            fname = case.get("file_for_patch", "Dummy.java")
+            diff_data["file_patches"].append({"file": fname, "patch": content})
+        if "raw_diff" not in diff_data:
+            diff_data["raw_diff"] = content
+        signals = detector.detect_signals(diff_data)
+        triggered = engine.evaluate(diff_data, signals)
+        current, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        runtimes.append(elapsed_ms)
+        peak_mem_kb.append(peak / 1024)
+        expected = case.get("expect_rules", [])
+        expected_contains = case.get("expect_rules_contain", [])
+        expected = expected if isinstance(expected, list) else []
+        expected_contains = expected_contains if isinstance(expected_contains, list) else []
+        actual_ids = [r.get("id") for r in triggered]
+        tp = 0
+        for rule_id in actual_ids:
+            if rule_id in expected:
+                tp += 1
+            else:
+                for sub in expected_contains:
+                    if sub and sub in rule_id:
+                        tp += 1
+                        break
+        fp = max(0, len(actual_ids) - tp)
+        total_tp += tp
+        total_fp += fp
+        total_expected += len(expected) + len(expected_contains)
+        total_cases += 1
+        precision = (tp / (tp + fp)) if (tp + fp) else 1.0
+        case_reports.append({
+            "id": case.get("id", os.path.basename(path)),
+            "fixture": fixture,
+            "runtime_ms": elapsed_ms,
+            "peak_mem_kb": peak / 1024,
+            "precision": precision,
+            "triggered": len(actual_ids),
+        })
+    avg_runtime = (sum(runtimes) / len(runtimes)) if runtimes else 0.0
+    avg_mem = (sum(peak_mem_kb) / len(peak_mem_kb)) if peak_mem_kb else 0.0
+    precision = (total_tp / (total_tp + total_fp)) if (total_tp + total_fp) else 1.0
+    report = {
+        "total_cases": total_cases,
+        "precision": precision,
+        "avg_runtime_ms": avg_runtime,
+        "avg_peak_mem_kb": avg_mem,
+        "cases": case_reports,
+    }
+    out_dir = os.path.dirname(output)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+    with open(output, "w", encoding="utf-8") as f:
+        json.dump(report, f, ensure_ascii=False, indent=2)
+    typer.echo(f"Benchmark report saved: {output}")
 
 
 @app.command("profile-rules")

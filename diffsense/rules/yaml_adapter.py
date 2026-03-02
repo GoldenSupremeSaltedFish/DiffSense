@@ -65,7 +65,7 @@ class YamlRule(Rule):
 
     @property
     def status(self) -> str:
-        return str(self._rule_dict.get('status', 'experimental')).lower()
+        return str(self._rule_dict.get('status', 'stable')).lower()
 
     def evaluate(self, diff_data: Dict[str, Any], ast_signals: List[Any]) -> Optional[Dict[str, Any]]:
         # Logic extracted from old RuleEngine._match_rule
