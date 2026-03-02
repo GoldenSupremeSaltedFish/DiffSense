@@ -23,23 +23,18 @@ class ThreadPoolSemanticChangeRule(BaseRule):
     def rationale(self) -> str:
         return "High risk thread pool configuration detected (unbounded or zero core)"
 
+    @property
+    def rule_type(self) -> str:
+        return "absolute"
+
     def evaluate(self, diff_data: Dict[str, Any], signals: List[Signal]) -> Optional[Dict[str, Any]]:
         raw_diff = diff_data.get('raw_diff', "")
         
-        if 'new ThreadPoolExecutor' not in raw_diff:
-            return None
-            
-        lines = raw_diff.splitlines()
-        for line in lines:
-            if line.startswith('+') and 'new ThreadPoolExecutor' in line:
-                if self._tpe_pattern.search(line):
-                    return {"file": self._find_file_for_line(line, diff_data)}
-        
-        if self._tpe_pattern.search(raw_diff):
-             return {"file": "detected_in_diff"}
-             
-        if self._sync_queue_pattern.search(raw_diff) and 'new ThreadPoolExecutor' in raw_diff:
-             return {"file": "detected_in_diff"}
+        # Check both added lines (in diff) and overall context if provided
+        if self._tpe_pattern.search(raw_diff) or self._sync_queue_pattern.search(raw_diff):
+             # Try to find the file
+             files = diff_data.get('files', [])
+             return {"file": files[0] if files else "unknown"}
              
         return None
 
@@ -60,15 +55,15 @@ class ConcurrencyRegressionRule(BaseRule):
             ("AtomicBoolean", "Boolean")
         ]
         for strong, weak in pairs:
-            strong_re = re.compile(r'^-\s.*' + re.escape(strong), re.MULTILINE)
+            strong_re = re.compile(r'^-.*' + re.escape(strong), re.MULTILINE)
             if "HashMap" in weak:
-                weak_pattern = r'^\+\s.*(?<!Concurrent)' + re.escape(weak)
+                weak_pattern = r'^\+.*(?<!Concurrent)' + re.escape(weak)
             elif "ArrayList" in weak:
-                weak_pattern = r'^\+\s.*(?<!CopyOnWrite)' + re.escape(weak)
+                weak_pattern = r'^\+.*(?<!CopyOnWrite)' + re.escape(weak)
             elif "Integer" in weak or "Long" in weak or "Boolean" in weak:
-                weak_pattern = r'^\+\s.*(?<!Atomic)' + re.escape(weak)
+                weak_pattern = r'^\+.*(?<!Atomic)' + re.escape(weak)
             else:
-                weak_pattern = r'^\+\s.*' + re.escape(weak)
+                weak_pattern = r'^\+.*' + re.escape(weak)
             weak_re = re.compile(weak_pattern, re.MULTILINE)
             self._regressions.append((strong, weak, strong_re, weak_re))
     @property
@@ -86,6 +81,10 @@ class ConcurrencyRegressionRule(BaseRule):
     @property
     def rationale(self) -> str:
         return "Downgrade from concurrent/atomic type to non-thread-safe implementation"
+
+    @property
+    def rule_type(self) -> str:
+        return "regression"
 
     def evaluate(self, diff_data: Dict[str, Any], signals: List[Signal]) -> Optional[Dict[str, Any]]:
         # Prefer Signal-based detection if available
@@ -126,6 +125,10 @@ class ThreadSafetyRemovalRule(BaseRule):
     @property
     def rationale(self) -> str:
         return "Removal of synchronization (synchronized, volatile, locks) from shared code"
+
+    @property
+    def rule_type(self) -> str:
+        return "regression"
 
     def evaluate(self, diff_data: Dict[str, Any], signals: List[Signal]) -> Optional[Dict[str, Any]]:
         raw_diff = diff_data.get('raw_diff', "")
@@ -173,6 +176,10 @@ class LatchMisuseRule(BaseRule):
     @property
     def rationale(self) -> str:
         return "Removal of CountDownLatch.countDown() - potential deadlock or hang"
+
+    @property
+    def rule_type(self) -> str:
+        return "regression"
 
     def evaluate(self, diff_data: Dict[str, Any], signals: List[Signal]) -> Optional[Dict[str, Any]]:
         raw_diff = diff_data.get('raw_diff', "")

@@ -18,6 +18,7 @@ class DecisionComposer:
         }
         
         max_score = 0
+        has_blocking_rule = False
         
         for rule in triggered_rules:
             rule_id = rule.get('id', 'unknown')
@@ -28,6 +29,10 @@ class DecisionComposer:
             precision = rule.get('precision')
             quality_status = rule.get('quality_status')
             is_experimental = bool(rule.get("experimental"))
+            is_blocking = rule.get('is_blocking', False)
+            
+            if is_blocking:
+                has_blocking_rule = True
             
             reasons.append(rule_id)
             
@@ -57,12 +62,18 @@ class DecisionComposer:
                 
         # Determine Review Level
         review_level = "normal"
-        if max_score >= 3:
+        if has_blocking_rule or max_score >= 3:
             review_level = "critical"
         elif max_score >= 2:
             review_level = "elevated"
             
         # Construct Final JSON Contract
+        suggested_action = "auto_merge"
+        if review_level == "critical":
+            suggested_action = "block_pr"
+        elif review_level == "elevated":
+            suggested_action = "manual_review"
+
         result = {
             "review_level": review_level,
             "reasons": reasons,
@@ -71,7 +82,7 @@ class DecisionComposer:
             "details": details,
             "meta": {
                 "confidence": 1.0, # Placeholder as requested
-                "suggested_action": "manual_review" if review_level != "normal" else "auto_merge" # Simple heuristic
+                "suggested_action": suggested_action
             }
         }
         
