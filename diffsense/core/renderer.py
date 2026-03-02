@@ -19,6 +19,12 @@ class MarkdownRenderer:
 
         if not details:
             lines.append("No warnings detected.")
+            rule_stats = (result.get("_metrics") or {}).get("rule_stats", {})
+            total_rules = rule_stats.get("total_rules", 0)
+            executed_count = rule_stats.get("executed_count", 0)
+            if total_rules or executed_count:
+                lines.append("")
+                lines.append(f"Rules executed: {executed_count} / {total_rules}")
             return "\n".join(lines)
 
         severity_rank = {
@@ -61,6 +67,12 @@ class MarkdownRenderer:
             lines.append("")
             lines.append("👉 **Approve this PR** OR **React with 👍** to this comment, then **Re-run this job** to pass.")
 
+        rule_stats = (result.get("_metrics") or {}).get("rule_stats", {})
+        total_rules = rule_stats.get("total_rules", 0)
+        executed_count = rule_stats.get("executed_count", 0)
+        if total_rules or executed_count:
+            lines.append("")
+            lines.append(f"Rules executed: {executed_count} / {total_rules}")
         return "\n".join(lines)
 
 class HtmlRenderer:
@@ -96,10 +108,15 @@ class HtmlRenderer:
         a_total = ast_cache.get("hits", 0) + ast_cache.get("misses", 0)
         d_rate = (diff_cache.get("hits", 0) / d_total * 100) if d_total else 0
         a_rate = (ast_cache.get("hits", 0) / a_total * 100) if a_total else 0
+        rule_stats = metrics.get("rule_stats", {})
+        total_rules = rule_stats.get("total_rules", 0)
+        executed_count = rule_stats.get("executed_count", 0)
+        exec_pct = (executed_count / total_rules * 100) if total_rules else 0
+        rules_executed_line = f"<div>Rules executed: {executed_count} / {total_rules} ({exec_pct:.0f}%)</div>"
 
         rule_rows = []
         for rule_id, m in rule_metrics.items():
-            if rule_id == "cache":
+            if rule_id in ("cache", "rule_stats"):
                 continue
             time_ms = (m.get("time_ns", 0) / 1_000_000) if isinstance(m, dict) else 0
             hits = m.get("hits", 0) if isinstance(m, dict) else 0
@@ -140,6 +157,7 @@ th{{background:#f4f4f4}}
 <div>Review Level: {esc(review_level)}</div>
 <div>Diff Cache Hit: {d_rate:.1f}% ({diff_cache.get("hits", 0)}/{d_total})</div>
 <div>AST Cache Hit: {a_rate:.1f}% ({ast_cache.get("hits", 0)}/{a_total})</div>
+{rules_executed_line}
 </div>
 <h2>Findings</h2>
 <table>

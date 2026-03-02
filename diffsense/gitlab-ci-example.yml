@@ -13,6 +13,12 @@ diffsense_check:
   stage: diffsense
   image: ghcr.io/goldensupremesaltedfish/diffsense:1.0.0
   entrypoint: [""]
+  cache:
+    key: diffsense-cache
+    paths:
+      - .diffsense-cache
+  variables:
+    DIFFSENSE_CACHE_DIR: "${CI_PROJECT_DIR}/.diffsense-cache"
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
   script:

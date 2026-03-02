@@ -1,0 +1,285 @@
+{
+  "rules": {
+    "runtime.threadpool_semantic_change": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0045,
+      "confidence": 1.0
+    },
+    "runtime.concurrency_regression": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0287,
+      "confidence": 1.0
+    },
+    "runtime.thread_safety_removal": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0122,
+      "confidence": 1.0
+    },
+    "runtime.latch_misuse": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0041,
+      "confidence": 1.0
+    },
+    "runtime.concurrency_risk": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0014,
+      "confidence": 1.0
+    },
+    "runtime.concurrency_synchronized_removed_critical": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0006,
+      "confidence": 1.0
+    },
+    "runtime.concurrency_lock_risk": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0005,
+      "confidence": 1.0
+    },
+    "runtime.concurrency_lock_removed_critical": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0002,
+      "confidence": 1.0
+    },
+    "runtime.concurrency_volatile_risk": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0003,
+      "confidence": 1.0
+    },
+    "runtime.concurrency_volatile_removed_risk": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0002,
+      "confidence": 1.0
+    },
+    "runtime.concurrency_map_removed_risk": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0003,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.thread_safety_downgrade": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0003,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.static_unsafe_collection": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0004,
+      "confidence": 1.0
+    },
+    "runtime.performance.sleep_added": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0003,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.executors_factory_risk": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0003,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.future_get_without_timeout": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0003,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.threadpool_creation": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0003,
+      "confidence": 1.0
+    },
+    "data.query_change": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0038,
+      "confidence": 1.0
+    },
+    "runtime.input_normalization_removed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0006,
+      "confidence": 1.0
+    },
+    "data.pagination_semantic_change": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0003,
+      "confidence": 1.0
+    },
+    "runtime.collection_mutation_inside_loop": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0004,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.lock_removed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0006,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.volatile_removed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0004,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.final_removed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0003,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.atomic_to_non_atomic_write": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0003,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.threadpool_param_change": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0002,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.threadpool_unbounded_queue": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0003,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.busy_wait_added": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0002,
+      "confidence": 1.0
+    },
+    "runtime.resource.try_with_resource_removed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0003,
+      "confidence": 1.0
+    },
+    "runtime.resource.cache_eviction_removed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0003,
+      "confidence": 1.0
+    },
+    "runtime.network.timeout_removed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0002,
+      "confidence": 1.0
+    },
+    "runtime.data.null_check_removed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0002,
+      "confidence": 1.0
+    },
+    "runtime.data.equals_to_reference_compare": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0003,
+      "confidence": 1.0
+    },
+    "cache": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0,
+      "confidence": 1.0
+    },
+    "rule_stats": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0,
+      "confidence": 1.0
+    }
+  },
+  "updated_at": 1772467390
+}

@@ -172,8 +172,8 @@ def main():
     # Now takes triggered_rules and list of files
     result = composer.compose(triggered_rules, diff_data.get('files', []))
     
-    # Add Rule Performance & Cache Metrics
-    result['_metrics'] = rule_engine.get_metrics()
+    # Add Rule Performance & Cache Metrics (copy so we don't mutate engine.metrics)
+    result['_metrics'] = dict(rule_engine.get_metrics())
     result['_metrics']['cache'] = {
         "diff": diff_parser.metrics,
         "ast": ast_detector.metrics
@@ -207,9 +207,18 @@ def main():
     total_saved = (d_saved + a_saved) / 1000
     sys.stderr.write(f"⏱️  Estimated Saved Time: {total_saved:.2f}s\n")
     
+    # Rules executed (Q1/Q2 visibility)
+    r_stats = result["_metrics"].get("rule_stats", {})
+    total_rules = r_stats.get("total_rules", 0)
+    executed_count = r_stats.get("executed_count", 0)
+    exec_pct = (executed_count / total_rules * 100) if total_rules else 0
+    sys.stderr.write(f"🔹 Rules executed: {executed_count} / {total_rules} ({exec_pct:.0f}%)\n")
+    if total_rules and exec_pct > 30:
+        sys.stderr.write("   💡 Consider enabling more profile/scheduler filters to reduce executed rules.\n")
+    
     # Slowest Rules
     sys.stderr.write("\n🐢 Top 3 Slowest Rules:\n")
-    r_stats = result["_metrics"]["rule_stats"].get("top_slow", [])
+    r_stats = result["_metrics"].get("rule_stats", {}).get("top_slow", [])
     for r in r_stats[:3]:
         r_id = r.get("rule_id")
         r_time_ms = r.get("time_ms", 0)

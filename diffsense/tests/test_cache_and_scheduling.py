@@ -10,6 +10,7 @@ from core.rules import RuleEngine
 from core.rule_base import Rule
 from core import CACHE_VERSION
 from main import _baseline_items, _baseline_set, _baseline_key
+from core.renderer import MarkdownRenderer, HtmlRenderer
 
 class MockRule(Rule):
     def __init__(self, rule_id, lang='*', scope='**'):
@@ -170,6 +171,52 @@ class TestCacheAndScheduling(unittest.TestCase):
         data = {"items": items}
         keys = _baseline_set(data)
         self.assertIn(_baseline_key(rules[0]), keys)
+
+    def test_rule_stats_contains_total_and_executed(self):
+        """get_rule_stats() 应包含 total_rules 与 executed_count（Q1/Q2 输出与渲染依赖）"""
+        engine = RuleEngine("config/rules.yaml")
+        engine.rules = [MatchRule("r1"), MatchRule("r2")]
+        stats = engine.get_rule_stats()
+        self.assertIn("total_rules", stats)
+        self.assertIn("executed_count", stats)
+        self.assertEqual(stats["total_rules"], 2)
+        self.assertEqual(stats["executed_count"], 0)
+        diff_data = {"files": ["a.java"]}
+        engine.evaluate(diff_data, [])
+        stats2 = engine.get_rule_stats()
+        self.assertEqual(stats2["total_rules"], 2)
+        self.assertEqual(stats2["executed_count"], 2)
+
+    def test_renderer_with_rule_stats(self):
+        """HTML/Markdown 在 _metrics.rule_stats 含 total_rules/executed_count 时正常渲染（Q1 输出）"""
+        result = {
+            "review_level": "normal",
+            "details": [],
+            "_metrics": {
+                "rule_stats": {"total_rules": 40, "executed_count": 12, "top_slow": [], "top_noisy": [], "top_triggered": []},
+                "cache": {"diff": {"hits": 0, "misses": 1}, "ast": {"hits": 0, "misses": 1}},
+            },
+        }
+        md = MarkdownRenderer().render(result)
+        self.assertIn("Rules executed", md)
+        self.assertIn("12", md)
+        self.assertIn("40", md)
+        html = HtmlRenderer().render(result)
+        self.assertIn("Rules executed", html)
+        self.assertIn("12 / 40", html)
+
+    def test_quality_report_from_metrics_skips_non_rules(self):
+        """quality_report_from_metrics 应跳过 cache、rule_stats，避免 CLI rules report 出现非规则行"""
+        metrics = {
+            "cache": {"diff": {}, "ast": {}},
+            "rule_stats": {"total_rules": 10, "executed_count": 3},
+            "runtime.concurrency.lock_removed": {"hits": 2, "ignores": 1},
+        }
+        rows = RuleEngine.quality_report_from_metrics(metrics)
+        rule_ids = [r["rule_id"] for r in rows]
+        self.assertNotIn("cache", rule_ids)
+        self.assertNotIn("rule_stats", rule_ids)
+        self.assertIn("runtime.concurrency.lock_removed", rule_ids)
 
 if __name__ == "__main__":
     unittest.main()

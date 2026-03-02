@@ -185,7 +185,11 @@ class RuleEngine:
         top_slow = sorted(rows, key=lambda r: r["time_ms"], reverse=True)[:limit]
         top_noisy = sorted(rows, key=lambda r: r["fp_rate"], reverse=True)[:limit]
         top_triggered = sorted(rows, key=lambda r: r["hits"], reverse=True)[:limit]
+        total_rules = len(self.rules)
+        executed_count = len(metrics)
         return {
+            "total_rules": total_rules,
+            "executed_count": executed_count,
             "top_slow": top_slow,
             "top_noisy": top_noisy,
             "top_triggered": top_triggered
@@ -335,9 +339,12 @@ class RuleEngine:
         """
         Builds rule quality report from metrics. Each row: rule_id, hits, accepts, ignores, fp_rate.
         fp_rate = ignores/hits when hits > 0; used to flag noisy rules.
+        Skips non-rule keys (e.g. cache, rule_stats) when _metrics from replay is passed.
         """
         rows = []
         for rule_id, m in metrics.items():
+            if rule_id in ("cache", "rule_stats") or not isinstance(m, dict):
+                continue
             hits = m.get("hits", 0)
             ignores = m.get("ignores", 0)
             accepts = max(0, hits - ignores)

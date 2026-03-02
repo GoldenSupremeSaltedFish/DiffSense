@@ -14,8 +14,8 @@ class IgnoreManager:
         self._load_config()
 
     def _load_config(self):
-        # Try .diffsense.yaml first, then .diffsenseignore (assuming yaml content)
-        config_files = [".diffsense.yaml", ".diffsenseignore"]
+        # Prefer diffsense-ignore.yaml (roadmap standard), then legacy names. Only one is loaded.
+        config_files = ["diffsense-ignore.yaml", ".diffsense.yaml", ".diffsenseignore"]
         
         for fname in config_files:
             path = os.path.join(self.repo_root, fname)
