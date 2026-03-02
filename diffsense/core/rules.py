@@ -62,14 +62,14 @@ class RuleEngine:
     def _load_yaml_rules(self, path: str):
         """
         Loads YAML rules from a single file or a directory of .yaml files.
-        If path is a directory, loads all .yaml files in that directory (one level, no recursion).
+        If path is a directory, loads all .yaml files in that directory recursively.
         Each file must have top-level 'rules: [...]'. Load order is deterministic (sorted by name).
         """
         if os.path.isdir(path):
-            files = sorted(f for f in os.listdir(path) if f.endswith('.yaml'))
-            for name in files:
-                file_path = os.path.join(path, name)
-                self._load_yaml_file(file_path)
+            for root, _, files in os.walk(path):
+                for name in sorted(f for f in files if f.endswith('.yaml')):
+                    file_path = os.path.join(root, name)
+                    self._load_yaml_file(file_path)
         else:
             self._load_yaml_file(path)
 
@@ -200,7 +200,21 @@ class RuleEngine:
         
         # Incremental Scheduling: Extract unique file extensions and paths from diff_data
         changed_files = diff_data.get("files", [])
+        new_files = diff_data.get("new_files", [])
+        stats = diff_data.get("stats", {"add": 0, "del": 0})
         
+        # Adaptive Scheduling: If this is a "pure new project/file" diff, skip regression rules
+        # Logic: If deletions are very low compared to additions, it's likely new code.
+        total_changes = stats["add"] + stats["del"]
+        is_mostly_new = False
+        if total_changes > 10: # Only apply heuristic for non-trivial diffs
+             if stats["del"] / total_changes < 0.1: # Less than 10% deletions
+                  is_mostly_new = True
+        
+        # Another heuristic: If > 80% of files are new
+        if len(changed_files) > 0 and (len(new_files) / len(changed_files)) > 0.8:
+            is_mostly_new = True
+
         for rule in self.rules:
             if not getattr(rule, 'enabled', True):
                 continue
@@ -212,6 +226,12 @@ class RuleEngine:
             if not self.lifecycle.should_run(rule):
                 continue
                 
+            # Adaptive Filter: Skip regression rules if the diff is mostly new files
+            rule_type = getattr(rule, 'rule_type', 'absolute')
+            if is_mostly_new and rule_type == 'regression':
+                # Skip regression rules for new projects/files as they are meaningless
+                continue
+
             # Incremental Filtering: Only run rule if it matches at least one changed file
             rule_lang = getattr(rule, 'language', '*')
             rule_scope = getattr(rule, 'scope', '**')
@@ -274,7 +294,8 @@ class RuleEngine:
                     "rationale": rule.rationale,
                     "matched_file": match_details.get('file', 'unknown'),
                     "precision": quality_entry.get("precision", precision),
-                    "quality_status": quality_status
+                    "quality_status": quality_status,
+                    "is_blocking": getattr(rule, 'is_blocking', False)
                 }
                 if status == "experimental" and self.experimental_report_only:
                     triggered["experimental"] = True

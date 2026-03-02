@@ -55,6 +55,7 @@ class DiffParser:
         start_time = time.time()
         
         files = []
+        new_files = []
         stats = {"add": 0, "del": 0}
         file_patches = []
         
@@ -62,25 +63,21 @@ class DiffParser:
         cached = self._load_cache(cache_key)
         if cached:
             self.metrics["hits"] += 1
-            # We don't know exactly how much time was saved, but we can estimate 
-            # or track average parse time. For now, let's just mark it.
             return cached
 
         self.metrics["misses"] += 1
 
-        # Check if content looks like JSON (GitLab API response leak)
+        # Check if content looks like JSON
         if diff_content.strip().startswith('{') or diff_content.strip().startswith('['):
-            # It seems we got raw JSON instead of diff text.
-            # This happens if the fetcher returned API response text directly.
-            # Let's try to handle this edge case or return empty to fail safely.
             print("Warning: Diff content looks like JSON. Parser expects Unified Diff format.")
-            result = {"files": [], "file_patches": [], "stats": stats, "change_types": [], "raw_diff": diff_content}
+            result = {"files": [], "new_files": [], "file_patches": [], "stats": stats, "change_types": [], "raw_diff": diff_content}
             self._save_cache(cache_key, result)
             return result
 
         lines = diff_content.splitlines()
         current_file = None
         current_patch_lines = []
+        is_new_file = False
         
         for line in lines:
             # Check for new file header
@@ -89,18 +86,23 @@ class DiffParser:
                 if current_file and current_patch_lines:
                     file_patches.append({
                         "file": current_file,
-                        "patch": "\n".join(current_patch_lines)
+                        "patch": "\n".join(current_patch_lines),
+                        "is_new": is_new_file
                     })
+                    if is_new_file:
+                        new_files.append(current_file)
                 
                 # Reset for new file
                 current_file = None
                 current_patch_lines = []
+                is_new_file = False
             
             # Capture filename from --- or +++
             if line.startswith("--- "):
                 path = line[4:].strip()
-                if path != "/dev/null":
-                    # Remove prefix a/ if present
+                if path == "/dev/null":
+                    is_new_file = True
+                else:
                     if path.startswith("a/"):
                         path = path[2:]
                     if current_file is None:
@@ -109,12 +111,10 @@ class DiffParser:
             if line.startswith("+++ "):
                 path = line[4:].strip()
                 if path != "/dev/null":
-                    # Remove prefix b/ if present
                     if path.startswith("b/"):
                         path = path[2:]
-                    current_file = path # Prefer new filename
+                    current_file = path
                 
-                # If we found a file, add to list if not present
                 if current_file and current_file not in files:
                     files.append(current_file)
 
@@ -132,8 +132,11 @@ class DiffParser:
         if current_file and current_patch_lines:
             file_patches.append({
                 "file": current_file,
-                "patch": "\n".join(current_patch_lines)
+                "patch": "\n".join(current_patch_lines),
+                "is_new": is_new_file
             })
+            if is_new_file:
+                new_files.append(current_file)
 
         # Determine change types
         change_types = set()
@@ -149,6 +152,7 @@ class DiffParser:
 
         result = {
             "files": files,
+            "new_files": new_files,
             "file_patches": file_patches,
             "stats": stats,
             "change_types": list(change_types),

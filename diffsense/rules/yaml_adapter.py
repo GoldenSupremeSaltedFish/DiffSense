@@ -14,8 +14,11 @@ class YamlRule(Rule):
         self._compiled_match = None
         content_regex = self._rule_dict.get('match')
         if content_regex:
+            flags = re.MULTILINE
+            if self._rule_dict.get('case_insensitive', False):
+                flags |= re.IGNORECASE
             try:
-                self._compiled_match = re.compile(content_regex, re.MULTILINE)
+                self._compiled_match = re.compile(content_regex, flags)
             except re.error:
                 self._compiled_match = None
 
@@ -66,6 +69,34 @@ class YamlRule(Rule):
     @property
     def status(self) -> str:
         return str(self._rule_dict.get('status', 'stable')).lower()
+
+    @property
+    def is_blocking(self) -> bool:
+        # Default to True for 'critical' absolute rules, or if explicitly set
+        explicit = self._rule_dict.get('is_blocking')
+        if explicit is not None:
+            return bool(explicit)
+        
+        # Absolute critical rules are blocking by default
+        if self.rule_type == 'absolute' and self.severity == 'critical':
+            return True
+        return False
+
+    @property
+    def rule_type(self) -> str:
+        """
+        Determines if the rule is 'regression' or 'absolute'.
+        Defaults to 'regression' if action is 'removed' or 'changed'.
+        """
+        explicit = self._rule_dict.get('rule_type')
+        if explicit:
+            return str(explicit)
+        
+        action = self._rule_dict.get('action', '').lower()
+        if action in ['removed', 'deleted', 'changed', 'modified']:
+            return 'regression'
+        
+        return 'absolute'
 
     def evaluate(self, diff_data: Dict[str, Any], ast_signals: List[Any]) -> Optional[Dict[str, Any]]:
         # Logic extracted from old RuleEngine._match_rule

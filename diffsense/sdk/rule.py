@@ -33,6 +33,16 @@ class BaseRule(ABC):
         pass
     
     @property
+    def rule_type(self) -> str:
+        """Rule type: regression (depends on diff history) or absolute (context-independent)"""
+        return "absolute"
+
+    @property
+    def is_blocking(self) -> bool:
+        """If True, any hit will force a 'critical' review level and suggested 'block_pr' action"""
+        return False
+
+    @property
     def status(self) -> str:
         """Lifecycle status: experimental, beta, stable, deprecated, disabled"""
         return "stable"
