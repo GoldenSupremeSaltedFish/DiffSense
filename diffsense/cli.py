@@ -3,6 +3,7 @@ DiffSense 统一 CLI：diffsense audit | replay | rules list
 """
 import os
 import sys
+import time
 from pathlib import Path
 
 import typer
@@ -51,6 +52,17 @@ def audit(
     rules_path = rules
     if not rules_path or not os.path.exists(rules_path):
         rules_path = _default_rules_path()
+
+    # Official recommended config from .diffsense.yaml (CLI overrides when provided)
+    try:
+        from core.run_config import get_run_config
+        run_cfg = get_run_config(os.getcwd())
+        if not profile and run_cfg.get("profile"):
+            profile = run_cfg["profile"]
+        if not quality_auto_tune and run_cfg.get("auto_tune"):
+            quality_auto_tune = True
+    except Exception:
+        pass
 
     if platform == "github":
         if not repo or pr is None:
@@ -108,6 +120,17 @@ def replay(
     rules_path = rules
     if not rules_path or not os.path.exists(rules_path):
         rules_path = _default_rules_path()
+
+    # Official recommended config from .diffsense.yaml (CLI overrides when provided)
+    try:
+        from core.run_config import get_run_config
+        run_cfg = get_run_config(os.getcwd())
+        if not profile and run_cfg.get("profile"):
+            profile = run_cfg["profile"]
+        if not quality_auto_tune and run_cfg.get("auto_tune"):
+            quality_auto_tune = True
+    except Exception:
+        pass
 
     args = ["diffsense", diff_file, "--rules", rules_path, "--format", format, "--baseline-file", baseline_file, "--report-json", report_json, "--report-html", report_html, "--comments-json", comments_json, "--quality-disable-threshold", str(quality_disable_threshold), "--quality-downgrade-threshold", str(quality_downgrade_threshold), "--quality-min-samples", str(quality_min_samples)]
     if profile:
@@ -290,6 +313,113 @@ def replay_coverage(
     typer.echo(f"Hit Rate: {hit_rate:.1f}%")
 
 
+def _get_cache_root() -> str:
+    """Return cache root directory (parent of CACHE_VERSION/diff and CACHE_VERSION/ast)."""
+    from core.parser import DiffParser
+    p = DiffParser()
+    # cache_dir is .../cache/<CACHE_VERSION>/diff or .../cache/<CACHE_VERSION>/ast
+    return os.path.dirname(os.path.dirname(p.cache_dir))
+
+
+cache_app = typer.Typer(help="Cache: prune by age to limit disk growth.")
+
+@cache_app.command("prune")
+def cache_prune(
+    max_age_days: float = typer.Option(7.0, "--max-age-days", help="Remove cache entries older than this many days"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Only print what would be removed"),
+) -> None:
+    """Remove cache files older than --max-age-days. Use in CI or cron to limit disk usage."""
+    import time
+    root = _get_cache_root()
+    if not os.path.isdir(root):
+        typer.echo(f"Cache root not found: {root}")
+        return
+    cutoff = time.time() - max_age_days * 86400
+    removed = 0
+    for dirpath, _, filenames in os.walk(root, topdown=False):
+        for name in filenames:
+            if name.endswith(".tmp"):
+                continue
+            path = os.path.join(dirpath, name)
+            try:
+                if os.path.getmtime(path) < cutoff:
+                    if not dry_run:
+                        os.remove(path)
+                    removed += 1
+            except OSError:
+                pass
+    if dry_run:
+        typer.echo(f"Would remove {removed} file(s) older than {max_age_days} days under {root}")
+    else:
+        typer.echo(f"Removed {removed} file(s) older than {max_age_days} days under {root}")
+
+
+@app.command("benchmark-cold-hot")
+def benchmark_cold_hot(
+    diff_file: str = typer.Argument(..., help="Path to a .diff file (e.g. tests/fixtures/ast_cases/p0_concurrency.diff)"),
+    output: str = typer.Option("benchmark-cold-hot-result.json", "--output", "-o", help="Write cold_s, hot_s and thresholds here"),
+    fail_if_over: bool = typer.Option(False, "--fail-if-over", help="Exit with code 1 if cold_s > 10 or hot_s > 3"),
+    cold_threshold_s: float = typer.Option(10.0, "--cold-threshold", help="Cold run threshold (seconds)"),
+    hot_threshold_s: float = typer.Option(3.0, "--hot-threshold", help="Hot run threshold (seconds)"),
+) -> None:
+    """Run audit twice (cold then hot) and report timings. For CI: use --fail-if-over to enforce DoD."""
+    import subprocess
+    import tempfile
+    import json as _json
+    pkg_dir = os.path.dirname(os.path.abspath(__file__))
+    if not os.path.isabs(diff_file):
+        for base in [os.getcwd(), pkg_dir, os.path.join(pkg_dir, "..")]:
+            candidate = os.path.join(base, diff_file)
+            if os.path.isfile(candidate):
+                diff_file = candidate
+                break
+    if not os.path.isfile(diff_file):
+        typer.echo(f"Diff file not found: {diff_file}", err=True)
+        raise typer.Exit(1)
+    tmp = tempfile.mkdtemp(prefix="diffsense_bench_")
+    env = {**os.environ, "DIFFSENSE_CACHE_DIR": tmp}
+    report_path = os.path.join(tmp, "report.json")
+    main_py = os.path.join(pkg_dir, "main.py")
+    cmd = [sys.executable, main_py, diff_file, "--report-json", report_path, "--format", "json"] if os.path.isfile(main_py) else [sys.executable, "-m", "main", diff_file, "--report-json", report_path, "--format", "json"]
+    try:
+        t0 = time.perf_counter()
+        r0 = subprocess.run(cmd, env=env, cwd=pkg_dir, capture_output=True, timeout=60)
+        cold_s = time.perf_counter() - t0
+        t1 = time.perf_counter()
+        r1 = subprocess.run(cmd, env=env, cwd=pkg_dir, capture_output=True, timeout=60)
+        hot_s = time.perf_counter() - t1
+    except subprocess.TimeoutExpired:
+        typer.echo("Run timed out (60s).", err=True)
+        raise typer.Exit(1)
+    except Exception as e:
+        typer.echo(f"Run failed: {e}", err=True)
+        raise typer.Exit(1)
+    finally:
+        try:
+            import shutil
+            shutil.rmtree(tmp, ignore_errors=True)
+        except Exception:
+            pass
+    result = {
+        "cold_s": round(cold_s, 3),
+        "hot_s": round(hot_s, 3),
+        "cold_threshold_s": cold_threshold_s,
+        "hot_threshold_s": hot_threshold_s,
+        "cold_ok": cold_s <= cold_threshold_s,
+        "hot_ok": hot_s <= hot_threshold_s,
+    }
+    out_dir = os.path.dirname(output)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+    with open(output, "w", encoding="utf-8") as f:
+        _json.dump(result, f, indent=2)
+    typer.echo(f"Cold: {cold_s:.2f}s (threshold {cold_threshold_s}s) — {'OK' if result['cold_ok'] else 'OVER'}")
+    typer.echo(f"Hot:  {hot_s:.2f}s (threshold {hot_threshold_s}s) — {'OK' if result['hot_ok'] else 'OVER'}")
+    typer.echo(f"Written: {output}")
+    if fail_if_over and (not result["cold_ok"] or not result["hot_ok"]):
+        raise typer.Exit(1)
+
+
 @app.command("benchmark")
 def benchmark(
     manifest: str = typer.Option("benchmarks/manifest.yaml", "--manifest", "-m", help="Benchmark manifest YAML path"),
@@ -439,6 +569,7 @@ def profile_rules(
 
 
 app.add_typer(rules_app, name="rules")
+app.add_typer(cache_app, name="cache")
 
 if __name__ == "__main__":
     app()

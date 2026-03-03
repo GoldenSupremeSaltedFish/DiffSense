@@ -187,9 +187,36 @@ def main():
     parser.add_argument("--experimental-affect-decision", dest="experimental_report_only", action="store_false", help="Allow experimental rules to affect decision")
 
     args = parser.parse_args()
-    
+
+    # Official recommended config from .diffsense.yaml (CLI overrides when provided)
+    try:
+        from core.run_config import get_run_config
+        run_cfg = get_run_config(os.getcwd())
+        if args.profile is None and run_cfg.get("profile"):
+            args.profile = run_cfg["profile"]
+        if not args.quality_auto_tune and run_cfg.get("auto_tune"):
+            args.quality_auto_tune = True
+        rq = run_cfg.get("rule_quality") or {}
+        if args.quality_downgrade_threshold == 0.5 and "degrade_threshold" in rq:
+            try:
+                args.quality_downgrade_threshold = float(rq["degrade_threshold"])
+            except (TypeError, ValueError):
+                pass
+        if args.quality_disable_threshold == 0.3 and "disable_threshold" in rq:
+            try:
+                args.quality_disable_threshold = float(rq["disable_threshold"])
+            except (TypeError, ValueError):
+                pass
+        if args.quality_min_samples == 30 and "min_samples" in rq:
+            try:
+                args.quality_min_samples = int(rq["min_samples"])
+            except (TypeError, ValueError):
+                pass
+    except Exception:
+        pass
+
     adapter = None
-    
+
     if args.platform == "github":
         if not args.repo or not args.pr:
             print("Error: --repo and --pr are required for GitHub")

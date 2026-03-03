@@ -1,0 +1,979 @@
+{
+  "review_level": "critical",
+  "reasons": [
+    "runtime.concurrency_regression",
+    "runtime.thread_safety_removal",
+    "runtime.concurrency.thread_safety_downgrade",
+    "runtime.concurrency.static_unsafe_collection",
+    "runtime.performance.sleep_added",
+    "runtime.concurrency.lock_removed",
+    "runtime.concurrency.volatile_removed",
+    "runtime.concurrency.final_removed"
+  ],
+  "files": [
+    "src/main/java/com/example/ConcurrencyIssues.java"
+  ],
+  "impacts": {
+    "runtime": "critical",
+    "performance": "medium"
+  },
+  "details": [
+    {
+      "rule_id": "runtime.concurrency_regression",
+      "severity": "high",
+      "file": "src/main/java/com/example/ConcurrencyIssues.java",
+      "rationale": "Downgrade from concurrent/atomic type to non-thread-safe implementation",
+      "impact": "runtime",
+      "precision": 1.0,
+      "quality_status": "insufficient"
+    },
+    {
+      "rule_id": "runtime.thread_safety_removal",
+      "severity": "high",
+      "file": "volatile_removed",
+      "rationale": "Removal of synchronization (synchronized, volatile, locks) from shared code",
+      "impact": "runtime",
+      "precision": 1.0,
+      "quality_status": "insufficient"
+    },
+    {
+      "rule_id": "runtime.concurrency.thread_safety_downgrade",
+      "severity": "critical",
+      "file": "src/main/java/com/example/ConcurrencyIssues.java",
+      "rationale": "CRITICAL: Detected downgrade from ThreadSafe type to Non-ThreadSafe type (e.g., ConcurrentHashMap -> HashMap). High risk of race conditions!",
+      "impact": "runtime",
+      "precision": 1.0,
+      "quality_status": "insufficient"
+    },
+    {
+      "rule_id": "runtime.concurrency.static_unsafe_collection",
+      "severity": "high",
+      "file": "src/main/java/com/example/ConcurrencyIssues.java",
+      "rationale": "Usage of static non-thread-safe collection detected. This is a common cause of race conditions in multi-threaded environments.",
+      "impact": "runtime",
+      "precision": 1.0,
+      "quality_status": "insufficient"
+    },
+    {
+      "rule_id": "runtime.performance.sleep_added",
+      "severity": "medium",
+      "file": "src/main/java/com/example/ConcurrencyIssues.java",
+      "rationale": "Thread.sleep() introduced. This may indicate poor concurrency handling or debug code left in production.",
+      "impact": "performance",
+      "precision": 1.0,
+      "quality_status": "insufficient"
+    },
+    {
+      "rule_id": "runtime.concurrency.lock_removed",
+      "severity": "critical",
+      "file": "src/main/java/com/example/ConcurrencyIssues.java",
+      "rationale": "CRITICAL: Removal of Lock/Synchronized detected! This is a P0 stability risk (TOP1 accident cause).",
+      "impact": "runtime",
+      "precision": 1.0,
+      "quality_status": "insufficient"
+    },
+    {
+      "rule_id": "runtime.concurrency.volatile_removed",
+      "severity": "critical",
+      "file": "src/main/java/com/example/ConcurrencyIssues.java",
+      "rationale": "CRITICAL: Removal of volatile keyword detected! This causes visibility issues.",
+      "impact": "runtime",
+      "precision": 1.0,
+      "quality_status": "insufficient"
+    },
+    {
+      "rule_id": "runtime.concurrency.final_removed",
+      "severity": "critical",
+      "file": "src/main/java/com/example/ConcurrencyIssues.java",
+      "rationale": "CRITICAL: Removal of final modifier detected! Immutable object might become mutable (thread-safety risk).",
+      "impact": "runtime",
+      "precision": 1.0,
+      "quality_status": "insufficient"
+    }
+  ],
+  "meta": {
+    "confidence": 1.0,
+    "suggested_action": "block_pr"
+  },
+  "_metrics": {
+    "runtime.threadpool_semantic_change": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 7100,
+      "errors": 0
+    },
+    "runtime.concurrency_regression": {
+      "calls": 1,
+      "hits": 1,
+      "ignores": 0,
+      "time_ns": 3900,
+      "errors": 0
+    },
+    "runtime.thread_safety_removal": {
+      "calls": 1,
+      "hits": 1,
+      "ignores": 0,
+      "time_ns": 46800,
+      "errors": 0
+    },
+    "runtime.latch_misuse": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 13200,
+      "errors": 0
+    },
+    "runtime.concurrency_synchronized_removed_critical": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 2200,
+      "errors": 0
+    },
+    "runtime.concurrency_lock_removed_critical": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 1100,
+      "errors": 0
+    },
+    "runtime.concurrency_volatile_removed_risk": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 800,
+      "errors": 0
+    },
+    "runtime.concurrency_map_removed_risk": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 1800,
+      "errors": 0
+    },
+    "runtime.concurrency.thread_safety_downgrade": {
+      "calls": 1,
+      "hits": 1,
+      "ignores": 0,
+      "time_ns": 1900,
+      "errors": 0
+    },
+    "runtime.concurrency.static_unsafe_collection": {
+      "calls": 1,
+      "hits": 1,
+      "ignores": 0,
+      "time_ns": 1400,
+      "errors": 0
+    },
+    "runtime.performance.sleep_added": {
+      "calls": 1,
+      "hits": 1,
+      "ignores": 0,
+      "time_ns": 1100,
+      "errors": 0
+    },
+    "runtime.concurrency.executors_factory_risk": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 500,
+      "errors": 0
+    },
+    "runtime.concurrency.future_get_without_timeout": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 500,
+      "errors": 0
+    },
+    "runtime.concurrency.threadpool_creation": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 600,
+      "errors": 0
+    },
+    "data.query_change": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 7100,
+      "errors": 0
+    },
+    "runtime.input_normalization_removed": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 1200,
+      "errors": 0
+    },
+    "data.pagination_semantic_change": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 700,
+      "errors": 0
+    },
+    "runtime.collection_mutation_inside_loop": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 500,
+      "errors": 0
+    },
+    "runtime.concurrency.lock_removed": {
+      "calls": 1,
+      "hits": 1,
+      "ignores": 0,
+      "time_ns": 1900,
+      "errors": 0
+    },
+    "runtime.concurrency.volatile_removed": {
+      "calls": 1,
+      "hits": 1,
+      "ignores": 0,
+      "time_ns": 1200,
+      "errors": 0
+    },
+    "runtime.concurrency.final_removed": {
+      "calls": 1,
+      "hits": 1,
+      "ignores": 0,
+      "time_ns": 1100,
+      "errors": 0
+    },
+    "runtime.concurrency.atomic_to_non_atomic_write": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 800,
+      "errors": 0
+    },
+    "runtime.concurrency.threadpool_param_change": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 800,
+      "errors": 0
+    },
+    "runtime.concurrency.threadpool_unbounded_queue": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 500,
+      "errors": 0
+    },
+    "runtime.concurrency.busy_wait_added": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 500,
+      "errors": 0
+    },
+    "runtime.resource.try_with_resource_removed": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 500,
+      "errors": 0
+    },
+    "runtime.resource.cache_eviction_removed": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 500,
+      "errors": 0
+    },
+    "runtime.network.timeout_removed": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 600,
+      "errors": 0
+    },
+    "runtime.data.null_check_removed": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 500,
+      "errors": 0
+    },
+    "runtime.data.equals_to_reference_compare": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 500,
+      "errors": 0
+    },
+    "example.custom.risk": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 600,
+      "errors": 0
+    },
+    "cache": {
+      "diff": {
+        "hits": 1,
+        "misses": 0,
+        "saved_ms": 0
+      },
+      "ast": {
+        "hits": 4,
+        "misses": 0,
+        "saved_ms": 0
+      }
+    },
+    "rule_stats": {
+      "total_rules": 42,
+      "executed_count": 31,
+      "top_slow": [
+        {
+          "rule_id": "runtime.thread_safety_removal",
+          "calls": 1,
+          "hits": 1,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0468,
+          "avg_time_ms": 0.0468,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.latch_misuse",
+          "calls": 1,
+          "hits": 0,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0132,
+          "avg_time_ms": 0.0132,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.threadpool_semantic_change",
+          "calls": 1,
+          "hits": 0,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0071,
+          "avg_time_ms": 0.0071,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "data.query_change",
+          "calls": 1,
+          "hits": 0,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0071,
+          "avg_time_ms": 0.0071,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.concurrency_regression",
+          "calls": 1,
+          "hits": 1,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0039,
+          "avg_time_ms": 0.0039,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.concurrency_synchronized_removed_critical",
+          "calls": 1,
+          "hits": 0,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0022,
+          "avg_time_ms": 0.0022,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.concurrency.thread_safety_downgrade",
+          "calls": 1,
+          "hits": 1,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0019,
+          "avg_time_ms": 0.0019,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.concurrency.lock_removed",
+          "calls": 1,
+          "hits": 1,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0019,
+          "avg_time_ms": 0.0019,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.concurrency_map_removed_risk",
+          "calls": 1,
+          "hits": 0,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0018,
+          "avg_time_ms": 0.0018,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.concurrency.static_unsafe_collection",
+          "calls": 1,
+          "hits": 1,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0014,
+          "avg_time_ms": 0.0014,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        }
+      ],
+      "top_noisy": [
+        {
+          "rule_id": "runtime.threadpool_semantic_change",
+          "calls": 1,
+          "hits": 0,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0071,
+          "avg_time_ms": 0.0071,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.concurrency_regression",
+          "calls": 1,
+          "hits": 1,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0039,
+          "avg_time_ms": 0.0039,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.thread_safety_removal",
+          "calls": 1,
+          "hits": 1,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0468,
+          "avg_time_ms": 0.0468,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.latch_misuse",
+          "calls": 1,
+          "hits": 0,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0132,
+          "avg_time_ms": 0.0132,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.concurrency_synchronized_removed_critical",
+          "calls": 1,
+          "hits": 0,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0022,
+          "avg_time_ms": 0.0022,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.concurrency_lock_removed_critical",
+          "calls": 1,
+          "hits": 0,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0011,
+          "avg_time_ms": 0.0011,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.concurrency_volatile_removed_risk",
+          "calls": 1,
+          "hits": 0,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0008,
+          "avg_time_ms": 0.0008,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.concurrency_map_removed_risk",
+          "calls": 1,
+          "hits": 0,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0018,
+          "avg_time_ms": 0.0018,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.concurrency.thread_safety_downgrade",
+          "calls": 1,
+          "hits": 1,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0019,
+          "avg_time_ms": 0.0019,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.concurrency.static_unsafe_collection",
+          "calls": 1,
+          "hits": 1,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0014,
+          "avg_time_ms": 0.0014,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        }
+      ],
+      "top_triggered": [
+        {
+          "rule_id": "runtime.concurrency_regression",
+          "calls": 1,
+          "hits": 1,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0039,
+          "avg_time_ms": 0.0039,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.thread_safety_removal",
+          "calls": 1,
+          "hits": 1,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0468,
+          "avg_time_ms": 0.0468,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.concurrency.thread_safety_downgrade",
+          "calls": 1,
+          "hits": 1,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0019,
+          "avg_time_ms": 0.0019,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.concurrency.static_unsafe_collection",
+          "calls": 1,
+          "hits": 1,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0014,
+          "avg_time_ms": 0.0014,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.performance.sleep_added",
+          "calls": 1,
+          "hits": 1,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0011,
+          "avg_time_ms": 0.0011,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.concurrency.lock_removed",
+          "calls": 1,
+          "hits": 1,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0019,
+          "avg_time_ms": 0.0019,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.concurrency.volatile_removed",
+          "calls": 1,
+          "hits": 1,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0012,
+          "avg_time_ms": 0.0012,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.concurrency.final_removed",
+          "calls": 1,
+          "hits": 1,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0011,
+          "avg_time_ms": 0.0011,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.threadpool_semantic_change",
+          "calls": 1,
+          "hits": 0,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0071,
+          "avg_time_ms": 0.0071,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.latch_misuse",
+          "calls": 1,
+          "hits": 0,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0132,
+          "avg_time_ms": 0.0132,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        }
+      ]
+    }
+  },
+  "_rule_quality": {
+    "runtime.threadpool_semantic_change": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0071,
+      "confidence": 1.0
+    },
+    "runtime.concurrency_regression": {
+      "hits": 1,
+      "confirmed": 1,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0039,
+      "confidence": 1.0
+    },
+    "runtime.thread_safety_removal": {
+      "hits": 1,
+      "confirmed": 1,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0468,
+      "confidence": 1.0
+    },
+    "runtime.latch_misuse": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0132,
+      "confidence": 1.0
+    },
+    "runtime.concurrency_risk": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0014,
+      "confidence": 1.0
+    },
+    "runtime.concurrency_synchronized_removed_critical": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0022,
+      "confidence": 1.0
+    },
+    "runtime.concurrency_lock_risk": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0005,
+      "confidence": 1.0
+    },
+    "runtime.concurrency_lock_removed_critical": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0011,
+      "confidence": 1.0
+    },
+    "runtime.concurrency_volatile_risk": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0003,
+      "confidence": 1.0
+    },
+    "runtime.concurrency_volatile_removed_risk": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0008,
+      "confidence": 1.0
+    },
+    "runtime.concurrency_map_removed_risk": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0018,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.thread_safety_downgrade": {
+      "hits": 1,
+      "confirmed": 1,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0019,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.static_unsafe_collection": {
+      "hits": 1,
+      "confirmed": 1,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0014,
+      "confidence": 1.0
+    },
+    "runtime.performance.sleep_added": {
+      "hits": 1,
+      "confirmed": 1,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0011,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.executors_factory_risk": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0005,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.future_get_without_timeout": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0005,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.threadpool_creation": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0006,
+      "confidence": 1.0
+    },
+    "data.query_change": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0071,
+      "confidence": 1.0
+    },
+    "runtime.input_normalization_removed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0012,
+      "confidence": 1.0
+    },
+    "data.pagination_semantic_change": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0007,
+      "confidence": 1.0
+    },
+    "runtime.collection_mutation_inside_loop": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0005,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.lock_removed": {
+      "hits": 1,
+      "confirmed": 1,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0019,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.volatile_removed": {
+      "hits": 1,
+      "confirmed": 1,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0012,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.final_removed": {
+      "hits": 1,
+      "confirmed": 1,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0011,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.atomic_to_non_atomic_write": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0008,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.threadpool_param_change": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0008,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.threadpool_unbounded_queue": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0005,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.busy_wait_added": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0005,
+      "confidence": 1.0
+    },
+    "runtime.resource.try_with_resource_removed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0005,
+      "confidence": 1.0
+    },
+    "runtime.resource.cache_eviction_removed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0005,
+      "confidence": 1.0
+    },
+    "runtime.network.timeout_removed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0006,
+      "confidence": 1.0
+    },
+    "runtime.data.null_check_removed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0005,
+      "confidence": 1.0
+    },
+    "runtime.data.equals_to_reference_compare": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0005,
+      "confidence": 1.0
+    },
+    "cache": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0,
+      "confidence": 1.0
+    },
+    "rule_stats": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0,
+      "confidence": 1.0
+    },
+    "example.custom.risk": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0006,
+      "confidence": 1.0
+    }
+  },
+  "_quality_warnings": [],
+  "_performance": {
+    "wall_clock_s": 0.066,
+    "cache": {
+      "diff": {
+        "hits": 1,
+        "misses": 0,
+        "saved_ms": 0
+      },
+      "ast": {
+        "hits": 4,
+        "misses": 0,
+        "saved_ms": 0
+      }
+    },
+    "cache_hit_rate_pct": 100.0,
+    "rules_executed": 31,
+    "rules_total": 42,
+    "rules_executed_pct": 73.81
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "cold_s": 0.206,
+  "hot_s": 0.267,
+  "cold_threshold_s": 10.0,
+  "hot_threshold_s": 3.0,
+  "cold_ok": true,
+  "hot_ok": true
+}

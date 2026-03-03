@@ -1,9 +1,11 @@
 import re
 import os
 import json
+import time
 import hashlib
 from typing import List, Dict, Any, Optional
 from . import CACHE_VERSION
+from . import get_cache_max_age_seconds
 
 class DiffParser:
     def __init__(self, cache_dir: Optional[str] = None):
@@ -27,6 +29,18 @@ class DiffParser:
         path = self._cache_path(cache_key)
         if not os.path.exists(path):
             return None
+        max_age = get_cache_max_age_seconds()
+        if max_age > 0:
+            try:
+                mtime = os.path.getmtime(path)
+                if (time.time() - mtime) > max_age:
+                    try:
+                        os.remove(path)
+                    except OSError:
+                        pass
+                    return None
+            except OSError:
+                return None
         try:
             with open(path, "r", encoding="utf-8") as f:
                 return json.load(f)

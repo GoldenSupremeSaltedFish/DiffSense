@@ -28,12 +28,13 @@
 
 ---
 
-## 3. 阶段性汇报文档位置
+## 3. 阶段性汇报文档位置与实现同步
 
 - **docs/cursor/** 为阶段性汇报文档统一目录：
-  - [ROADMAP_12_MONTHS_CN.md](./ROADMAP_12_MONTHS_CN.md)
+  - [ROADMAP_12_MONTHS_CN.md](./ROADMAP_12_MONTHS_CN.md)（含 **里程碑与实现同步表**：各 P0/DoD 与实现位置、实现逻辑的逐项对照）
   - [NEXT_STEPS_CN.md](./NEXT_STEPS_CN.md)
   - [ARCHITECTURE_PRINCIPLES.md](./ARCHITECTURE_PRINCIPLES.md)
+  - [Q2_ENGINEERING_ASSESSMENT.md](./Q2_ENGINEERING_ASSESSMENT.md)（Q2 性能极限设计的工程化程度与缺口）
   - [ENGINEERING_CHECK.md](./ENGINEERING_CHECK.md)（本文件）
 
 ---
