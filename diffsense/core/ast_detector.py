@@ -1,5 +1,6 @@
 import re
 import os
+import time
 import hashlib
 import pickle
 import javalang
@@ -7,6 +8,7 @@ from javalang.tokenizer import BasicType, Identifier
 from javalang.tree import SynchronizedStatement, MethodInvocation, FieldDeclaration, MethodDeclaration, LocalVariableDeclaration, VariableDeclarator, ForStatement, WhileStatement, DoStatement, ClassCreator, ReferenceType, BasicType as TreeBasicType, Assignment, TryResource, TryStatement, IfStatement, BinaryOperation, Literal
 from typing import List, Set, Dict, Any, Tuple, Optional
 from . import CACHE_VERSION
+from . import get_cache_max_age_seconds
 from .signal_model import Signal
 from .change import Change, ChangeKind
 from .knowledge import is_thread_safe, is_lock_type
@@ -38,6 +40,18 @@ class ASTDetector:
         path = self._cache_path(cache_key)
         if not os.path.exists(path):
             return None
+        max_age = get_cache_max_age_seconds()
+        if max_age > 0:
+            try:
+                mtime = os.path.getmtime(path)
+                if (time.time() - mtime) > max_age:
+                    try:
+                        os.remove(path)
+                    except OSError:
+                        pass
+                    return None
+            except OSError:
+                return None
         try:
             with open(path, "rb") as f:
                 data = pickle.load(f)

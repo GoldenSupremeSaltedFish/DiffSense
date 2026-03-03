@@ -38,6 +38,20 @@
 - **冷启动 &lt; 10s**：在「中型 PR」口径下，通过清空 cache 后单次 run 测量，当前实现可满足；若个别超大 diff 超 10s，建议在 CI 中启用 cache 或缩小 diff 范围。
 - **热启动 &lt; 3s**：同一 diff 二次 run 在 cache 命中下可满足。
 
+### 自动化断言（CI / 脚本）
+
+使用 CLI 命令 **`diffsense benchmark-cold-hot`** 可自动跑冷/热两次并写出耗时与达标结果，便于 CI 或本地复现：
+
+```bash
+# 使用仓库内 fixture 或任意 .diff 文件
+diffsense benchmark-cold-hot tests/fixtures/ast_cases/p0_concurrency.diff --output benchmark-cold-hot-result.json
+
+# 若超过阈值则退出码 1（可用于 CI 门禁，建议先以 warning 观察）
+diffsense benchmark-cold-hot tests/fixtures/ast_cases/p0_concurrency.diff --fail-if-over --cold-threshold 10 --hot-threshold 3
+```
+
+输出 JSON 含 `cold_s`、`hot_s`、`cold_ok`、`hot_ok` 及阈值，CI 可解析该文件做门禁或仅上报。在 **test.yml** 中可增加可选 job（如 `continue-on-error: true`）跑上述命令并上传 `benchmark-cold-hot-result.json` 作为制品。
+
 ---
 
 ## 3. 将规则执行比例压到 30% 以下（DoD：rule 执行数量 &lt; 30%）
