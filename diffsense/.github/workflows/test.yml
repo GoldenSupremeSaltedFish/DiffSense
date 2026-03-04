@@ -1,0 +1,57 @@
+# 回归与核心单测：合入/发版前必过，支撑工程化检验清单
+name: Tests
+
+on:
+  push:
+    branches: [main, master, release/*]
+  pull_request:
+    branches: [main, master, release/*]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install
+        run: |
+          pip install -e ".[dev]" 2>/dev/null || pip install -e . && pip install pytest
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Regression + cache + ignore
+        run: |
+          pytest tests/test_regression.py tests/test_cache_and_scheduling.py tests/test_repo_ignore.py -v --tb=short
+
+  benchmark-cold-hot:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: |
+          pip install -e ".[dev]" 2>/dev/null || pip install -e . && pip install pytest
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Benchmark cold/hot (DoD: cold <10s, hot <3s)
+        run: |
+          diffsense benchmark-cold-hot tests/fixtures/ast_cases/p0_concurrency.diff --output benchmark-cold-hot-result.json --fail-if-over || true
+      - name: Upload benchmark result
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-cold-hot-result
+          path: benchmark-cold-hot-result.json

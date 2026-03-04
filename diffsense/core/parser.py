@@ -1,26 +1,97 @@
 import re
-from typing import List, Dict, Any
+import os
+import json
+import time
+import hashlib
+from typing import List, Dict, Any, Optional
+from . import CACHE_VERSION
+from . import get_cache_max_age_seconds
 
 class DiffParser:
+    def __init__(self, cache_dir: Optional[str] = None):
+        self.cache_dir = cache_dir or self._resolve_cache_dir()
+        self.metrics = {"hits": 0, "misses": 0, "saved_ms": 0}
+
+    def _resolve_cache_dir(self) -> str:
+        base_dir = os.environ.get("DIFFSENSE_CACHE_DIR")
+        if not base_dir:
+            base_dir = os.path.join(os.path.expanduser("~"), ".diffsense", "cache")
+        return os.path.join(base_dir, CACHE_VERSION, "diff")
+
+    def _cache_key(self, diff_content: str) -> str:
+        digest = hashlib.sha1(diff_content.encode("utf-8", errors="ignore")).hexdigest()
+        return digest
+
+    def _cache_path(self, cache_key: str) -> str:
+        return os.path.join(self.cache_dir, f"{cache_key}.json")
+
+    def _load_cache(self, cache_key: str) -> Optional[Dict[str, Any]]:
+        path = self._cache_path(cache_key)
+        if not os.path.exists(path):
+            return None
+        max_age = get_cache_max_age_seconds()
+        if max_age > 0:
+            try:
+                mtime = os.path.getmtime(path)
+                if (time.time() - mtime) > max_age:
+                    try:
+                        os.remove(path)
+                    except OSError:
+                        pass
+                    return None
+            except OSError:
+                return None
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return None
+
+    def _save_cache(self, cache_key: str, data: Dict[str, Any]) -> None:
+        os.makedirs(self.cache_dir, exist_ok=True)
+        path = self._cache_path(cache_key)
+        tmp_path = f"{path}.{os.getpid()}.tmp"
+        try:
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(data, f)
+            # Atomic rename (replace existing if any)
+            os.replace(tmp_path, path)
+        except Exception:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+            pass
+
     def parse(self, diff_content: str) -> Dict[str, Any]:
         """
         Parses a unified diff string and returns a structured object.
         """
+        import time
+        start_time = time.time()
+        
         files = []
+        new_files = []
         stats = {"add": 0, "del": 0}
         file_patches = []
         
-        # Check if content looks like JSON (GitLab API response leak)
+        cache_key = self._cache_key(diff_content)
+        cached = self._load_cache(cache_key)
+        if cached:
+            self.metrics["hits"] += 1
+            return cached
+
+        self.metrics["misses"] += 1
+
+        # Check if content looks like JSON
         if diff_content.strip().startswith('{') or diff_content.strip().startswith('['):
-            # It seems we got raw JSON instead of diff text.
-            # This happens if the fetcher returned API response text directly.
-            # Let's try to handle this edge case or return empty to fail safely.
             print("Warning: Diff content looks like JSON. Parser expects Unified Diff format.")
-            return {"files": [], "file_patches": [], "stats": stats, "change_types": [], "raw_diff": diff_content}
+            result = {"files": [], "new_files": [], "file_patches": [], "stats": stats, "change_types": [], "raw_diff": diff_content}
+            self._save_cache(cache_key, result)
+            return result
 
         lines = diff_content.splitlines()
         current_file = None
         current_patch_lines = []
+        is_new_file = False
         
         for line in lines:
             # Check for new file header
@@ -29,18 +100,23 @@ class DiffParser:
                 if current_file and current_patch_lines:
                     file_patches.append({
                         "file": current_file,
-                        "patch": "\n".join(current_patch_lines)
+                        "patch": "\n".join(current_patch_lines),
+                        "is_new": is_new_file
                     })
+                    if is_new_file:
+                        new_files.append(current_file)
                 
                 # Reset for new file
                 current_file = None
                 current_patch_lines = []
+                is_new_file = False
             
             # Capture filename from --- or +++
             if line.startswith("--- "):
                 path = line[4:].strip()
-                if path != "/dev/null":
-                    # Remove prefix a/ if present
+                if path == "/dev/null":
+                    is_new_file = True
+                else:
                     if path.startswith("a/"):
                         path = path[2:]
                     if current_file is None:
@@ -49,12 +125,10 @@ class DiffParser:
             if line.startswith("+++ "):
                 path = line[4:].strip()
                 if path != "/dev/null":
-                    # Remove prefix b/ if present
                     if path.startswith("b/"):
                         path = path[2:]
-                    current_file = path # Prefer new filename
+                    current_file = path
                 
-                # If we found a file, add to list if not present
                 if current_file and current_file not in files:
                     files.append(current_file)
 
@@ -72,8 +146,11 @@ class DiffParser:
         if current_file and current_patch_lines:
             file_patches.append({
                 "file": current_file,
-                "patch": "\n".join(current_patch_lines)
+                "patch": "\n".join(current_patch_lines),
+                "is_new": is_new_file
             })
+            if is_new_file:
+                new_files.append(current_file)
 
         # Determine change types
         change_types = set()
@@ -87,10 +164,18 @@ class DiffParser:
             else:
                 change_types.add("other")
 
-        return {
+        result = {
             "files": files,
+            "new_files": new_files,
             "file_patches": file_patches,
             "stats": stats,
             "change_types": list(change_types),
             "raw_diff": diff_content
         }
+        
+        # Track how much time this parse took to estimate future savings
+        duration_ms = (time.time() - start_time) * 1000
+        self.metrics["saved_ms"] = duration_ms # Proxy for saved time on hit
+        
+        self._save_cache(cache_key, result)
+        return result

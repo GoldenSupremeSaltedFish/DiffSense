@@ -112,6 +112,21 @@ class GitHubAdapter(PlatformAdapter):
             self.pr.create_issue_comment(final_body)
             print("Created GitHub comment")
 
+    def post_inline_comments(self, comments):
+        if not comments:
+            return
+        commit = self.pr.head.sha
+        for c in comments:
+            path = c.get("path")
+            position = c.get("position")
+            body = c.get("body")
+            if not path or not position or not body:
+                continue
+            try:
+                self.pr.create_review_comment(body, commit, path, position)
+            except Exception as e:
+                print(f"Inline comment failed: {e}")
+
     def is_approved(self) -> bool:
         reviews = self.pr.get_reviews()
         reviewer_states = {}

@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "diffsense-rules-example"
+version = "0.1.0"
+description = "Example DiffSense rule plugin (entry_points). Use for Q3 devkit / 10-min quickstart."
+requires-python = ">=3.10"
+dependencies = []
+
+[project.entry-points."diffsense.rules"]
+example = "diffsense_rules_example:get_rules"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["diffsense_rules_example*"]
+
+[tool.setuptools.package-data]
+diffsense_rules_example = ["rules/*.yaml"]

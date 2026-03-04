@@ -1,8 +1,10 @@
 import os
 import yaml
+import fnmatch
 import time
-from typing import Dict, List, Any, Tuple, Optional
+from typing import Dict, List, Any, Optional
 from core.rule_base import Rule
+from core.quality_manager import RuleQualityManager
 
 try:
     from importlib.metadata import entry_points
@@ -29,6 +31,10 @@ class RuleEngine:
         self.profile = profile
         self.config = config or {}
         self.lifecycle = LifecycleManager(self.config)
+        self.quality_manager = self._init_quality_manager()
+        exp_cfg = self.config.get("experimental", {})
+        self.experimental_enabled = bool(exp_cfg.get("enabled", False))
+        self.experimental_report_only = bool(exp_cfg.get("report_only", True))
 
         # 1. Register Built-in Rules (Plugins)
         self._register_builtins()
@@ -38,6 +44,7 @@ class RuleEngine:
 
         # 3. Load rules from pip-installed packages (entry point group: diffsense.rules)
         self._load_entry_point_rules()
+        self._load_rulesets_from_config()
 
         # 4. Apply profile filter (lightweight = only critical; strict/None = all)
         if profile == "lightweight":
@@ -55,14 +62,14 @@ class RuleEngine:
     def _load_yaml_rules(self, path: str):
         """
         Loads YAML rules from a single file or a directory of .yaml files.
-        If path is a directory, loads all .yaml files in that directory (one level, no recursion).
+        If path is a directory, loads all .yaml files in that directory recursively.
         Each file must have top-level 'rules: [...]'. Load order is deterministic (sorted by name).
         """
         if os.path.isdir(path):
-            files = sorted(f for f in os.listdir(path) if f.endswith('.yaml'))
-            for name in files:
-                file_path = os.path.join(path, name)
-                self._load_yaml_file(file_path)
+            for root, _, files in os.walk(path):
+                for name in sorted(f for f in files if f.endswith('.yaml')):
+                    file_path = os.path.join(root, name)
+                    self._load_yaml_file(file_path)
         else:
             self._load_yaml_file(path)
 
@@ -103,6 +110,91 @@ class RuleEngine:
             except Exception:
                 pass  # skip broken plugin
 
+    def _init_quality_manager(self) -> RuleQualityManager:
+        cfg = self.config.get("rule_quality", {})
+        path = os.environ.get("DIFFSENSE_RULE_METRICS") or os.path.join(os.getcwd(), "rule_metrics.json")
+        auto_tune = cfg.get("auto_tune", False)
+        degrade = cfg.get("degrade_threshold", 0.5)
+        disable = cfg.get("disable_threshold", 0.3)
+        min_samples = cfg.get("min_samples", 30)
+        try:
+            degrade = float(degrade)
+        except Exception:
+            degrade = 0.5
+        try:
+            disable = float(disable)
+        except Exception:
+            disable = 0.3
+        try:
+            min_samples = int(min_samples)
+        except Exception:
+            min_samples = 30
+        auto_tune = bool(auto_tune)
+        return RuleQualityManager(path, auto_tune, degrade, disable, min_samples)
+
+    def _load_rulesets_from_config(self) -> None:
+        rulesets = []
+        cfg_sets = self.config.get("rulesets")
+        if isinstance(cfg_sets, list):
+            rulesets.extend([s for s in cfg_sets if isinstance(s, str)])
+        env_sets = os.environ.get("DIFFSENSE_RULESETS")
+        if env_sets:
+            for s in env_sets.split(","):
+                s = s.strip()
+                if s:
+                    rulesets.append(s)
+        for path in rulesets:
+            if os.path.exists(path):
+                self._load_yaml_rules(path)
+
+    def persist_rule_quality(self) -> None:
+        self._update_quality_report()
+        self.quality_manager.persist()
+
+    def get_rule_quality_metrics(self) -> Dict[str, Any]:
+        return self.quality_manager.get_metrics()
+
+    def get_quality_warnings(self) -> List[Dict[str, Any]]:
+        return self.quality_manager.warnings()
+
+    def get_rule_stats(self, limit: int = 10) -> Dict[str, Any]:
+        metrics = self.metrics
+        quality = self.get_rule_quality_metrics()
+        rows = []
+        for rule_id, m in metrics.items():
+            calls = int(m.get("calls", 0))
+            hits = int(m.get("hits", 0))
+            ignores = int(m.get("ignores", 0))
+            errors = int(m.get("errors", 0))
+            time_ns = int(m.get("time_ns", 0))
+            avg_time_ms = (time_ns / 1_000_000 / calls) if calls else 0.0
+            fp_rate = (ignores / hits) if hits else 0.0
+            q = quality.get(rule_id, {})
+            precision = q.get("precision") if isinstance(q, dict) else None
+            rows.append({
+                "rule_id": rule_id,
+                "calls": calls,
+                "hits": hits,
+                "ignores": ignores,
+                "errors": errors,
+                "time_ms": time_ns / 1_000_000,
+                "avg_time_ms": avg_time_ms,
+                "fp_rate": fp_rate,
+                "precision": precision
+            })
+        top_slow = sorted(rows, key=lambda r: r["time_ms"], reverse=True)[:limit]
+        top_noisy = sorted(rows, key=lambda r: r["fp_rate"], reverse=True)[:limit]
+        top_triggered = sorted(rows, key=lambda r: r["hits"], reverse=True)[:limit]
+        total_rules = len(self.rules)
+        executed_count = len(metrics)
+        return {
+            "total_rules": total_rules,
+            "executed_count": executed_count,
+            "top_slow": top_slow,
+            "top_noisy": top_noisy,
+            "top_triggered": top_triggered
+        }
+
     def evaluate(self, diff_data: Dict[str, Any], ast_signals: List[Any] = None) -> List[Dict[str, Any]]:
         """
         Evaluates all registered rules against the diff.
@@ -110,12 +202,66 @@ class RuleEngine:
         triggered_rules = []
         ast_signals = ast_signals or []
         
+        # Incremental Scheduling: Extract unique file extensions and paths from diff_data
+        changed_files = diff_data.get("files", [])
+        new_files = diff_data.get("new_files", [])
+        stats = diff_data.get("stats", {"add": 0, "del": 0})
+        
+        # Adaptive Scheduling: If this is a "pure new project/file" diff, skip regression rules
+        # Logic: If deletions are very low compared to additions, it's likely new code.
+        total_changes = stats["add"] + stats["del"]
+        is_mostly_new = False
+        if total_changes > 10: # Only apply heuristic for non-trivial diffs
+             if stats["del"] / total_changes < 0.1: # Less than 10% deletions
+                  is_mostly_new = True
+        
+        # Another heuristic: If > 80% of files are new
+        if len(changed_files) > 0 and (len(new_files) / len(changed_files)) > 0.8:
+            is_mostly_new = True
+
         for rule in self.rules:
             if not getattr(rule, 'enabled', True):
                 continue
+            status = getattr(rule, "status", "stable")
+            if status == "disabled":
+                continue
+            if status == "experimental" and not self.experimental_enabled:
+                continue
             if not self.lifecycle.should_run(rule):
                 continue
+                
+            # Adaptive Filter: Skip regression rules if the diff is mostly new files
+            rule_type = getattr(rule, 'rule_type', 'absolute')
+            if is_mostly_new and rule_type == 'regression':
+                # Skip regression rules for new projects/files as they are meaningless
+                continue
+
+            # Incremental Filtering: Only run rule if it matches at least one changed file
+            rule_lang = getattr(rule, 'language', '*')
+            rule_scope = getattr(rule, 'scope', '**')
+            
+            should_run = False
+            if rule_lang == '*' and rule_scope == '**':
+                should_run = True
+            else:
+                for file_path in changed_files:
+                    # Simple language check
+                    if rule_lang != '*' and not file_path.endswith(f".{rule_lang}"):
+                        continue
+                    # Simple scope check (basic substring for now, could be improved to glob)
+                    if rule_scope != '**' and not fnmatch.fnmatch(file_path, rule_scope):
+                        continue
+                    should_run = True
+                    break
+            
+            if not should_run:
+                continue
+
             rule_id = rule.id
+            quality_status, precision, _ = self.quality_manager.status(rule_id)
+            if self.quality_manager.auto_tune and quality_status == "disabled":
+                continue
+            degrade_severity = self.quality_manager.auto_tune and quality_status == "degraded"
             if rule_id not in self.metrics:
                 self.metrics[rule_id] = {"calls": 0, "hits": 0, "ignores": 0, "time_ns": 0, "errors": 0}
             
@@ -131,6 +277,7 @@ class RuleEngine:
                     if self.ignore_manager.is_ignored(rule_id, matched_file):
                         self.metrics[rule_id]["hits"] += 1
                         self.metrics[rule_id]["ignores"] += 1
+                        self.quality_manager.record_false_positive(rule_id)
                         match_details = None
             except Exception:
                 self.metrics[rule_id]["errors"] += 1
@@ -140,14 +287,22 @@ class RuleEngine:
             
             if match_details:
                 self.metrics[rule_id]["hits"] += 1
+                quality_entry = self.quality_manager.record_hit(rule_id)
                 severity = self.lifecycle.adjust_severity(rule, rule.severity)
+                if degrade_severity:
+                    severity = self._downgrade_severity(severity)
                 triggered = {
                     "id": rule.id,
                     "severity": severity,
                     "impact": rule.impact,
                     "rationale": rule.rationale,
-                    "matched_file": match_details.get('file', 'unknown')
+                    "matched_file": match_details.get('file', 'unknown'),
+                    "precision": quality_entry.get("precision", precision),
+                    "quality_status": quality_status,
+                    "is_blocking": getattr(rule, 'is_blocking', False)
                 }
+                if status == "experimental" and self.experimental_report_only:
+                    triggered["experimental"] = True
                 triggered_rules.append(triggered)
                 
         return triggered_rules
@@ -157,13 +312,39 @@ class RuleEngine:
         return self.metrics
 
     @staticmethod
+    def _downgrade_severity(severity: str) -> str:
+        order = ["critical", "high", "medium", "low"]
+        try:
+            idx = order.index(str(severity).lower())
+        except ValueError:
+            return severity
+        return order[min(idx + 1, len(order) - 1)]
+
+    def _rule_confidences(self) -> Dict[str, float]:
+        result = {}
+        for rule in self.rules:
+            try:
+                result[rule.id] = float(getattr(rule, "confidence", 1.0))
+            except Exception:
+                result[rule.id] = 1.0
+        return result
+
+    def _update_quality_report(self) -> None:
+        metrics = self.metrics
+        confidences = self._rule_confidences()
+        self.quality_manager.update_report(metrics, confidences)
+
+    @staticmethod
     def quality_report_from_metrics(metrics: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Builds rule quality report from metrics. Each row: rule_id, hits, accepts, ignores, fp_rate.
         fp_rate = ignores/hits when hits > 0; used to flag noisy rules.
+        Skips non-rule keys (e.g. cache, rule_stats) when _metrics from replay is passed.
         """
         rows = []
         for rule_id, m in metrics.items():
+            if rule_id in ("cache", "rule_stats") or not isinstance(m, dict):
+                continue
             hits = m.get("hits", 0)
             ignores = m.get("ignores", 0)
             accepts = max(0, hits - ignores)

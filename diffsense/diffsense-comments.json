@@ -1,0 +1,58 @@
+[
+  {
+    "path": "src/main/java/com/example/ConcurrencyIssues.java",
+    "position": 7,
+    "line": 12,
+    "body": "HIGH runtime.concurrency_regression: Downgrade from concurrent/atomic type to non-thread-safe implementation",
+    "rule_id": "runtime.concurrency_regression"
+  },
+  {
+    "path": "src/main/java/com/example/ConcurrencyIssues.java",
+    "position": 7,
+    "line": 12,
+    "body": "HIGH runtime.thread_safety_removal: Removal of synchronization (synchronized, volatile, locks) from shared code",
+    "rule_id": "runtime.thread_safety_removal"
+  },
+  {
+    "path": "src/main/java/com/example/ConcurrencyIssues.java",
+    "position": 7,
+    "line": 12,
+    "body": "CRITICAL runtime.concurrency.thread_safety_downgrade: CRITICAL: Detected downgrade from ThreadSafe type to Non-ThreadSafe type (e.g., ConcurrentHashMap -> HashMap). High risk of race conditions!",
+    "rule_id": "runtime.concurrency.thread_safety_downgrade"
+  },
+  {
+    "path": "src/main/java/com/example/ConcurrencyIssues.java",
+    "position": 7,
+    "line": 12,
+    "body": "HIGH runtime.concurrency.static_unsafe_collection: Usage of static non-thread-safe collection detected. This is a common cause of race conditions in multi-threaded environments.",
+    "rule_id": "runtime.concurrency.static_unsafe_collection"
+  },
+  {
+    "path": "src/main/java/com/example/ConcurrencyIssues.java",
+    "position": 7,
+    "line": 12,
+    "body": "MEDIUM runtime.performance.sleep_added: Thread.sleep() introduced. This may indicate poor concurrency handling or debug code left in production.",
+    "rule_id": "runtime.performance.sleep_added"
+  },
+  {
+    "path": "src/main/java/com/example/ConcurrencyIssues.java",
+    "position": 7,
+    "line": 12,
+    "body": "CRITICAL runtime.concurrency.lock_removed: CRITICAL: Removal of Lock/Synchronized detected! This is a P0 stability risk (TOP1 accident cause).",
+    "rule_id": "runtime.concurrency.lock_removed"
+  },
+  {
+    "path": "src/main/java/com/example/ConcurrencyIssues.java",
+    "position": 7,
+    "line": 12,
+    "body": "CRITICAL runtime.concurrency.volatile_removed: CRITICAL: Removal of volatile keyword detected! This causes visibility issues.",
+    "rule_id": "runtime.concurrency.volatile_removed"
+  },
+  {
+    "path": "src/main/java/com/example/ConcurrencyIssues.java",
+    "position": 7,
+    "line": 12,
+    "body": "CRITICAL runtime.concurrency.final_removed: CRITICAL: Removal of final modifier detected! Immutable object might become mutable (thread-safety risk).",
+    "rule_id": "runtime.concurrency.final_removed"
+  }
+]

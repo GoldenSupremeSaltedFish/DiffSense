@@ -1,0 +1,24 @@
+rules:
+  - id: absolute.security.sql_injection
+    rule_type: absolute
+    is_blocking: true
+    match: 'SELECT\s+.*\s+FROM\s+.*\s+WHERE\s+.*\s+\+\s+\w+'
+    severity: critical
+    impact: security
+    rationale: "SQL concatenation detected. Risk of SQL Injection. Use PreparedStatement instead."
+
+  - id: absolute.security.plaintext_token
+    rule_type: absolute
+    is_blocking: true
+    case_insensitive: true
+    match: '(token|password|secret|key)\s*=\s*["''][a-zA-Z0-9_\-]{16,}["'']'
+    severity: critical
+    impact: security
+    rationale: "Potential plaintext secret/token hardcoded in source code."
+
+  - id: absolute.security.http_url
+    rule_type: absolute
+    match: 'http://[a-zA-Z0-9\.\-]+'
+    severity: high
+    impact: security
+    rationale: "Plain HTTP URL detected. Use HTTPS for secure communication."

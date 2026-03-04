@@ -22,3 +22,6 @@ class PlatformAdapter(ABC):
         Default implementation returns False.
         """
         return False
+
+    def post_inline_comments(self, comments):
+        return None

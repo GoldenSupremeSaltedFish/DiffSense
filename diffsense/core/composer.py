@@ -18,45 +18,62 @@ class DecisionComposer:
         }
         
         max_score = 0
+        has_blocking_rule = False
         
         for rule in triggered_rules:
-            # Extract fields
             rule_id = rule.get('id', 'unknown')
             impact_dim = rule.get('impact', 'general')
             severity = rule.get('severity', 'low')
             rationale = rule.get('rationale', '')
             matched_file = rule.get('matched_file', '')
+            precision = rule.get('precision')
+            quality_status = rule.get('quality_status')
+            is_experimental = bool(rule.get("experimental"))
+            is_blocking = rule.get('is_blocking', False)
             
-            # 1. Collect Reasons (Rule IDs)
+            if is_blocking:
+                has_blocking_rule = True
+            
             reasons.append(rule_id)
             
-            # 2. Build Details
-            details.append({
+            detail = {
                 "rule_id": rule_id,
                 "severity": severity,
                 "file": matched_file,
-                "rationale": rationale
-            })
-            
-            # 3. Update Impacts Map (Highest severity per dimension)
-            current_dim_score = severity_map.get(impacts_map.get(impact_dim, "low"), 0)
-            new_score = severity_map.get(severity, 0)
-            
-            if new_score > current_dim_score:
-                impacts_map[impact_dim] = severity
+                "rationale": rationale,
+                "impact": impact_dim
+            }
+            if precision is not None:
+                detail["precision"] = precision
+            if quality_status is not None:
+                detail["quality_status"] = quality_status
+            if is_experimental:
+                detail["experimental"] = True
+            details.append(detail)
+            if not is_experimental:
+                current_dim_score = severity_map.get(impacts_map.get(impact_dim, "low"), 0)
+                new_score = severity_map.get(severity, 0)
                 
-            # 4. Track Global Max Score
-            if new_score > max_score:
-                max_score = new_score
+                if new_score > current_dim_score:
+                    impacts_map[impact_dim] = severity
+                    
+                if new_score > max_score:
+                    max_score = new_score
                 
         # Determine Review Level
         review_level = "normal"
-        if max_score >= 3:
+        if has_blocking_rule or max_score >= 3:
             review_level = "critical"
         elif max_score >= 2:
             review_level = "elevated"
             
         # Construct Final JSON Contract
+        suggested_action = "auto_merge"
+        if review_level == "critical":
+            suggested_action = "block_pr"
+        elif review_level == "elevated":
+            suggested_action = "manual_review"
+
         result = {
             "review_level": review_level,
             "reasons": reasons,
@@ -65,7 +82,7 @@ class DecisionComposer:
             "details": details,
             "meta": {
                 "confidence": 1.0, # Placeholder as requested
-                "suggested_action": "manual_review" if review_level != "normal" else "auto_merge" # Simple heuristic
+                "suggested_action": suggested_action
             }
         }
         

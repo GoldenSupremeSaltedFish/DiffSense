@@ -10,6 +10,17 @@ class YamlRule(Rule):
     """
     def __init__(self, rule_dict: Dict[str, Any]):
         self._rule_dict = rule_dict
+        self._file_pattern = self._rule_dict.get('file')
+        self._compiled_match = None
+        content_regex = self._rule_dict.get('match')
+        if content_regex:
+            flags = re.MULTILINE
+            if self._rule_dict.get('case_insensitive', False):
+                flags |= re.IGNORECASE
+            try:
+                self._compiled_match = re.compile(content_regex, flags)
+            except re.error:
+                self._compiled_match = None
 
     @property
     def id(self) -> str:
@@ -57,7 +68,35 @@ class YamlRule(Rule):
 
     @property
     def status(self) -> str:
-        return str(self._rule_dict.get('status', 'experimental')).lower()
+        return str(self._rule_dict.get('status', 'stable')).lower()
+
+    @property
+    def is_blocking(self) -> bool:
+        # Default to True for 'critical' absolute rules, or if explicitly set
+        explicit = self._rule_dict.get('is_blocking')
+        if explicit is not None:
+            return bool(explicit)
+        
+        # Absolute critical rules are blocking by default
+        if self.rule_type == 'absolute' and self.severity == 'critical':
+            return True
+        return False
+
+    @property
+    def rule_type(self) -> str:
+        """
+        Determines if the rule is 'regression' or 'absolute'.
+        Defaults to 'regression' if action is 'removed' or 'changed'.
+        """
+        explicit = self._rule_dict.get('rule_type')
+        if explicit:
+            return str(explicit)
+        
+        action = self._rule_dict.get('action', '').lower()
+        if action in ['removed', 'deleted', 'changed', 'modified']:
+            return 'regression'
+        
+        return 'absolute'
 
     def evaluate(self, diff_data: Dict[str, Any], ast_signals: List[Any]) -> Optional[Dict[str, Any]]:
         # Logic extracted from old RuleEngine._match_rule
@@ -93,8 +132,8 @@ class YamlRule(Rule):
         
         # 1. Check File Pattern
         matched_files = []
-        if 'file' in self._rule_dict:
-            pattern = self._rule_dict['file']
+        if self._file_pattern:
+            pattern = self._file_pattern
             for f in diff_data.get('files', []):
                 if fnmatch.fnmatch(f, pattern):
                     matched_files.append(f)
@@ -106,11 +145,11 @@ class YamlRule(Rule):
             matched_files = diff_data.get('files', [])
 
         # 2. Check Content Match (Regex)
-        if 'match' in self._rule_dict:
-            content_regex = self._rule_dict['match']
+        if self._rule_dict.get('match'):
             raw_diff = diff_data.get('raw_diff', "")
-            
-            if not re.search(content_regex, raw_diff, re.MULTILINE):
+            if not self._compiled_match:
+                return None
+            if not self._compiled_match.search(raw_diff):
                 return None
 
         # Return the first matched file for reporting purposes

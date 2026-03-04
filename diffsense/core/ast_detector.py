@@ -1,8 +1,14 @@
 import re
+import os
+import time
+import hashlib
+import pickle
 import javalang
 from javalang.tokenizer import BasicType, Identifier
 from javalang.tree import SynchronizedStatement, MethodInvocation, FieldDeclaration, MethodDeclaration, LocalVariableDeclaration, VariableDeclarator, ForStatement, WhileStatement, DoStatement, ClassCreator, ReferenceType, BasicType as TreeBasicType, Assignment, TryResource, TryStatement, IfStatement, BinaryOperation, Literal
 from typing import List, Set, Dict, Any, Tuple, Optional
+from . import CACHE_VERSION
+from . import get_cache_max_age_seconds
 from .signal_model import Signal
 from .change import Change, ChangeKind
 from .knowledge import is_thread_safe, is_lock_type
@@ -12,6 +18,87 @@ class ASTDetector:
         self.pagination_vars = {"pageNo", "pageSize", "start", "limit", "offset"}
         self.critical_calls = {"encode", "decode", "validate", "check", "normalize", "sanitize"}
         self.risky_executors = {"newFixedThreadPool", "newCachedThreadPool", "newSingleThreadExecutor"}
+        self.cache_dir = self._resolve_cache_dir()
+        self.metrics = {"hits": 0, "misses": 0, "saved_ms": 0}
+
+    def _resolve_cache_dir(self) -> str:
+        base_dir = os.environ.get("DIFFSENSE_CACHE_DIR")
+        if not base_dir:
+            base_dir = os.path.join(os.path.expanduser("~"), ".diffsense", "cache")
+        return os.path.join(base_dir, CACHE_VERSION, "ast")
+
+    def _ast_cache_key(self, wrapper_type: str, wrapper_text: str) -> str:
+        hasher = hashlib.sha1()
+        hasher.update(wrapper_type.encode("utf-8", errors="ignore"))
+        hasher.update(wrapper_text.encode("utf-8", errors="ignore"))
+        return hasher.hexdigest()
+
+    def _cache_path(self, cache_key: str) -> str:
+        return os.path.join(self.cache_dir, f"{cache_key}.pkl")
+
+    def _load_cached_tree(self, cache_key: str) -> Optional[Dict[str, Any]]:
+        path = self._cache_path(cache_key)
+        if not os.path.exists(path):
+            return None
+        max_age = get_cache_max_age_seconds()
+        if max_age > 0:
+            try:
+                mtime = os.path.getmtime(path)
+                if (time.time() - mtime) > max_age:
+                    try:
+                        os.remove(path)
+                    except OSError:
+                        pass
+                    return None
+            except OSError:
+                return None
+        try:
+            with open(path, "rb") as f:
+                data = pickle.load(f)
+            if isinstance(data, dict) and "ok" in data:
+                return data
+        except Exception:
+            return None
+        return None
+
+    def _save_cached_tree(self, cache_key: str, tree: Any, ok: bool) -> None:
+        os.makedirs(self.cache_dir, exist_ok=True)
+        path = self._cache_path(cache_key)
+        tmp_path = f"{path}.{os.getpid()}.tmp"
+        try:
+            with open(tmp_path, "wb") as f:
+                pickle.dump({"ok": ok, "tree": tree}, f)
+            # Atomic rename (replace existing if any)
+            os.replace(tmp_path, path)
+        except Exception:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+            pass
+
+    def _parse_with_cache(self, wrapper_type: str, wrapper_text: str) -> Optional[Any]:
+        import time
+        start_time = time.time()
+        
+        cache_key = self._ast_cache_key(wrapper_type, wrapper_text)
+        cached = self._load_cached_tree(cache_key)
+        if cached is not None:
+            self.metrics["hits"] += 1
+            if cached.get("ok") is False:
+                return None
+            return cached.get("tree")
+        
+        self.metrics["misses"] += 1
+        try:
+            tree = javalang.parse.parse(wrapper_text)
+            self._save_cached_tree(cache_key, tree, ok=True)
+            
+            duration_ms = (time.time() - start_time) * 1000
+            self.metrics["saved_ms"] += duration_ms
+            
+            return tree
+        except Exception:
+            self._save_cached_tree(cache_key, None, ok=False)
+            return None
     
     def detect_changes(self, diff_data: Dict[str, Any]) -> List[Change]:
         """
@@ -26,16 +113,9 @@ class ASTDetector:
              
         # Determine Analysis Tier
         java_files = [f for f in file_patches if f.get('file', '').endswith('.java')]
-        num_java_files = len(java_files)
         
-        # Tier 3: Metadata Only (Mega Diff / Refactor)
-        if num_java_files > 30:
-            return [Change(kind=ChangeKind.UNKNOWN, file="meta", symbol="LargeRefactor", meta={"tier": 3})]
-            
-        # Tier 2: Lightweight (Tokenizer Only)
+        # Always use deep analysis to avoid "Security Blind Spots" (Architecture Principle Violation)
         analysis_mode = "deep"
-        if 10 < num_java_files <= 30:
-            analysis_mode = "light"
             
         for entry in file_patches:
             filename = entry.get('file', 'unknown')
@@ -351,26 +431,21 @@ class ASTDetector:
             self._apply_ignores(changes, start_change_idx, ignores_map)
             return
 
-        # 3. AST Parsing
         parsed = False
-        wrapper_class = f"class Dummy {{\n{code_snippet}\n}}" # Offset 1 line
+        wrapper_class = f"class Dummy {{\n{code_snippet}\n}}"
         offset = 1
-        try:
-            tree = javalang.parse.parse(wrapper_class)
+        tree = self._parse_with_cache("class", wrapper_class)
+        if tree is not None:
             self._analyze_tree_changes(tree, filename, is_added, var_map, changes, offset)
             parsed = True
-        except Exception:
-            pass
 
         if not parsed:
-            wrapper_method = f"class Dummy {{ void dummy() {{\n{code_snippet}\n}} }}" # Offset 2 lines
+            wrapper_method = f"class Dummy {{ void dummy() {{\n{code_snippet}\n}} }}"
             offset = 2
-            try:
-                tree = javalang.parse.parse(wrapper_method)
+            tree = self._parse_with_cache("method", wrapper_method)
+            if tree is not None:
                 self._analyze_tree_changes(tree, filename, is_added, var_map, changes, offset)
                 parsed = True
-            except Exception:
-                pass
         
         # Fallback: Extract vars from tokens if parsing failed
         if not parsed:
