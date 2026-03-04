@@ -1,6 +1,8 @@
 # DiffSense Technical Documentation
 
-This directory contains comprehensive technical documentation for all DiffSense components, organized by modules.
+This directory contains technical documentation for DiffSense-related components, organized by module.
+
+**Note**: The current **release** branch of this repository contains only the **diffsense CLI** (under `diffsense/`). The VSCode plugin and some analyzers (backend/frontend/golang) are maintained on the [vscode-extension](https://github.com/GoldenSupremeSaltedFish/DiffSense/tree/vscode-extension) branch. The following structure describes the full set of components; refer to the active branch for what is present in your clone.
 
 ## 📂 Documentation Structure
 

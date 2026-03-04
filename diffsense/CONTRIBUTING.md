@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing to DiffSense!
 
-**Important**: DiffSense is an **engineering-grade risk governance platform**, not a simple linter script. Contributions are evaluated based on their ability to solve real-world semantic risks, their performance impact, and their adherence to our architectural philosophy.
+**Important**: DiffSense is a **Change Risk Gate** for PR/MR: it focuses only on regression risks introduced by the current diff, not on full-codebase analysis, style checks, or security scanning. All contributions must align with our [architecture principles](docs/cursor/ARCHITECTURE_PRINCIPLES.md) (red lines, human-in-the-loop, “少而准”).
 
 Please read this guide carefully before submitting a Pull Request.
 
@@ -10,14 +10,14 @@ Please read this guide carefully before submitting a Pull Request.
 
 ## 1. Project Vision
 
-> **DiffSense detects semantic risks in code changes, not syntax or style issues.**
+> **DiffSense detects semantic regression risks in code changes, not syntax or style issues.**
 
 Our mission is to catch high-impact bugs (runtime exceptions, concurrency issues, data integrity violations) that slip through traditional static analysis tools.
 
-*   **✅ What We Do**: Focus on `runtime`, `concurrency`, `data`, and `api` compatibility risks.
-*   **❌ What We Don't Do**: Code formatting, naming conventions, or style checks (leave that to ESLint/Checkstyle).
+*   **✅ What We Do**: Focus on `runtime`, `concurrency`, `data`, and `api` compatibility risks introduced by the **current diff**.
+*   **❌ What We Don't Do**: Code formatting, naming conventions, style checks, full-repo scanning, or automatic PR merge/block decisions (leave formatting to ESLint/Checkstyle; decisions to humans).
 
-**Goal**: Prevent production incidents by understanding the *semantic meaning* of a diff.
+**Goal**: Prevent production incidents by understanding the *semantic meaning* of a diff and surfacing only actionable risks.
 
 ---
 
@@ -89,9 +89,9 @@ Once you understand the philosophy above, here is the standard workflow:
 
 1.  **Fork & Clone**:
     ```bash
-    git clone https://github.com/your-username/diffsense.git
-    cd diffsense
-    pip install -r requirements.txt
+    git clone https://github.com/GoldenSupremeSaltedFish/DiffSense.git
+    cd DiffSense/diffsense
+    pip install -e ".[dev]"
     ```
 
 2.  **Create a Branch**:
@@ -102,7 +102,7 @@ Once you understand the philosophy above, here is the standard workflow:
 3.  **Develop & Test**:
     *   Add your logic to `core/` (Semantic Layer).
     *   Add your rule configuration to `config/rules.yaml` (Rule Layer).
-    *   Add tests in `tests/` and verify with `python -m unittest discover tests` or `pytest tests/ -v` (from repo root with `PYTHONPATH` set so that the `diffsense` package is importable).
+    *   Add tests in `tests/` and verify with `pytest tests/ -v` from the `diffsense` directory (after `pip install -e ".[dev]"`).
     *   **Test cleanup**: Tests must not write under `diffsense/config/` or `diffsense/rules/`. Use `tempfile.TemporaryDirectory()` or pytest's `tmp_path` for any temporary rule files. After running the test suite, `diffsense/config` and `diffsense/rules` should have no uncommitted or untracked changes.
 
 4.  **Submit Pull Request**:

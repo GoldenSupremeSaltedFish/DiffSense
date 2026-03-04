@@ -1,23 +1,42 @@
 # DiffSense
 
-**DiffSense** is an automated code audit and risk governance platform. It provides a **VSCode extension** for local self-check and **CI/CD pipeline** integration to audit MR/PR before merge.
+**DiffSense** 是 PR 阶段的变更风险守门人（Change Risk Gate）：仅针对当前 diff 判断是否引入回归风险，不做全量扫描与代码规范检查。设计目标为少告警、高精度、低延迟、结果可解释。
 
-[![Version](https://img.shields.io/badge/version-0.2.1-blue.svg)](https://github.com/GoldenSupremeSaltedFish/DiffSense)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/GoldenSupremeSaltedFish/DiffSense)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](./LICENSE.txt)
-[![VSCode](https://img.shields.io/badge/VSCode-1.74.0+-blueviolet.svg)](https://code.visualstudio.com/)
-[![Marketplace](https://img.shields.io/badge/Marketplace-DiffSense-orange.svg)](https://marketplace.visualstudio.com/items?itemName=humphreyLi.diffsense)
 
-## What it does
+---
 
-- **VSCode analyzer**: Run semantic change and impact analysis on Git commits/branches locally, with multi-language support and visualization.
-- **CI/CD pipeline**: Integrate with GitLab CI or GitHub Actions to audit MR/PR, post audit comments, and enforce risk-based blocking with Click-to-Ack.
+## 快速开始
 
-## Quick Start
+| 场景 | 操作 |
+|------|------|
+| **GitHub Pull Request** | 将 [diffsense/docs/quickstart.md](diffsense/docs/quickstart.md) 中「方式一」的 workflow 复制到目标仓库的 `.github/workflows/diffsense.yml`，使用默认 `GITHUB_TOKEN`，无需额外配置。提交并创建/更新 PR 后，工作流将自动执行审计并在 PR 下输出结果。 |
+| **本地审计** | 在仓库根目录执行 `pip install -e diffsense`，或 `pip install "git+https://github.com/GoldenSupremeSaltedFish/DiffSense.git@release/2.2.0#subdirectory=diffsense"`，然后执行 `diffsense replay <path-to-diff>`。 |
 
-### CI/CD (GitLab)
+完整步骤见 **[diffsense/docs/quickstart.md](diffsense/docs/quickstart.md)**。用户文档与契约的完整索引见 **[diffsense/docs/README.md](diffsense/docs/README.md)**。
 
-1. In your project go to **Settings → CI/CD → Variables** and add `DIFFSENSE_TOKEN` (Personal Access Token with `api` scope; check **Mask variable**).
-2. Add this job to `.gitlab-ci.yml`:
+可选：在仓库根目录添加 [`.diffsense.yaml`](diffsense/docs/recommended-config.md) 以使用官方推荐配置，适用于大多数团队。
+
+---
+
+## 功能概览
+
+- **CI / 本地**：对 MR/PR 的 diff 进行语义风险审计，输出 `review_level` 与建议动作；仅分析变更内容，不拖慢流水线；低质量规则自动降级；不自动修改 CI 状态，由人工或下游流程决定是否阻断。
+- **VSCode 插件**：在分支 [vscode-extension](https://github.com/GoldenSupremeSaltedFish/DiffSense/tree/vscode-extension) 维护；本分支仅包含 CLI 与规则引擎。
+
+---
+
+## Quick Start（详细）
+
+### GitHub Actions
+
+将 [diffsense/docs/quickstart.md](diffsense/docs/quickstart.md) 中「方式一」的完整 YAML 复制到你的仓库 `.github/workflows/diffsense.yml` 即可启用 PR 审计。
+
+### GitLab CI
+
+1. 在项目中进入 **Settings → CI/CD → Variables**，添加变量 `DIFFSENSE_TOKEN`（Personal Access Token，具备 `api` 权限；建议勾选 **Mask variable**）。
+2. 在 `.gitlab-ci.yml` 中加入以下 job：
 
 ```yaml
 diffsense_audit:
@@ -35,40 +54,41 @@ diffsense_audit:
   allow_failure: false
 ```
 
-Example configs: `diffsense/gitlab-ci-example.yml`, `diffsense/gitlab-ci-example.en.yml`.
+参考示例：`diffsense/gitlab-ci-example.yml`、`diffsense/gitlab-ci-example.en.yml`。
 
-### VSCode extension
+### VSCode 插件
 
-- **Install**: Search for "DiffSense" in the VSCode Extensions marketplace, or run `ext install humphreyLi.diffsense`; you can also download the VSIX from [Releases](https://github.com/GoldenSupremeSaltedFish/DiffSense/releases).
-- **Use**: Open a Git repository, open DiffSense in the sidebar, select a commit range or branch, run analysis, and view results and charts.
+在分支 [vscode-extension](https://github.com/GoldenSupremeSaltedFish/DiffSense/tree/vscode-extension) 维护。可从 Marketplace 安装或从 [Releases](https://github.com/GoldenSupremeSaltedFish/DiffSense/releases) 下载 VSIX。
 
-## Project structure
+---
+
+## 项目结构（本分支）
 
 ```
 DiffSense/
-├── vscode-extension/   # VSCode plugin and multi-language analyzers
-├── diffsense/          # CI/CD pipeline audit (Python, rule engine, GitLab/GitHub adapters)
-├── technical_documentation/
-└── build-tools/
+├── diffsense/          # CLI、规则引擎、GitHub/GitLab 适配器；快速开始见 docs/quickstart.md
+└── technical_documentation/
 ```
 
-## Development
+---
+
+## 开发
 
 ```bash
 git clone https://github.com/GoldenSupremeSaltedFish/DiffSense.git
-cd DiffSense
-./build-all.bat
-# Package extension: cd vscode-extension/plugin && npm run package
+cd DiffSense/diffsense
+pip install -e ".[dev]"
+pytest tests/ -v
 ```
 
-See [Contributing](diffsense/CONTRIBUTING.md) for more.
+详见 [diffsense/CONTRIBUTING.md](diffsense/CONTRIBUTING.md)。
+
+---
 
 ## License & links
 
 - **License**: [Apache-2.0](LICENSE.txt)
 - **Issues**: [Report a bug](https://github.com/GoldenSupremeSaltedFish/DiffSense/issues)
 - **Marketplace**: [DiffSense](https://marketplace.visualstudio.com/items?itemName=humphreyLi.diffsense)
-
----
 
 **English** | [中文版](./cn_readme.md)
