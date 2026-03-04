@@ -1,6 +1,8 @@
 # DiffSense 技术文档
 
-本目录包含 DiffSense 所有组件的完整技术文档，按模块组织。
+本目录包含 DiffSense 相关组件的技术文档，按模块组织。
+
+**说明**：当前 **release** 分支仅包含 **diffsense CLI**（位于 `diffsense/`）。VSCode 插件及部分分析器（后端/前端/Golang）在 [vscode-extension](https://github.com/GoldenSupremeSaltedFish/DiffSense/tree/vscode-extension) 分支维护。以下结构为完整组件说明；克隆时请以当前分支为准。
 
 ## 📂 文档结构
 

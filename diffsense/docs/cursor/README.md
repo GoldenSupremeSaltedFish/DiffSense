@@ -11,4 +11,4 @@
 | [Q2_ENGINEERING_ASSESSMENT.md](./Q2_ENGINEERING_ASSESSMENT.md) | Q2 性能极限实现的工程化程度评估（缺口与改进建议） |
 | [PRODUCT_CYCLE_AND_GROWTH_PLAN.md](./PRODUCT_CYCLE_AND_GROWTH_PLAN.md) | 产品周期分析、下一步执行、推广与开源优秀化计划 |
 
-其他说明类文档（如 ignoring、ci-cache、performance、rule-plugins、rule-quickstart、**推荐配置与默认行为** [recommended-config.md](../recommended-config.md)）仍在 **docs/** 下，本目录内通过相对路径 `../xxx.md` 引用。
+用户文档与契约的完整索引见 **[docs/README.md](../README.md)**（含 quickstart、recommended-config、ignoring、ci-cache、performance、rule-plugins、rule-quickstart、parser_contract、ast_signal_contract 等）。
