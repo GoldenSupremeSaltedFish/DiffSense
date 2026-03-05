@@ -19,6 +19,8 @@
 
 完整步骤见 **[diffsense/docs/quickstart.md](diffsense/docs/quickstart.md)**。用户文档与契约的完整索引见 **[diffsense/docs/README.md](diffsense/docs/README.md)**。
 
+**10 分钟写一条规则：** [rule-quickstart](diffsense/docs/rule-quickstart.md) · [Signal 列表](diffsense/docs/signals.md) · `diffsense signals`
+
 可选：在仓库根目录添加 [`.diffsense.yaml`](diffsense/docs/recommended-config.md) 以使用官方推荐配置，适用于大多数团队。
 
 ---

@@ -1,5 +1,5 @@
 """
-DiffSense 统一 CLI：diffsense audit | replay | rules list
+DiffSense 统一 CLI：diffsense audit | replay | rules list | signals
 """
 import os
 import sys
@@ -566,6 +566,18 @@ def profile_rules(
     for i, (rule_id, time_ns) in enumerate(items[:20], 1):
         ms = time_ns / 1_000_000
         typer.echo(f"  {i:>2}. {rule_id:<45} {ms:>8.2f} ms")
+
+
+@app.command("signals")
+def signals_cmd() -> None:
+    """List available signals (emitted by semantic analyzers; rules only consume them)."""
+    from core.signals_registry import get_signals_by_group
+    typer.echo("Available Signals:")
+    typer.echo("")
+    for group, ids in get_signals_by_group().items():
+        for sid in ids:
+            typer.echo(sid)
+        typer.echo("")
 
 
 app.add_typer(rules_app, name="rules")

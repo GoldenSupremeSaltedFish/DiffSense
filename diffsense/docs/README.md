@@ -14,7 +14,9 @@
 | [ci-cache.md](ci-cache.md) | CI 缓存配置、TTL 与 prune |
 | [performance.md](performance.md) | 性能目标、冷/热启动测量与执行比例 |
 | [rule-plugins.md](rule-plugins.md) | 规则插件契约（entry point、包约定） |
-| [rule-quickstart.md](rule-quickstart.md) | 自定义规则开发入门 |
+| [rule-quickstart.md](rule-quickstart.md) | 自定义规则开发入门（Write a rule in 10 minutes） |
+| [signals.md](signals.md) | **Signal Registry**：完整 signal 列表（规则只消费，不产生） |
+| [contribute-rules.md](contribute-rules.md) | 贡献审计规则（上游 vs 插件，单一入口） |
 
 ---
 

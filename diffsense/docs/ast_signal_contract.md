@@ -3,6 +3,8 @@
 This document defines the **stable engineering signals** that DiffSense must guarantee.
 Any deviation from this contract is considered a regression.
 
+**Full list:** See [signals.md](signals.md) (Signal Registry) or run `diffsense signals`.
+
 ## 1. Concurrency Signals
 
 | Signal ID | Trigger Condition (AST) | Engineering Semantics |
