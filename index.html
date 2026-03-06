@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DiffSense - 智能代码风险分析平台</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">DiffSense</div>
+            <ul class="nav-links">
+                <li><a href="#features">核心特性</a></li>
+                <li><a href="#architecture">技术架构</a></li>
+                <li><a href="#use-cases">应用场景</a></li>
+                <li><a href="#get-started">快速开始</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="hero-content">
+            <h1>DiffSense</h1>
+            <p class="subtitle">基于AST语义分析的智能代码风险评估平台</p>
+            <p>专为现代DevSecOps工作流设计的增量式代码风险分析解决方案</p>
+            <div class="cta-buttons">
+                <a href="#get-started" class="btn primary">立即开始</a>
+                <a href="#architecture" class="btn secondary">技术详情</a>
+            </div>
+        </div>
+    </section>
+
+    <section id="features" class="features">
+        <h2>核心特性</h2>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h3>AST语义分析</h3>
+                <p>超越传统模式匹配，通过抽象语法树进行深度语义理解，精准识别代码变更中的潜在风险。</p>
+            </div>
+            <div class="feature-card">
+                <h3>增量式扫描</h3>
+                <p>仅分析代码差异部分，显著提升分析效率，适用于高频提交的CI/CD流水线集成。</p>
+            </div>
+            <div class="feature-card">
+                <h3>信号驱动架构</h3>
+                <p>检测与评估分离的设计模式，支持灵活扩展自定义风险规则，适应多样化业务场景。</p>
+            </div>
+            <div class="feature-card">
+                <h3>自适应分析深度</h3>
+                <p>根据代码变更规模动态调整分析策略，在性能与准确性之间实现最优平衡。</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="architecture" class="architecture">
+        <h2>技术架构</h2>
+        <div class="architecture-diagram">
+            <!-- 架构图将在此处展示 -->
+            <div class="architecture-layers">
+                <div class="layer">
+                    <h4>Parser Layer</h4>
+                    <p>提取代码变更差异</p>
+                </div>
+                <div class="layer">
+                    <h4>AST Detector</h4>
+                    <p>识别语义信号</p>
+                </div>
+                <div class="layer">
+                    <h4>Rule Engine</h4>
+                    <p>风险规则评估</p>
+                </div>
+                <div class="layer">
+                    <h4>Evaluator</h4>
+                    <p>证据综合分析</p>
+                </div>
+                <div class="layer">
+                    <h4>Composer</h4>
+                    <p>生成最终评估</p>
+                </div>
+                <div class="layer">
+                    <h4>Renderer</h4>
+                    <p>格式化输出结果</p>
+                </div>
+            </div>
+        </div>
+        <p class="architecture-desc">DiffSense采用分层架构设计，各组件职责明确，支持高内聚低耦合的系统扩展。</p>
+    </section>
+
+    <section id="use-cases" class="use-cases">
+        <h2>应用场景</h2>
+        <div class="use-case-grid">
+            <div class="use-case-item">
+                <h3>并发编程风险检测</h3>
+                <p>识别锁机制、同步原语和线程安全相关的潜在问题</p>
+            </div>
+            <div class="use-case-item">
+                <h3>安全漏洞评估</h3>
+                <p>检测认证模块变更、输入验证逻辑修改等安全相关风险</p>
+            </div>
+            <div class="use-case-item">
+                <h3>性能影响分析</h3>
+                <p>评估分页逻辑、资源使用模式等可能影响系统性能的代码变更</p>
+            </div>
+            <div class="use-case-item">
+                <h3>数据完整性保障</h3>
+                <p>监控数据库操作、事务处理等关键数据操作的完整性风险</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="get-started" class="get-started">
+        <h2>快速开始</h2>
+        <div class="setup-steps">
+            <div class="step">
+                <span class="step-number">1</span>
+                <h3>安装DiffSense</h3>
+                <pre><code>npm install diffsense-cli</code></pre>
+            </div>
+            <div class="step">
+                <span class="step-number">2</span>
+                <h3>配置分析规则</h3>
+                <pre><code>diffsense init</code></pre>
+            </div>
+            <div class="step">
+                <span class="step-number">3</span>
+                <h3>执行风险分析</h3>
+                <pre><code>diffsense analyze --target ./your-project</code></pre>
+            </div>
+        </div>
+        <p class="integration-note">支持与主流CI/CD平台无缝集成，包括GitHub Actions、GitLab CI、Jenkins等。</p>
+    </section>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-logo">DiffSense</div>
+            <p>© 2026 DiffSense. 保留所有权利。</p>
+            <div class="footer-links">
+                <a href="#">文档</a>
+                <a href="#">API参考</a>
+                <a href="#">社区</a>
+                <a href="#">支持</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
