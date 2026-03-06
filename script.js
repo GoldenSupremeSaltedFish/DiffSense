@@ -16,24 +16,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Mobile navigation toggle
-    const navToggle = document.createElement('button');
-    navToggle.className = 'nav-toggle';
-    navToggle.innerHTML = '☰';
-    navToggle.setAttribute('aria-label', 'Toggle navigation');
-    
-    const nav = document.querySelector('nav');
-    if (nav) {
-        nav.appendChild(navToggle);
-        
-        navToggle.addEventListener('click', () => {
-            const navLinks = document.querySelector('.nav-links');
-            if (navLinks) {
-                navLinks.classList.toggle('active');
-            }
-        });
-    }
-
     // Feature card hover effects
     const featureCards = document.querySelectorAll('.feature-card');
     featureCards.forEach(card => {
