@@ -267,11 +267,13 @@ section:nth-child(even) {
   font-weight: 600;
   color: var(--text-color);
   margin-bottom: 0.5rem;
+  white-space: nowrap;
 }
 
 .architecture-node p {
   font-size: 0.875rem;
   margin-bottom: 0;
+  white-space: nowrap;
 }
 
 .arrow {
