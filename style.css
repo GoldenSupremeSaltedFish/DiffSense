@@ -227,7 +227,7 @@ section:nth-child(even) {
 
 .architecture-flow {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: center;
   align-items: center;
   gap: 2rem;
@@ -236,6 +236,8 @@ section:nth-child(even) {
   border-radius: var(--border-radius);
   box-shadow: var(--shadow-md);
   border: 1px solid var(--border-color);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .architecture-node {
