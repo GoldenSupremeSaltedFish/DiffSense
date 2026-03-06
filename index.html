@@ -128,21 +128,31 @@
         <div class="setup-steps">
             <div class="step">
                 <span class="step-number">1</span>
-                <h3>安装DiffSense</h3>
-                <pre><code>npm install diffsense-cli</code></pre>
+                <h3>在CI/CD中引入DiffSense</h3>
+                <pre><code># GitHub Actions 示例
+- name: Run DiffSense Analysis
+  uses: diffsense/action@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    
+# GitLab CI 示例  
+- stage: analyze
+  image: diffsense/dock:latest
+  script:
+    - diffsense analyze --ci</code></pre>
             </div>
             <div class="step">
                 <span class="step-number">2</span>
-                <h3>配置分析规则</h3>
-                <pre><code>diffsense init</code></pre>
-            </div>
-            <div class="step">
-                <span class="step-number">3</span>
-                <h3>执行风险分析</h3>
-                <pre><code>diffsense analyze --target ./your-project</code></pre>
+                <h3>配置风险规则（可选）</h3>
+                <pre><code># 在项目根目录创建 .diffsense.yml
+rules:
+  - name: concurrency-risk
+    enabled: true
+  - name: security-validation  
+    enabled: true</code></pre>
             </div>
         </div>
-        <p class="integration-note">支持与主流CI/CD平台无缝集成，包括GitHub Actions、GitLab CI、Jenkins等。</p>
+        <p class="integration-note">DiffSense通过预构建的Docker镜像提供服务，无需手动下载或打包。支持GitHub Actions、GitLab CI、Jenkins等主流CI/CD平台。</p>
     </section>
 
     <footer>
