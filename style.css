@@ -87,7 +87,7 @@ nav {
 }
 
 .logo {
-  font-size: 2.5rem;
+  font-size: 2.25rem;
   font-weight: 800;
   color: var(--primary-color);
   text-decoration: none;
@@ -209,33 +209,62 @@ section:nth-child(even) {
   box-shadow: var(--shadow-lg);
 }
 
-/* Architecture */
+/* Architecture - Flow Chart */
 .architecture-diagram {
   margin: 3rem auto;
-  max-width: 800px;
+  max-width: 1000px;
+  overflow-x: auto;
+  padding: 2rem 0;
 }
 
-.architecture-layers {
+.architecture-flow {
   display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: center;
+  gap: 2rem;
+  min-width: 800px;
+  padding: 2rem 0;
 }
 
-.layer {
+.architecture-node {
   background: white;
   padding: 1.5rem;
   border-radius: var(--border-radius);
-  border-left: 4px solid var(--primary-color);
   box-shadow: var(--shadow-md);
-}
-
-.architecture-desc {
+  min-width: 120px;
   text-align: center;
-  margin-top: 2rem;
-  font-size: 1.125rem;
+  position: relative;
+  transition: var(--transition-slow);
 }
 
-/* Use Cases */
+.architecture-node:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+}
+
+.architecture-node h4 {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  color: var(--primary-color);
+}
+
+.architecture-node p {
+  font-size: 0.875rem;
+  margin-bottom: 0;
+}
+
+/* Connection arrows */
+.architecture-flow .arrow {
+  display: flex;
+  align-items: center;
+  color: var(--primary-color);
+  font-size: 1.5rem;
+  min-width: 20px;
+  justify-content: center;
+}
+
+/* Use Cases - Enhanced Cards */
 .use-case-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -249,6 +278,36 @@ section:nth-child(even) {
   border-radius: var(--border-radius);
   box-shadow: var(--shadow-md);
   border-top: 4px solid var(--primary-color);
+  transition: var(--transition-slow);
+  position: relative;
+  overflow: hidden;
+}
+
+.use-case-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary-color), #7c3aed);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+
+.use-case-item:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-lg);
+}
+
+.use-case-item:hover::before {
+  transform: scaleX(1);
+}
+
+.use-case-item h3 {
+  color: var(--text-color);
+  margin-bottom: 1rem;
 }
 
 /* Get Started */
@@ -289,6 +348,26 @@ pre {
   overflow-x: auto;
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   font-size: 0.9rem;
+  position: relative;
+}
+
+.copy-button {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+pre:hover .copy-button {
+  opacity: 1;
 }
 
 .integration-note {
@@ -332,6 +411,16 @@ footer {
   color: white;
 }
 
+/* Mobile Navigation Toggle */
+.nav-toggle {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-color);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   h1 {
@@ -363,6 +452,29 @@ footer {
   
   .nav-links {
     gap: 1rem;
+    display: none;
+  }
+  
+  .nav-links.active {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    align-items: center;
+  }
+  
+  .nav-toggle {
+    display: block;
+  }
+  
+  /* Architecture flow on mobile */
+  .architecture-flow {
+    flex-direction: column;
+    gap: 1rem;
+    min-width: auto;
+  }
+  
+  .architecture-flow .arrow {
+    transform: rotate(90deg);
   }
 }
 
@@ -377,5 +489,9 @@ footer {
   
   .subtitle {
     font-size: 1.25rem;
+  }
+  
+  .logo {
+    font-size: 2rem;
   }
 }

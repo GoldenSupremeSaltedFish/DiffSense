@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const navToggle = document.createElement('button');
     navToggle.className = 'nav-toggle';
     navToggle.innerHTML = '☰';
-    navToggle.setAttribute('aria-label', 'Toggle navigation');
+    navToggle.setAttribute(' aria-label', 'Toggle navigation');
     
     const nav = document.querySelector('nav');
     if (nav) {
@@ -45,17 +45,30 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Architecture layer animation
-    const architectureLayers = document.querySelectorAll('.architecture-layers .layer');
-    architectureLayers.forEach((layer, index) => {
-        layer.style.opacity = '0';
-        layer.style.transform = 'translateY(20px)';
+    // Use case card hover effects
+    const useCaseCards = document.querySelectorAll('.use-case-item');
+    useCaseCards.forEach(card => {
+        card.addEventListener('mouseenter', () => {
+            card.style.transform = 'translateY(-3px)';
+            card.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
+        });
+        card.addEventListener('mouseleave', () => {
+            card.style.transform = 'translateY(0)';
+            card.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
+        });
+    });
+
+    // Architecture flow animation
+    const architectureFlowItems = document.querySelectorAll('.architecture-flow .flow-item');
+    architectureFlowItems.forEach((item, index) => {
+        item.style.opacity = '0';
+        item.style.transform = 'translateY(20px)';
         
         setTimeout(() => {
-            layer.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-            layer.style.opacity = '1';
-            layer.style.transform = 'translateY(0)';
-        }, 300 + (index * 100));
+            item.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            item.style.opacity = '1';
+            item.style.transform = 'translateY(0)';
+        }, 400 + (index * 150));
     });
 
     // Code block copy functionality
