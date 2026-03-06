@@ -238,6 +238,13 @@ section:nth-child(even) {
   border: 1px solid var(--border-color);
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  /* Hide scrollbar while keeping scroll functionality */
+  scrollbar-width: none; /* Firefox */
+}
+
+/* Hide scrollbar for Webkit browsers (Chrome, Safari) */
+.architecture-flow::-webkit-scrollbar {
+  display: none;
 }
 
 .architecture-node {
