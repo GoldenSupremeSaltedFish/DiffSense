@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const navToggle = document.createElement('button');
     navToggle.className = 'nav-toggle';
     navToggle.innerHTML = '☰';
-    navToggle.setAttribute(' aria-label', 'Toggle navigation');
+    navToggle.setAttribute('aria-label', 'Toggle navigation');
     
     const nav = document.querySelector('nav');
     if (nav) {
@@ -59,15 +59,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Architecture flow animation
-    const architectureFlowItems = document.querySelectorAll('.architecture-flow .flow-item');
-    architectureFlowItems.forEach((item, index) => {
-        item.style.opacity = '0';
-        item.style.transform = 'translateY(20px)';
+    const architectureNodes = document.querySelectorAll('.architecture-node');
+    architectureNodes.forEach((node, index) => {
+        node.style.opacity = '0';
+        node.style.transform = 'translateY(20px)';
         
         setTimeout(() => {
-            item.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-            item.style.opacity = '1';
-            item.style.transform = 'translateY(0)';
+            node.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            node.style.opacity = '1';
+            node.style.transform = 'translateY(0)';
         }, 400 + (index * 150));
     });
 
@@ -84,6 +84,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 setTimeout(() => {
                     copyButton.textContent = 'Copy';
                 }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
             });
         });
         block.parentNode.appendChild(copyButton);
