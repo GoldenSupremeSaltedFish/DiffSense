@@ -1,0 +1,27 @@
+name: "GO-TEST-001"
+description: "Test CVE rule for Go regression testing"
+severity: "high"
+affected_packages:
+  - package: "github.com/test/vulnerable-package"
+    ecosystem: "Go"
+    versions:
+      introduced: "1.0.0"
+      fixed: "1.2.0"
+patterns:
+  - type: "function_call"
+    function_name: "vulnerableFunction"
+    parameters:
+      - name: "userInput"
+        type: "string"
+    conditions:
+      - "contains(userInput, '<script>')"
+signals:
+  - name: "xss_vulnerability"
+    type: "security"
+    severity: "high"
+metadata:
+  cve_id: "CVE-TEST-001"
+  ghsa_id: "GHSA-TEST-001"
+  published_date: "2026-03-08"
+  references:
+    - "https://example.com/vuln/GO-TEST-001"

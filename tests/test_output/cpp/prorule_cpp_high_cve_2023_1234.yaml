@@ -1,0 +1,28 @@
+id: prorule.cpp.high.cve_2023_1234
+description: Buffer overflow in memcpy function when processing user input in C++
+  application
+severity: high
+language: cpp
+category: security
+tags:
+- cve
+- vulnerability
+- cpp
+- cve-2023-1234
+- memory_safety.buffer_overflow
+references: []
+aliases:
+- CVE-2023-1234
+patterns:
+- \bmemcpy\s*\([^,]*,\s*[^,]*,\s*[^)]*\s*\+\s*\d+\s*\)
+- \bstrncpy\s*\([^,]*,\s*[^,]*,\s*[^)]*\s*\+\s*\d+\s*\)
+- \bstrcpy\s*\(
+- \bsprintf\s*\(
+- \b(new|delete)\s+
+- \b(malloc|free|calloc|realloc)\s*\(
+- \bstd::(shared_ptr|unique_ptr)\b
+cwe: []
+metadata:
+  cve_id: CVE-2023-1234
+  published_date: '2023-03-10'
+  conversion_date: '2026-03-11T23:32:39.765969'

@@ -163,7 +163,13 @@ def rules_list(
     path = rules_path
     if not path or not os.path.exists(path):
         path = _default_rules_path()
-    engine = RuleEngine(path, profile=profile)
+    pro_path = None
+    try:
+        from core.run_config import get_pro_rules_path
+        pro_path = get_pro_rules_path(os.getcwd())
+    except Exception:
+        pass
+    engine = RuleEngine(path, profile=profile, pro_rules_path=pro_path)
     for r in engine.rules:
         typer.echo(r.id)
 
@@ -450,10 +456,17 @@ def benchmark(
     rules_path = rules
     if not os.path.exists(rules_path):
         rules_path = _default_rules_path()
+    pro_path = None
+    try:
+        from core.run_config import get_pro_rules_path
+        pro_path = get_pro_rules_path(os.getcwd())
+    except Exception:
+        pass
     engine = RuleEngine(
         rules_path,
         profile=profile,
         config={"experimental": {"enabled": experimental, "report_only": experimental_report_only}},
+        pro_rules_path=pro_path,
     )
     parser = DiffParser()
     detector = ASTDetector()
@@ -545,7 +558,13 @@ def profile_rules(
     path = rules_path
     if not path or not os.path.exists(path):
         path = _default_rules_path()
-    engine = RuleEngine(path)
+    pro_path = None
+    try:
+        from core.run_config import get_pro_rules_path
+        pro_path = get_pro_rules_path(os.getcwd())
+    except Exception:
+        pass
+    engine = RuleEngine(path, pro_rules_path=pro_path)
     if diff_file and os.path.exists(diff_file):
         with open(diff_file, "r", encoding="utf-8") as f:
             content = f.read()

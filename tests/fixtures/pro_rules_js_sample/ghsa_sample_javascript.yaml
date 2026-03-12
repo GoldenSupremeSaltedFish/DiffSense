@@ -1,0 +1,17 @@
+# Sample JS CVE rule for integration test (language=javascript)
+id: prorule.javascript.high.ghsa_sample_js
+description: "Sample npm vulnerability for JS CVE integration test"
+severity: high
+language: javascript
+category: security
+tags:
+  - cve
+  - vulnerability
+  - javascript
+  - npm
+package:
+  ecosystem: npm
+  name: sample-package
+patterns:
+  - 'require("sample-package")'
+  - 'from "sample-package"'

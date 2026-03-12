@@ -1,0 +1,7 @@
+# PRO Rules Configuration
+# This file defines the PRO rules as a separate ruleset
+rules:
+  # Include all PRO rules from the pro directory
+  - id: "prorule.*"
+    enabled: true
+    description: "PRO rule set - premium/curated rules for production use"

@@ -176,6 +176,12 @@ def main():
         "degrade_threshold": args.quality_downgrade_threshold,
         "min_samples": args.quality_min_samples
     }
+    pro_rules_path = None
+    try:
+        from core.run_config import get_pro_rules_path
+        pro_rules_path = get_pro_rules_path(os.getcwd())
+    except Exception:
+        pass
     rule_engine = RuleEngine(
         rules_path,
         profile=args.profile,
@@ -183,6 +189,7 @@ def main():
             "rule_quality": quality_config,
             "experimental": {"enabled": args.experimental, "report_only": args.experimental_report_only},
         },
+        pro_rules_path=pro_rules_path,
     )
     evaluator = ImpactEvaluator(rule_engine)
     

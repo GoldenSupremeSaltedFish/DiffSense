@@ -88,6 +88,59 @@ pytest tests/ -v
 
 详见 [diffsense/CONTRIBUTING.md](diffsense/CONTRIBUTING.md)。
 
+## 高级用法：参数化规则路径
+
+DiffSense现在支持通过`pro_rules_path`参数指定PROrules的路径，无需依赖配置文件：
+
+```python
+from diffsense.core.rules import RuleEngine
+
+# 仅加载普通规则
+engine = RuleEngine()
+
+# 同时加载普通规则和PROrules
+engine = RuleEngine(pro_rules_path="path/to/pro-rules")
+```
+
+这使得在不同环境中灵活配置规则集变得更加容易。
+
+## 多语言CVE规则转换器
+
+DiffSense现在支持将多种编程语言的CVE数据集转换为PROrules格式。已实现Python和Go语言的转换器：
+
+### 使用示例
+
+```python
+from diffsense.converters import PythonCVEDatasetConverter, GoCVEDatasetConverter
+
+# Python CVE转换
+python_converter = PythonCVEDatasetConverter()
+cve_data = {
+    "cve_id": "CVE-2023-1234",
+    "description": "Python pickle模块中的不安全反序列化漏洞",
+    "cvss_score": 9.8
+}
+template = python_converter.parse_cve_entry(cve_data)
+rule = python_converter.generate_diffsense_rule(template)
+
+# Go CVE转换  
+go_converter = GoCVEDatasetConverter()
+cve_data = {
+    "cve_id": "CVE-2023-5678", 
+    "description": "Go语言gob包中的反序列化漏洞",
+    "cvss_score": 8.5
+}
+template = go_converter.parse_cve_entry(cve_data)
+rule = go_converter.generate_diffsense_rule(template)
+```
+
+### 支持的漏洞类型
+
+**Python**: 不安全反序列化(pickle/yaml/eval)、命令注入、路径遍历、SQL注入  
+**Go**: 不安全反序列化(gob/json/xml)、命令执行、Goroutine泄漏、竞态条件
+
+转换器会自动识别CVE描述中的语言特定模式，并生成相应的DiffSense PROrules，同时映射到通用的漏洞信号类型以保持跨语言兼容性。
+
 ---
 
 ## License & links

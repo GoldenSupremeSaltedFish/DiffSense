@@ -1,0 +1,27 @@
+id: prorule.cpp.high.cve_2023_3456
+description: Race condition in multithreaded C++ application causing memory corruption
+severity: high
+language: cpp
+category: security
+tags:
+- cve
+- vulnerability
+- cpp
+- cve-2023-3456
+- concurrency.race_condition
+references: []
+aliases:
+- CVE-2023-3456
+patterns:
+- \bstd::thread\b
+- \bpthread_create\b
+- \bstd::async\b
+- \bstd::future\b
+- \b(new|delete)\s+
+- \b(malloc|free|calloc|realloc)\s*\(
+- \bstd::(shared_ptr|unique_ptr)\b
+cwe: []
+metadata:
+  cve_id: CVE-2023-3456
+  published_date: '2023-07-22'
+  conversion_date: '2026-03-11T23:32:39.765999'
