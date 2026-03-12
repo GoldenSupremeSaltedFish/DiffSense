@@ -1,0 +1,28 @@
+{
+  "cve_samples": [
+    {
+      "cve_id": "CVE-2026-0001",
+      "description": "Buffer overflow in C++ string handling function",
+      "affected_code": "void processString(char* input) { char buffer[256]; strcpy(buffer, input); }",
+      "patch": "void processString(const std::string& input) { std::string buffer = input; }",
+      "severity": "HIGH",
+      "date": "2026-03-01"
+    },
+    {
+      "cve_id": "CVE-2026-0002", 
+      "description": "Use-after-free vulnerability in C++ object lifecycle",
+      "affected_code": "MyClass* obj = new MyClass(); delete obj; obj->method();",
+      "patch": "std::unique_ptr<MyClass> obj = std::make_unique<MyClass>(); obj->method();",
+      "severity": "CRITICAL",
+      "date": "2026-03-02"
+    },
+    {
+      "cve_id": "CVE-2026-0003",
+      "description": "Integer overflow in array indexing",
+      "affected_code": "int index = size * sizeof(int); int* arr = new int[index];",
+      "patch": "size_t index = static_cast<size_t>(size) * sizeof(int); if (index > MAX_SAFE_SIZE) throw std::overflow_error(\"Index too large\"); int* arr = new int[index];",
+      "severity": "MEDIUM", 
+      "date": "2026-03-03"
+    }
+  ]
+}

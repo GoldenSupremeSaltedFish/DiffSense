@@ -2,7 +2,7 @@
   "review_level": "normal",
   "reasons": [],
   "files": [
-    "application/src/main/java/run/halo/app/core/counter/CounterServiceImpl.java"
+    "test_vulnerable_code.go"
   ],
   "impacts": {},
   "details": [],
@@ -15,70 +15,49 @@
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 4500,
+      "time_ns": 2700,
       "errors": 0
     },
     "runtime.concurrency_regression": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 28700,
+      "time_ns": 19700,
       "errors": 0
     },
     "runtime.thread_safety_removal": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 12200,
+      "time_ns": 8300,
       "errors": 0
     },
     "runtime.latch_misuse": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 4100,
-      "errors": 0
-    },
-    "runtime.concurrency_risk": {
-      "calls": 1,
-      "hits": 0,
-      "ignores": 0,
-      "time_ns": 1400,
+      "time_ns": 2900,
       "errors": 0
     },
     "runtime.concurrency_synchronized_removed_critical": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 600,
-      "errors": 0
-    },
-    "runtime.concurrency_lock_risk": {
-      "calls": 1,
-      "hits": 0,
-      "ignores": 0,
-      "time_ns": 500,
+      "time_ns": 1100,
       "errors": 0
     },
     "runtime.concurrency_lock_removed_critical": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 200,
-      "errors": 0
-    },
-    "runtime.concurrency_volatile_risk": {
-      "calls": 1,
-      "hits": 0,
-      "ignores": 0,
-      "time_ns": 300,
+      "time_ns": 700,
       "errors": 0
     },
     "runtime.concurrency_volatile_removed_risk": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 200,
+      "time_ns": 400,
       "errors": 0
     },
     "runtime.concurrency_map_removed_risk": {
@@ -99,7 +78,7 @@
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 400,
+      "time_ns": 200,
       "errors": 0
     },
     "runtime.performance.sleep_added": {
@@ -120,7 +99,7 @@
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 300,
+      "time_ns": 200,
       "errors": 0
     },
     "runtime.concurrency.threadpool_creation": {
@@ -134,7 +113,7 @@
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 3800,
+      "time_ns": 2900,
       "errors": 0
     },
     "runtime.input_normalization_removed": {
@@ -155,7 +134,7 @@
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 400,
+      "time_ns": 300,
       "errors": 0
     },
     "runtime.concurrency.lock_removed": {
@@ -169,7 +148,7 @@
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 400,
+      "time_ns": 300,
       "errors": 0
     },
     "runtime.concurrency.final_removed": {
@@ -190,7 +169,7 @@
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 200,
+      "time_ns": 300,
       "errors": 0
     },
     "runtime.concurrency.threadpool_unbounded_queue": {
@@ -204,7 +183,7 @@
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 200,
+      "time_ns": 300,
       "errors": 0
     },
     "runtime.resource.try_with_resource_removed": {
@@ -218,24 +197,31 @@
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 300,
+      "time_ns": 200,
       "errors": 0
     },
     "runtime.network.timeout_removed": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 200,
+      "time_ns": 300,
       "errors": 0
     },
     "runtime.data.null_check_removed": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 200,
+      "time_ns": 300,
       "errors": 0
     },
     "runtime.data.equals_to_reference_compare": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 300,
+      "errors": 0
+    },
+    "example.custom.risk": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
@@ -249,14 +235,14 @@
         "saved_ms": 0
       },
       "ast": {
-        "hits": 1,
+        "hits": 0,
         "misses": 0,
         "saved_ms": 0
       }
     },
     "rule_stats": {
-      "total_rules": 40,
-      "executed_count": 34,
+      "total_rules": 42,
+      "executed_count": 31,
       "top_slow": [
         {
           "rule_id": "runtime.concurrency_regression",
@@ -264,8 +250,8 @@
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0287,
-          "avg_time_ms": 0.0287,
+          "time_ms": 0.0197,
+          "avg_time_ms": 0.0197,
           "fp_rate": 0.0,
           "precision": 1.0
         },
@@ -275,19 +261,8 @@
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0122,
-          "avg_time_ms": 0.0122,
-          "fp_rate": 0.0,
-          "precision": 1.0
-        },
-        {
-          "rule_id": "runtime.threadpool_semantic_change",
-          "calls": 1,
-          "hits": 0,
-          "ignores": 0,
-          "errors": 0,
-          "time_ms": 0.0045,
-          "avg_time_ms": 0.0045,
+          "time_ms": 0.0083,
+          "avg_time_ms": 0.0083,
           "fp_rate": 0.0,
           "precision": 1.0
         },
@@ -297,8 +272,8 @@
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0041,
-          "avg_time_ms": 0.0041,
+          "time_ms": 0.0029,
+          "avg_time_ms": 0.0029,
           "fp_rate": 0.0,
           "precision": 1.0
         },
@@ -308,19 +283,19 @@
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0038,
-          "avg_time_ms": 0.0038,
+          "time_ms": 0.0029,
+          "avg_time_ms": 0.0029,
           "fp_rate": 0.0,
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.concurrency_risk",
+          "rule_id": "runtime.threadpool_semantic_change",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0014,
-          "avg_time_ms": 0.0014,
+          "time_ms": 0.0027,
+          "avg_time_ms": 0.0027,
           "fp_rate": 0.0,
           "precision": 1.0
         },
@@ -330,8 +305,19 @@
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0006,
-          "avg_time_ms": 0.0006,
+          "time_ms": 0.0011,
+          "avg_time_ms": 0.0011,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.concurrency_lock_removed_critical",
+          "calls": 1,
+          "hits": 0,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0007,
+          "avg_time_ms": 0.0007,
           "fp_rate": 0.0,
           "precision": 1.0
         },
@@ -358,13 +344,13 @@
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.concurrency_lock_risk",
+          "rule_id": "runtime.concurrency_volatile_removed_risk",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0005,
-          "avg_time_ms": 0.0005,
+          "time_ms": 0.0004,
+          "avg_time_ms": 0.0004,
           "fp_rate": 0.0,
           "precision": 1.0
         }
@@ -376,8 +362,8 @@
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0045,
-          "avg_time_ms": 0.0045,
+          "time_ms": 0.0027,
+          "avg_time_ms": 0.0027,
           "fp_rate": 0.0,
           "precision": 1.0
         },
@@ -387,8 +373,8 @@
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0287,
-          "avg_time_ms": 0.0287,
+          "time_ms": 0.0197,
+          "avg_time_ms": 0.0197,
           "fp_rate": 0.0,
           "precision": 1.0
         },
@@ -398,8 +384,8 @@
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0122,
-          "avg_time_ms": 0.0122,
+          "time_ms": 0.0083,
+          "avg_time_ms": 0.0083,
           "fp_rate": 0.0,
           "precision": 1.0
         },
@@ -409,19 +395,8 @@
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0041,
-          "avg_time_ms": 0.0041,
-          "fp_rate": 0.0,
-          "precision": 1.0
-        },
-        {
-          "rule_id": "runtime.concurrency_risk",
-          "calls": 1,
-          "hits": 0,
-          "ignores": 0,
-          "errors": 0,
-          "time_ms": 0.0014,
-          "avg_time_ms": 0.0014,
+          "time_ms": 0.0029,
+          "avg_time_ms": 0.0029,
           "fp_rate": 0.0,
           "precision": 1.0
         },
@@ -431,19 +406,8 @@
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0006,
-          "avg_time_ms": 0.0006,
-          "fp_rate": 0.0,
-          "precision": 1.0
-        },
-        {
-          "rule_id": "runtime.concurrency_lock_risk",
-          "calls": 1,
-          "hits": 0,
-          "ignores": 0,
-          "errors": 0,
-          "time_ms": 0.0005,
-          "avg_time_ms": 0.0005,
+          "time_ms": 0.0011,
+          "avg_time_ms": 0.0011,
           "fp_rate": 0.0,
           "precision": 1.0
         },
@@ -453,13 +417,24 @@
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0002,
-          "avg_time_ms": 0.0002,
+          "time_ms": 0.0007,
+          "avg_time_ms": 0.0007,
           "fp_rate": 0.0,
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.concurrency_volatile_risk",
+          "rule_id": "runtime.concurrency_volatile_removed_risk",
+          "calls": 1,
+          "hits": 0,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0004,
+          "avg_time_ms": 0.0004,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.concurrency_map_removed_risk",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
@@ -470,7 +445,18 @@
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.concurrency_volatile_removed_risk",
+          "rule_id": "runtime.concurrency.thread_safety_downgrade",
+          "calls": 1,
+          "hits": 0,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0003,
+          "avg_time_ms": 0.0003,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.concurrency.static_unsafe_collection",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
@@ -488,8 +474,8 @@
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0045,
-          "avg_time_ms": 0.0045,
+          "time_ms": 0.0027,
+          "avg_time_ms": 0.0027,
           "fp_rate": 0.0,
           "precision": 1.0
         },
@@ -499,8 +485,8 @@
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0287,
-          "avg_time_ms": 0.0287,
+          "time_ms": 0.0197,
+          "avg_time_ms": 0.0197,
           "fp_rate": 0.0,
           "precision": 1.0
         },
@@ -510,8 +496,8 @@
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0122,
-          "avg_time_ms": 0.0122,
+          "time_ms": 0.0083,
+          "avg_time_ms": 0.0083,
           "fp_rate": 0.0,
           "precision": 1.0
         },
@@ -521,19 +507,8 @@
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0041,
-          "avg_time_ms": 0.0041,
-          "fp_rate": 0.0,
-          "precision": 1.0
-        },
-        {
-          "rule_id": "runtime.concurrency_risk",
-          "calls": 1,
-          "hits": 0,
-          "ignores": 0,
-          "errors": 0,
-          "time_ms": 0.0014,
-          "avg_time_ms": 0.0014,
+          "time_ms": 0.0029,
+          "avg_time_ms": 0.0029,
           "fp_rate": 0.0,
           "precision": 1.0
         },
@@ -543,19 +518,8 @@
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0006,
-          "avg_time_ms": 0.0006,
-          "fp_rate": 0.0,
-          "precision": 1.0
-        },
-        {
-          "rule_id": "runtime.concurrency_lock_risk",
-          "calls": 1,
-          "hits": 0,
-          "ignores": 0,
-          "errors": 0,
-          "time_ms": 0.0005,
-          "avg_time_ms": 0.0005,
+          "time_ms": 0.0011,
+          "avg_time_ms": 0.0011,
           "fp_rate": 0.0,
           "precision": 1.0
         },
@@ -565,13 +529,24 @@
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0002,
-          "avg_time_ms": 0.0002,
+          "time_ms": 0.0007,
+          "avg_time_ms": 0.0007,
           "fp_rate": 0.0,
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.concurrency_volatile_risk",
+          "rule_id": "runtime.concurrency_volatile_removed_risk",
+          "calls": 1,
+          "hits": 0,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0004,
+          "avg_time_ms": 0.0004,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.concurrency_map_removed_risk",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
@@ -582,7 +557,18 @@
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.concurrency_volatile_removed_risk",
+          "rule_id": "runtime.concurrency.thread_safety_downgrade",
+          "calls": 1,
+          "hits": 0,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0003,
+          "avg_time_ms": 0.0003,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "runtime.concurrency.static_unsafe_collection",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
@@ -601,23 +587,23 @@
       "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0045,
+      "avg_time_ms": 0.0027,
       "confidence": 1.0
     },
     "runtime.concurrency_regression": {
-      "hits": 0,
-      "confirmed": 0,
+      "hits": 3,
+      "confirmed": 3,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0287,
+      "avg_time_ms": 0.0197,
       "confidence": 1.0
     },
     "runtime.thread_safety_removal": {
-      "hits": 0,
-      "confirmed": 0,
+      "hits": 3,
+      "confirmed": 3,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0122,
+      "avg_time_ms": 0.0083,
       "confidence": 1.0
     },
     "runtime.latch_misuse": {
@@ -625,7 +611,7 @@
       "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0041,
+      "avg_time_ms": 0.0029,
       "confidence": 1.0
     },
     "runtime.concurrency_risk": {
@@ -641,7 +627,7 @@
       "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0006,
+      "avg_time_ms": 0.0011,
       "confidence": 1.0
     },
     "runtime.concurrency_lock_risk": {
@@ -657,7 +643,7 @@
       "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0002,
+      "avg_time_ms": 0.0007,
       "confidence": 1.0
     },
     "runtime.concurrency_volatile_risk": {
@@ -673,7 +659,7 @@
       "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0002,
+      "avg_time_ms": 0.0004,
       "confidence": 1.0
     },
     "runtime.concurrency_map_removed_risk": {
@@ -685,24 +671,24 @@
       "confidence": 1.0
     },
     "runtime.concurrency.thread_safety_downgrade": {
-      "hits": 0,
-      "confirmed": 0,
+      "hits": 3,
+      "confirmed": 3,
       "false_positive": 0,
       "precision": 1.0,
       "avg_time_ms": 0.0003,
       "confidence": 1.0
     },
     "runtime.concurrency.static_unsafe_collection": {
-      "hits": 0,
-      "confirmed": 0,
+      "hits": 3,
+      "confirmed": 3,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0004,
+      "avg_time_ms": 0.0002,
       "confidence": 1.0
     },
     "runtime.performance.sleep_added": {
-      "hits": 0,
-      "confirmed": 0,
+      "hits": 3,
+      "confirmed": 3,
       "false_positive": 0,
       "precision": 1.0,
       "avg_time_ms": 0.0003,
@@ -721,7 +707,7 @@
       "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0003,
+      "avg_time_ms": 0.0002,
       "confidence": 1.0
     },
     "runtime.concurrency.threadpool_creation": {
@@ -737,7 +723,7 @@
       "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0038,
+      "avg_time_ms": 0.0029,
       "confidence": 1.0
     },
     "runtime.input_normalization_removed": {
@@ -761,28 +747,28 @@
       "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0004,
+      "avg_time_ms": 0.0003,
       "confidence": 1.0
     },
     "runtime.concurrency.lock_removed": {
-      "hits": 0,
-      "confirmed": 0,
+      "hits": 3,
+      "confirmed": 3,
       "false_positive": 0,
       "precision": 1.0,
       "avg_time_ms": 0.0006,
       "confidence": 1.0
     },
     "runtime.concurrency.volatile_removed": {
-      "hits": 0,
-      "confirmed": 0,
+      "hits": 3,
+      "confirmed": 3,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0004,
+      "avg_time_ms": 0.0003,
       "confidence": 1.0
     },
     "runtime.concurrency.final_removed": {
-      "hits": 0,
-      "confirmed": 0,
+      "hits": 3,
+      "confirmed": 3,
       "false_positive": 0,
       "precision": 1.0,
       "avg_time_ms": 0.0003,
@@ -801,7 +787,7 @@
       "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0002,
+      "avg_time_ms": 0.0003,
       "confidence": 1.0
     },
     "runtime.concurrency.threadpool_unbounded_queue": {
@@ -817,7 +803,7 @@
       "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0002,
+      "avg_time_ms": 0.0003,
       "confidence": 1.0
     },
     "runtime.resource.try_with_resource_removed": {
@@ -833,7 +819,7 @@
       "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0003,
+      "avg_time_ms": 0.0002,
       "confidence": 1.0
     },
     "runtime.network.timeout_removed": {
@@ -841,7 +827,7 @@
       "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0002,
+      "avg_time_ms": 0.0003,
       "confidence": 1.0
     },
     "runtime.data.null_check_removed": {
@@ -849,7 +835,7 @@
       "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0002,
+      "avg_time_ms": 0.0003,
       "confidence": 1.0
     },
     "runtime.data.equals_to_reference_compare": {
@@ -875,7 +861,34 @@
       "precision": 1.0,
       "avg_time_ms": 0.0,
       "confidence": 1.0
+    },
+    "example.custom.risk": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0003,
+      "confidence": 1.0
     }
   },
-  "_quality_warnings": []
+  "_quality_warnings": [],
+  "_performance": {
+    "wall_clock_s": 0.043,
+    "cache": {
+      "diff": {
+        "hits": 1,
+        "misses": 0,
+        "saved_ms": 0
+      },
+      "ast": {
+        "hits": 0,
+        "misses": 0,
+        "saved_ms": 0
+      }
+    },
+    "cache_hit_rate_pct": 100.0,
+    "rules_executed": 31,
+    "rules_total": 42,
+    "rules_executed_pct": 73.81
+  }
 }

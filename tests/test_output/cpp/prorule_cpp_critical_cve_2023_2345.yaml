@@ -1,0 +1,27 @@
+id: prorule.cpp.critical.cve_2023_2345
+description: Use-after-free vulnerability in C++ destructor leading to arbitrary code
+  execution
+severity: critical
+language: cpp
+category: security
+tags:
+- cve
+- vulnerability
+- cpp
+- cve-2023-2345
+- memory_safety.use_after_free
+references: []
+aliases:
+- CVE-2023-2345
+patterns:
+- \bfree\s*\([^)]*\)\s*;.*\b\w+\s*->
+- \bdelete\s+\w+\s*;.*\b\w+\s*->
+- \bdelete\s+\[\]\s+\w+\s*;.*\b\w+\s*\[
+- \b(new|delete)\s+
+- \b(malloc|free|calloc|realloc)\s*\(
+- \bstd::(shared_ptr|unique_ptr)\b
+cwe: []
+metadata:
+  cve_id: CVE-2023-2345
+  published_date: '2023-05-15'
+  conversion_date: '2026-03-11T23:32:39.765985'

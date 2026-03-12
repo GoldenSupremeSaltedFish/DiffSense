@@ -20,6 +20,11 @@ jobs:
         run: |
           pip install -e "diffsense[dev]"
           python -m pytest diffsense/tests/ -v
+      - name: Integration tests (top-level tests/)
+        run: |
+          if [ -d tests ] && [ -n "$(find tests -name 'test_*.py' -print -quit)" ]; then
+            python -m pytest tests/ -v --tb=short
+          fi
 
   build:
     name: Build DiffSense

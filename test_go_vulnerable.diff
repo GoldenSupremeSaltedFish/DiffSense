@@ -1,0 +1,18 @@
+diff --git a/test_vulnerable_code.go b/test_vulnerable_code.go
+index 1234567..89abcde 100644
+--- a/test_vulnerable_code.go
++++ b/test_vulnerable_code.go
+@@ -1,5 +1,10 @@
+ package main
+ 
++import (
++	"os/exec"
++	"net/http"
++)
++
+ func main() {
+ 	// Test command injection vulnerability
+-	println("Hello World")
++	cmd := exec.Command("sh", "-c", userInput)
++	cmd.Run()
+ }
