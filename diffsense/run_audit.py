@@ -62,13 +62,22 @@ def run_audit(adapter, rules_path, profile=None, pro_rules_path=None, baseline=F
             pro_rules_path = get_pro_rules_path(os.getcwd())
         except Exception:
             pro_rules_path = None
+    run_cfg = {}
+    try:
+        from core.run_config import get_run_config
+        run_cfg = get_run_config(os.getcwd())
+    except Exception:
+        pass
+    engine_config = {
+        "rule_quality": quality_config,
+        "experimental": {"enabled": experimental, "report_only": experimental_report_only},
+    }
+    if run_cfg.get("dependency_versions"):
+        engine_config["dependency_versions"] = run_cfg["dependency_versions"]
     engine = RuleEngine(
         rules_path,
         profile=profile,
-        config={
-            "rule_quality": quality_config,
-            "experimental": {"enabled": experimental, "report_only": experimental_report_only},
-        },
+        config=engine_config,
         pro_rules_path=pro_rules_path,
     )
     evaluator = ImpactEvaluator(engine)

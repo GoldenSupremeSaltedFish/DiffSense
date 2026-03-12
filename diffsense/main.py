@@ -182,13 +182,21 @@ def main():
         pro_rules_path = get_pro_rules_path(os.getcwd())
     except Exception:
         pass
+    engine_config = {
+        "rule_quality": quality_config,
+        "experimental": {"enabled": args.experimental, "report_only": args.experimental_report_only},
+    }
+    try:
+        from core.run_config import get_run_config
+        _rc = get_run_config(os.getcwd())
+        if _rc.get("dependency_versions"):
+            engine_config["dependency_versions"] = _rc["dependency_versions"]
+    except Exception:
+        pass
     rule_engine = RuleEngine(
         rules_path,
         profile=args.profile,
-        config={
-            "rule_quality": quality_config,
-            "experimental": {"enabled": args.experimental, "report_only": args.experimental_report_only},
-        },
+        config=engine_config,
         pro_rules_path=pro_rules_path,
     )
     evaluator = ImpactEvaluator(rule_engine)
