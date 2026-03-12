@@ -33,6 +33,25 @@ ignore:
     files: ["**/test/**"]
 ```
 
+### CVE 精确匹配：配置依赖版本（可选）
+
+当启用 pro-rules 中的 CVE 规则时，可在 `.diffsense.yaml` 中配置**当前仓库使用的依赖版本**，引擎仅当配置版本落在 CVE 的受影响区间（introduced ≤ 版本 < fixed）时才触发该条规则，避免“任何版本都报”的误报。
+
+```yaml
+# 上述 profile / auto_tune 等...
+
+# 依赖版本：ecosystem -> 包名 -> 版本号。仅对带 package+versions 的 CVE 规则生效。
+dependency_versions:
+  npm:
+    lodash: "4.17.21"
+    express: "4.18.0"
+  maven:
+    "org.apache.tomcat:tomcat-catalina": "9.0.72"
+```
+
+- 若**未配置** `dependency_versions`，或某包未在配置中列出，则带版本区间的 CVE 规则**不会**对该包执行（需用户配置后才参与精确匹配）。
+- 若 CVE 规则**未带** `versions.introduced` / `versions.fixed`，则不进行版本过滤，按原逻辑执行。
+
 ---
 
 ## 二、默认行为与产品承诺

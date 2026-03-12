@@ -67,6 +67,16 @@ class YamlRule(Rule):
         return self._rule_dict.get('scope', self._rule_dict.get('file', '**'))
 
     @property
+    def package(self) -> Optional[Dict[str, Any]]:
+        """CVE 规则：package.ecosystem + package.name 用于与 dependency_versions 精确匹配。"""
+        return self._rule_dict.get('package')
+
+    @property
+    def versions(self) -> Optional[Dict[str, Any]]:
+        """CVE 规则：versions.introduced / versions.fixed 定义受影响版本区间。"""
+        return self._rule_dict.get('versions')
+
+    @property
     def status(self) -> str:
         return str(self._rule_dict.get('status', 'stable')).lower()
 

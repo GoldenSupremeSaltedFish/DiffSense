@@ -44,6 +44,10 @@ def get_run_config(repo_root: str = ".") -> Dict[str, Any]:
             out["rule_quality"] = dict(data["rule_quality"])
         if data.get("pro_rules_path") is not None:
             out["pro_rules_path"] = str(data["pro_rules_path"]).strip() or None
+        if isinstance(data.get("dependency_versions"), dict):
+            # 用户配置的依赖版本，用于 CVE 规则精确匹配：ecosystem -> package_name -> version
+            # 例如: dependency_versions: { npm: { lodash: "4.17.21" }, maven: { "org.apache.tomcat:tomcat-catalina": "9.0.72" } }
+            out["dependency_versions"] = {k: dict(v) for k, v in data["dependency_versions"].items() if isinstance(v, dict)}
         break
     return out
 

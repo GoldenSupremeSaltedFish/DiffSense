@@ -2,7 +2,35 @@ import os
 import yaml
 import fnmatch
 import time
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
+
+def _version_segments(v: str) -> Tuple[int, ...]:
+    """将版本字符串转为可比较的整数元组，便于区间判断。"""
+    v = (v or "").strip()
+    if not v:
+        return (0,)
+    parts = []
+    for s in v.replace("-", ".").split("."):
+        s = "".join(c for c in s if c.isdigit())
+        parts.append(int(s) if s else 0)
+    return tuple(parts) if parts else (0,)
+
+def _version_in_cve_range(current: str, introduced: List[str], fixed: List[str]) -> bool:
+    """
+    判断当前版本是否在 CVE 受影响区间内。
+    约定：introduced = 首个受影响版本（>= 即可能受影响），fixed = 首个修复版本（< fixed 即受影响）。
+    受影响区间为 [min(introduced), min(fixed))；若无 fixed 则仅要求 current >= any introduced。
+    """
+    if not introduced and not fixed:
+        return True
+    cur = _version_segments(current)
+    intro_vers = [_version_segments(x) for x in (introduced or []) if x]
+    fix_vers = [_version_segments(x) for x in (fixed or []) if x]
+    if intro_vers and cur < min(intro_vers):
+        return False
+    if fix_vers and cur >= min(fix_vers):
+        return False
+    return True
 from core.rule_base import Rule
 from core.quality_manager import RuleQualityManager
 from core.parser_manager import ParserManager
@@ -95,7 +123,7 @@ class RuleEngine:
         rule_id = data.get('id') or data.get('rule_name')
         if not rule_id:
             return None
-        return {
+        out = {
             'id': str(rule_id),
             'language': data.get('language', '*'),
             'severity': (data.get('severity') or 'high').lower(),
@@ -105,6 +133,11 @@ class RuleEngine:
             'signal': data.get('signal') or 'security.vulnerability',
             'impact': data.get('impact') or data.get('category') or 'security',
         }
+        if data.get('package') is not None:
+            out['package'] = data['package']
+        if data.get('versions') is not None:
+            out['versions'] = data['versions']
+        return out
 
     def _load_yaml_file(self, path: str):
         """Loads a single YAML file: either top-level 'rules: [...]' or single-rule schema (id, language, severity, ...) for cve/java etc.
@@ -305,6 +338,24 @@ class RuleEngine:
             
             if not should_run:
                 continue
+
+            # CVE 版本精确匹配：若规则带 package + versions 且用户配置了 dependency_versions，仅当配置版本在受影响区间内才执行
+            rule_package = getattr(rule, 'package', None)
+            rule_versions = getattr(rule, 'versions', None)
+            if rule_package and rule_versions and isinstance(rule_package, dict):
+                dep_versions = self.config.get("dependency_versions") or {}
+                eco = (rule_package.get("ecosystem") or "").strip().lower()
+                pkg_name = (rule_package.get("name") or "").strip()
+                if eco and pkg_name:
+                    eco_map = dep_versions.get(eco)
+                    if isinstance(eco_map, dict):
+                        current_ver = eco_map.get(pkg_name)
+                        if current_ver is None:
+                            continue  # 未配置该包版本，不执行此 CVE 规则（需用户配置以精确匹配）
+                        intro = rule_versions.get("introduced") or []
+                        fixed = rule_versions.get("fixed") or []
+                        if not _version_in_cve_range(str(current_ver), intro if isinstance(intro, list) else [intro], fixed if isinstance(fixed, list) else [fixed] if fixed else []):
+                            continue  # 配置版本不在受影响区间，跳过
 
             rule_id = rule.id
             quality_status, precision, _ = self.quality_manager.status(rule_id)
