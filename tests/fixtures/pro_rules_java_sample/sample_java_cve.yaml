@@ -1,0 +1,6 @@
+# 用于集成测试的 Java CVE 单条规则样例（验证按语言识别）
+id: prorule.java.high.ghsa_sample_test
+description: "Sample Java CVE rule for language integration test"
+severity: high
+language: java
+category: security

@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DiffSense - 变更风险守门人 | 代码变更智能风险分析平台</title>
+    <meta name="description" content="DiffSense 是专为现代 DevOps 团队打造的代码变更风险分析工具，通过 AST 语义分析精准识别 PR/MR 中的潜在风险">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #0f172a;
+            --light: #f8fafc;
+            --gray: #64748b;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: var(--secondary);
+            background-color: var(--light);
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        /* Header */
+        header {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: white;
+            padding: 2rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .logo-icon {
+            background: var(--primary);
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin-left: 2rem;
+            font-weight: 500;
+            transition: opacity 0.2s;
+        }
+        
+        nav a:hover {
+            opacity: 0.8;
+        }
+        
+        .hero {
+            text-align: center;
+            padding: 4rem 0;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+            background: linear-gradient(45deg, #ffffff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .hero p {
+            font-size: 1.25rem;
+            color: #cbd5e1;
+            margin-bottom: 2.5rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 12px 32px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            border: 2px solid var(--primary);
+        }
+        
+        .cta-button:hover {
+            background: transparent;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3);
+        }
+        
+        .cta-secondary {
+            background: transparent;
+            margin-left: 1rem;
+            border-color: #64748b;
+            color: #e2e8f0;
+        }
+        
+        .cta-secondary:hover {
+            border-color: var(--primary);
+            color: white;
+            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.2);
+        }
+        
+        /* Features */
+        .section {
+            padding: 5rem 0;
+        }
+        
+        .section-title {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .section-title h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--secondary);
+        }
+        
+        .section-title p {
+            color: var(--gray);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+        
+        .feature-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: rgba(37, 99, 235, 0.1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            color: var(--primary);
+            font-size: 1.5rem;
+        }
+        
+        .feature-card h3 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--secondary);
+        }
+        
+        .feature-card p {
+            color: var(--gray);
+            font-size: 1rem;
+        }
+        
+        /* Architecture */
+        .architecture {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+        }
+        
+        .architecture-diagram {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-top: 2rem;
+        }
+        
+        .pipeline-steps {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+        
+        .step {
+            text-align: center;
+            flex: 1;
+            min-width: 120px;
+        }
+        
+        .step-number {
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-weight: bold;
+        }
+        
+        .step h4 {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--secondary);
+        }
+        
+        .step p {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+        
+        .arrow {
+            color: var(--primary);
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        /* Risk Categories */
+        .risk-categories {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .risk-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .risk-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 1rem;
+        }
+        
+        .risk-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .concurrency { background: #dc2626; }
+        .performance { background: #ea580c; }
+        .resource { background: #ca8a04; }
+        .network { background: #16a34a; }
+        .data { background: #0891b2; }
+        
+        .risk-card h4 {
+            font-weight: 600;
+            color: var(--secondary);
+        }
+        
+        .risk-examples {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+        
+        .risk-examples li {
+            margin-bottom: 0.5rem;
+            list-style: none;
+            padding-left: 1.2rem;
+            position: relative;
+        }
+        
+        .risk-examples li:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+        }
+        
+        /* CTA Section */
+        .cta-section {
+            text-align: center;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 5rem 0;
+            border-radius: 16px;
+            margin: 4rem 0;
+        }
+        
+        .cta-section h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .cta-section p {
+            font-size: 1.2rem;
+            margin-bottom: 2.5rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            opacity: 0.9;
+        }
+        
+        .cta-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        /* Footer */
+        footer {
+            background: var(--secondary);
+            color: white;
+            padding: 3rem 0 2rem;
+        }
+        
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .footer-column h4 {
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+        }
+        
+        .footer-column ul {
+            list-style: none;
+        }
+        
+        .footer-column li {
+            margin-bottom: 0.8rem;
+        }
+        
+        .footer-column a {
+            color: #94a3b8;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        
+        .footer-column a:hover {
+            color: white;
+        }
+        
+        .copyright {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid #334155;
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .hero p {
+                font-size: 1.1rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+                gap: 1.5rem;
+            }
+            
+            nav {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            nav a {
+                margin: 0 0.5rem;
+            }
+            
+            .cta-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .cta-secondary {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon">DS</div>
+                    DiffSense
+                </div>
+                <nav>
+                    <a href="#features">功能特性</a>
+                    <a href="#architecture">技术架构</a>
+                    <a href="#risks">风险检测</a>
+                    <a href="#get-started">快速开始</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <h1>变更风险守门人<br>只分析差异，不扫描全量</h1>
+            <p>DiffSense 是专为现代 DevOps 团队打造的代码变更风险分析工具，通过 AST 语义分析精准识别 PR/MR 中的潜在风险，让每一次代码提交都更加安全可靠。</p>
+            <div class="cta-buttons">
+                <a href="#get-started" class="cta-button">立即开始</a>
+                <a href="https://github.com/GoldenSupremeSaltedFish/DiffSense" class="cta-button cta-secondary">查看源码</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="section">
+        <div class="container">
+            <div class="section-title">
+                <h2>为什么选择 DiffSense？</h2>
+                <p>专为现代开发流程设计的风险分析解决方案</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>增量分析</h3>
+                    <p>只分析代码变更部分，比全量扫描快 10-100 倍，完美适配 CI/CD 流水线。</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🧠</div>
+                    <h3>AST 语义分析</h3>
+                    <p>基于抽象语法树的深度语义分析，准确率远超正则表达式匹配，大幅降低误报率。</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🛡️</div>
+                    <h3>信号驱动架构</h3>
+                    <p>模块化信号检测系统，支持自定义规则扩展，轻松适应不同业务场景。</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h3>精准风险定位</h3>
+                    <p>精确到行号的风险提示，支持内联注释和自动修复建议，提升开发者体验。</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔄</div>
+                    <h3>CI/CD 无缝集成</h3>
+                    <p>原生支持 GitHub Actions 和 GitLab CI，一键集成到现有开发流程中。</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📈</div>
+                    <h3>智能质量调优</h3>
+                    <p>自动学习规则质量，动态调整检测策略，确保持续提供高质量的风险分析服务。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture Section -->
+    <section id="architecture" class="section architecture">
+        <div class="container">
+            <div class="section-title">
+                <h2>技术架构</h2>
+                <p>基于信号驱动的现代化分析引擎</p>
+            </div>
+            <div class="architecture-diagram">
+                <div class="pipeline-steps">
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <h4>差异解析</h4>
+                        <p>解析 Git diff，提取变更信息</p>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <h4>AST 检测</h4>
+                        <p>生成语义变化对象 (Change)</p>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <h4>信号转换</h4>
+                        <p>Change 转换为标准化信号 (Signal)</p>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="step">
+                        <div class="step-number">4</div>
+                        <h4>规则评估</h4>
+                        <p>基于信号执行风险规则</p>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="step">
+                        <div class="step-number">5</div>
+                        <h4>结果输出</h4>
+                        <p>生成报告和内联评论</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Risk Detection Section -->
+    <section id="risks" class="section">
+        <div class="container">
+            <div class="section-title">
+                <h2>全面的风险检测能力</h2>
+                <p>覆盖并发、性能、资源、网络、数据等多个维度</p>
+            </div>
+            <div class="risk-categories">
+                <div class="risk-card">
+                    <div class="risk-header">
+                        <div class="risk-icon concurrency">C</div>
+                        <h4>并发风险</h4>
+                    </div>
+                    <ul class="risk-examples">
+                        <li>synchronized 关键字移除</li>
+                        <li>volatile 修饰符删除</li>
+                        <li>锁机制变更</li>
+                        <li>线程池参数调整</li>
+                        <li>原子操作降级</li>
+                    </ul>
+                </div>
+                <div class="risk-card">
+                    <div class="risk-header">
+                        <div class="risk-icon performance">P</div>
+                        <h4>性能风险</h4>
+                    </ul>
+                    <ul class="risk-examples">
+                        <li>Thread.sleep() 添加</li>
+                        <li>循环内集合修改</li>
+                        <li>分页参数变更</li>
+                        <li>忙等待模式引入</li>
+                    </ul>
+                </div>
+                <div class="risk-card">
+                    <div class="risk-header">
+                        <div class="risk-icon resource">R</div>
+                        <h4>资源风险</h4>
+                    </div>
+                    <ul class="risk-examples">
+                        <li>try-with-resources 移除</li>
+                        <li>缓存过期策略删除</li>
+                        <li>无界队列创建</li>
+                        <li>资源泄漏风险</li>
+                    </ul>
+                </div>
+                <div class="risk-card">
+                    <div class="risk-header">
+                        <div class="risk-icon network">N</div>
+                        <h4>网络风险</h4>
+                    </div>
+                    <ul class="risk-examples">
+                        <li>超时设置移除</li>
+                        <li>重试机制删除</li>
+                        <li>连接池配置变更</li>
+                    </ul>
+                </div>
+                <div class="risk-card">
+                    <div class="risk-header">
+                        <div class="risk-icon data">D</div>
+                        <h4>数据风险</h4>
+                    </div>
+                    <ul class="risk-examples">
+                        <li>equals() 方法替换为 ==</li>
+                        <li>空值检查移除</li>
+                        <li>输入验证逻辑删除</li>
+                        <li>数据一致性保障缺失</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section id="get-started" class="cta-section">
+        <div class="container">
+            <h2>5 分钟快速集成</h2>
+            <p>只需简单配置，即可在您的 PR/MR 中启用智能风险分析</p>
+            <div class="cta-buttons">
+                <a href="https://github.com/GoldenSupremeSaltedFish/DiffSense/blob/main/diffsense/docs/quickstart.md" class="cta-button">查看快速开始指南</a>
+                <a href="https://github.com/GoldenSupremeSaltedFish/DiffSense" class="cta-button cta-secondary">Star 我们</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-column">
+                    <h4>DiffSense</h4>
+                    <ul>
+                        <li><a href="#features">功能特性</a></li>
+                        <li><a href="#architecture">技术架构</a></li>
+                        <li><a href="#risks">风险检测</a></li>
+                        <li><a href="#get-started">快速开始</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>文档</h4>
+                    <ul>
+                        <li><a href="https://github.com/GoldenSupremeSaltedFish/DiffSense/blob/main/diffsense/docs/quickstart.md">快速开始</a></li>
+                        <li><a href="https://github.com/GoldenSupremeSaltedFish/DiffSense/blob/main/diffsense/docs/recommended-config.md">推荐配置</a></li>
+                        <li><a href="https://github.com/GoldenSupremeSaltedFish/DiffSense/blob/main/diffsense/docs/rule-quickstart.md">规则开发指南</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>社区</h4>
+                    <ul>
+                        <li><a href="https://github.com/GoldenSupremeSaltedFish/DiffSense">GitHub</a></li>
+                        <li><a href="https://github.com/GoldenSupremeSaltedFish/DiffSense/issues">问题反馈</a></li>
+                        <li><a href="https://github.com/GoldenSupremeSaltedFish/DiffSense/discussions">讨论区</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>支持</h4>
+                    <ul>
+                        <li><a href="mailto:support@diffsense.ai">技术支持</a></li>
+                        <li><a href="https://github.com/GoldenSupremeSaltedFish/DiffSense/blob/main/LICENSE">许可证</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="copyright">
+                © 2026 DiffSense. 保留所有权利。开源许可证 MIT.
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

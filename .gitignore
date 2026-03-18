@@ -43,6 +43,9 @@ dist-ssr
 *.sw?
 *.vsix
 
+# Pro 规则集（商业/大量 CVE 规则，不纳入版本库）
+pro-rules/
+
 # Test files
 **/*.test.js
 **/*.spec.js

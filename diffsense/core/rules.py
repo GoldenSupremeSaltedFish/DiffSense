@@ -2,9 +2,38 @@ import os
 import yaml
 import fnmatch
 import time
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
+
+def _version_segments(v: str) -> Tuple[int, ...]:
+    """将版本字符串转为可比较的整数元组，便于区间判断。"""
+    v = (v or "").strip()
+    if not v:
+        return (0,)
+    parts = []
+    for s in v.replace("-", ".").split("."):
+        s = "".join(c for c in s if c.isdigit())
+        parts.append(int(s) if s else 0)
+    return tuple(parts) if parts else (0,)
+
+def _version_in_cve_range(current: str, introduced: List[str], fixed: List[str]) -> bool:
+    """
+    判断当前版本是否在 CVE 受影响区间内。
+    约定：introduced = 首个受影响版本（>= 即可能受影响），fixed = 首个修复版本（< fixed 即受影响）。
+    受影响区间为 [min(introduced), min(fixed))；若无 fixed 则仅要求 current >= any introduced。
+    """
+    if not introduced and not fixed:
+        return True
+    cur = _version_segments(current)
+    intro_vers = [_version_segments(x) for x in (introduced or []) if x]
+    fix_vers = [_version_segments(x) for x in (fixed or []) if x]
+    if intro_vers and cur < min(intro_vers):
+        return False
+    if fix_vers and cur >= min(fix_vers):
+        return False
+    return True
 from core.rule_base import Rule
 from core.quality_manager import RuleQualityManager
+from core.parser_manager import ParserManager
 
 try:
     from importlib.metadata import entry_points
@@ -24,7 +53,7 @@ from rules.concurrency import (
 from rules.yaml_adapter import YamlRule
 
 class RuleEngine:
-    def __init__(self, rules_path: str, profile: Optional[str] = None, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, rules_path: Optional[str] = None, profile: Optional[str] = None, config: Optional[Dict[str, Any]] = None, pro_rules_path: Optional[str] = None):
         self.rules: List[Rule] = []
         self.metrics: Dict[str, Dict[str, Any]] = {}  # id -> {calls, hits, time_ns, errors}
         self.ignore_manager = IgnoreManager()
@@ -42,7 +71,11 @@ class RuleEngine:
         # 2. Load YAML Rules (Plugins)
         self._load_yaml_rules(rules_path)
 
-        # 3. Load rules from pip-installed packages (entry point group: diffsense.rules)
+        # 3. Load PRO rules if path is provided (skip java/go/python/cve subdirs with single-rule schema)
+        if pro_rules_path and os.path.exists(pro_rules_path):
+            self._load_yaml_rules(pro_rules_path, skip_single_rule_subdirs=True)
+
+        # 4. Load rules from pip-installed packages (entry point group: diffsense.rules)
         self._load_entry_point_rules()
         self._load_rulesets_from_config()
 
@@ -59,29 +92,78 @@ class RuleEngine:
         self.rules.append(ThreadSafetyRemovalRule())
         self.rules.append(LatchMisuseRule())
 
-    def _load_yaml_rules(self, path: str):
+    def _load_yaml_rules(self, path: Optional[str], skip_single_rule_subdirs: bool = False):
         """
         Loads YAML rules from a single file or a directory of .yaml files.
         If path is a directory, loads all .yaml files in that directory recursively.
         Each file must have top-level 'rules: [...]'. Load order is deterministic (sorted by name).
+        When skip_single_rule_subdirs is True (e.g. for pro-rules), skips subdirs java/go/python (bulk single-rule);
+        subdir cve/ is still walked so cve/java and cve/JavaScript single-rule YAMLs can be loaded and recognized by language.
         """
+        if not path or not os.path.exists(path):
+            return
+            
         if os.path.isdir(path):
-            for root, _, files in os.walk(path):
+            # 仅在 pro-rules 根目录跳过 java/go/python（大批量单文件）；不跳过 cve/java、cve/JavaScript
+            skip_dirs = {'java', 'go', 'python'} if skip_single_rule_subdirs else set()
+            for root, dirs, files in os.walk(path):
+                if skip_dirs and os.path.normpath(root) == os.path.normpath(path):
+                    dirs[:] = [d for d in dirs if d not in skip_dirs]
                 for name in sorted(f for f in files if f.endswith('.yaml')):
                     file_path = os.path.join(root, name)
                     self._load_yaml_file(file_path)
         else:
             self._load_yaml_file(path)
 
+    def _single_rule_to_engine_format(self, data: dict) -> Optional[dict]:
+        """将按语言单条规则 schema (id, language, severity, description, category, ...) 转为引擎 YamlRule 所需格式.
+        支持 id / rule_name（如 pro-rules/cve/java、cve/Go 单文件）."""
+        if not data:
+            return None
+        rule_id = data.get('id') or data.get('rule_name')
+        if not rule_id:
+            return None
+        out = {
+            'id': str(rule_id),
+            'language': data.get('language', '*'),
+            'severity': (data.get('severity') or 'high').lower(),
+            'rationale': data.get('rationale') or data.get('description') or '',
+            'file': data.get('file', '**'),
+            'action': data.get('action', 'report'),
+            'signal': data.get('signal') or 'security.vulnerability',
+            'impact': data.get('impact') or data.get('category') or 'security',
+        }
+        if data.get('package') is not None:
+            out['package'] = data['package']
+        if data.get('versions') is not None:
+            out['versions'] = data['versions']
+        return out
+
     def _load_yaml_file(self, path: str):
-        """Loads a single YAML file with top-level 'rules: [...]'."""
+        """Loads a single YAML file: either top-level 'rules: [...]' or single-rule schema (id, language, severity, ...) for cve/java etc.
+        也支持「单 key 即 rule id」格式（如 pro-rules/cve/Go/*.yaml：prorule.go_2021_0265_go: { description, language, ... }）."""
         try:
             with open(path, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f) or {}
-                raw_rules = data.get('rules', [])
+            raw_rules = data.get('rules', [])
+            if isinstance(raw_rules, list) and raw_rules:
                 for r in raw_rules:
                     self.rules.append(YamlRule(r))
+                return
+            # 单 key 即 rule id 的格式（如 cve/Go/*.yaml）
+            if isinstance(data, dict) and len(data) == 1:
+                key = next(iter(data))
+                val = data[key]
+                if isinstance(val, dict) and (key.startswith('prorule.') or 'language' in val or 'description' in val):
+                    data = dict(val)
+                    data['id'] = key
+            # 单条规则 schema（如 pro-rules/cve/java/*.yaml）
+            one = self._single_rule_to_engine_format(data)
+            if one:
+                self.rules.append(YamlRule(one))
         except FileNotFoundError:
+            pass
+        except yaml.YAMLError:
             pass
 
     def _load_entry_point_rules(self):
@@ -256,6 +338,24 @@ class RuleEngine:
             
             if not should_run:
                 continue
+
+            # CVE 版本精确匹配：若规则带 package + versions 且用户配置了 dependency_versions，仅当配置版本在受影响区间内才执行
+            rule_package = getattr(rule, 'package', None)
+            rule_versions = getattr(rule, 'versions', None)
+            if rule_package and rule_versions and isinstance(rule_package, dict):
+                dep_versions = self.config.get("dependency_versions") or {}
+                eco = (rule_package.get("ecosystem") or "").strip().lower()
+                pkg_name = (rule_package.get("name") or "").strip()
+                if eco and pkg_name:
+                    eco_map = dep_versions.get(eco)
+                    if isinstance(eco_map, dict):
+                        current_ver = eco_map.get(pkg_name)
+                        if current_ver is None:
+                            continue  # 未配置该包版本，不执行此 CVE 规则（需用户配置以精确匹配）
+                        intro = rule_versions.get("introduced") or []
+                        fixed = rule_versions.get("fixed") or []
+                        if not _version_in_cve_range(str(current_ver), intro if isinstance(intro, list) else [intro], fixed if isinstance(fixed, list) else [fixed] if fixed else []):
+                            continue  # 配置版本不在受影响区间，跳过
 
             rule_id = rule.id
             quality_status, precision, _ = self.quality_manager.status(rule_id)

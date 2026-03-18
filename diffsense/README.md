@@ -30,7 +30,11 @@
 | [recommended-config.md](docs/recommended-config.md) | 官方推荐配置与默认行为承诺 |
 | [ignoring.md](docs/ignoring.md) | 忽略规则与误报处理 |
 | [ci-cache.md](docs/ci-cache.md) | CI 缓存配置与使用 |
-| [rule-quickstart.md](docs/rule-quickstart.md) | 自定义规则开发入门 |
+| [rule-quickstart.md](docs/rule-quickstart.md) | 自定义规则开发入门（10 分钟上手） |
+| [signals.md](docs/signals.md) | Signal 列表（规则只消费，不产生） |
+| [contribute-rules.md](docs/contribute-rules.md) | 贡献审计规则（上游 vs 插件） |
+
+**10 分钟写一条规则：** [rule-quickstart.md](docs/rule-quickstart.md) · `diffsense signals`
 
 ---
 

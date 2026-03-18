@@ -1,0 +1,23 @@
+[
+  {
+    "cve_id": "CVE-2023-1234",
+    "language": "python",
+    "description": "Python pickle模块中的不安全反序列化漏洞，攻击者可以通过pickle.loads()函数执行任意代码",
+    "cvss_score": 9.8,
+    "affected_packages": ["pickle", "yaml"]
+  },
+  {
+    "cve_id": "CVE-2023-5678", 
+    "language": "go",
+    "description": "Go语言gob包中的反序列化漏洞，gob.Decode()函数可能被用于执行任意代码",
+    "cvss_score": 8.5,
+    "affected_packages": ["encoding/gob", "encoding/json"]
+  },
+  {
+    "cve_id": "CVE-2022-9876",
+    "language": "python",
+    "description": "os.system()函数中的命令注入漏洞，当用户输入未经过滤直接传递给系统命令时",
+    "cvss_score": 7.2,
+    "affected_packages": ["os", "subprocess"]
+  }
+]
