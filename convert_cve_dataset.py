@@ -50,7 +50,7 @@ def save_pro_rule(rule, output_dir, language):
 def main():
     if len(sys.argv) != 3:
         print("用法: python convert_cve_dataset.py <输入文件> <输出目录>")
-        print("示例: python convert_cve_dataset.py sample_cve_dataset.json pro-rules/")
+        print("示例: python convert_cve_dataset.py tests/fixtures/cve_samples/data/sample_cve_dataset.json pro-rules/")
         sys.exit(1)
     
     input_file = sys.argv[1]
