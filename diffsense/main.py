@@ -290,6 +290,13 @@ def main():
         sys.stderr.write(f"  - {r_id}: {r_time_ms:.2f}ms\n")
     for w in result["_quality_warnings"]:
         sys.stderr.write(f"⚠️ Low quality rule: {w.get('rule_id')} precision {w.get('precision'):.2f} (hits {w.get('hits')})\n")
+    
+    # Triggered rules summary
+    if triggered_rules:
+        sys.stderr.write("\n🎯 Triggered Rules Summary:\n")
+        for r in triggered_rules:
+            sys.stderr.write(f"  - {r.get('severity', '').upper()} {r.get('id', '')}: {r.get('matched_file', '')}\n")
+    
     sys.stderr.write("="*40 + "\n\n")
     rule_engine.persist_rule_quality()
  

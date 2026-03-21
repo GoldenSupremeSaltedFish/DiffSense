@@ -138,6 +138,34 @@ def run_audit(adapter, rules_path, profile=None, pro_rules_path=None, baseline=F
     inline_comments = _build_inline_comments(impacts, diff_data)
     _write_json(comments_json, inline_comments)
     
+    # Print risky files to stderr for CI logs
+    import sys
+    if impacts:
+        sys.stderr.write("\n" + "="*40 + "\n")
+        sys.stderr.write("🔍 DiffSense Risk Files\n")
+        sys.stderr.write("="*40 + "\n")
+        severity_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3, "unknown": 4}
+        files_with_issues = {}
+        for r in impacts:
+            file_path = r.get("matched_file", "unknown")
+            if file_path not in files_with_issues:
+                files_with_issues[file_path] = []
+            files_with_issues[file_path].append(r)
+        
+        for file_path in sorted(files_with_issues.keys()):
+            if file_path != "unknown":
+                issues = files_with_issues[file_path]
+                issues_count = len(issues)
+                max_severity = min(issues, key=lambda x: severity_rank.get(x.get("severity", "unknown"), 4))["severity"]
+                sys.stderr.write(f"  📁 {file_path} ({issues_count} issue(s), severity: {max_severity.upper()})\n")
+        sys.stderr.write("="*40 + "\n\n")
+        
+        # Print triggered rules summary
+        sys.stderr.write("🎯 Triggered Rules Summary:\n")
+        for r in impacts:
+            sys.stderr.write(f"  - {r.get('severity', '').upper()} {r.get('id', '')}: {r.get('matched_file', '')}\n")
+        sys.stderr.write("\n")
+
     print("Posting comment...")
     adapter.post_comment(report)
     if hasattr(adapter, "post_inline_comments"):

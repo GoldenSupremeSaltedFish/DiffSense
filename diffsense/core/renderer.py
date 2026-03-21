@@ -49,6 +49,18 @@ class MarkdownRenderer:
                 "rationale": rationale
             })
 
+        # Print risky files to stderr for CI logs
+        import sys
+        sys.stderr.write("\n" + "="*40 + "\n")
+        sys.stderr.write("🔍 DiffSense Risk Files\n")
+        sys.stderr.write("="*40 + "\n")
+        for file_path in sorted(grouped.keys()):
+            if file_path != "unknown":
+                issues_count = len(grouped[file_path])
+                max_severity = min(grouped[file_path], key=lambda x: severity_rank.get(x["severity"], 4))["severity"]
+                sys.stderr.write(f"  📁 {file_path} ({issues_count} issue(s), severity: {max_severity.upper()})\n")
+        sys.stderr.write("="*40 + "\n\n")
+
         lines.append("## ⚠️ Warnings by File")
         for file_path in sorted(grouped.keys()):
             lines.append("")

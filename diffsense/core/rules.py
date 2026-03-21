@@ -52,6 +52,89 @@ from rules.concurrency import (
 )
 from rules.yaml_adapter import YamlRule
 
+# 导入新增的规则模块（向后兼容：如果模块不存在不会报错）
+try:
+    from rules.resource_management import (
+        CloseableResourceLeakRule,
+        DatabaseConnectionLeakRule,
+        StreamWrapperRule,
+        IOStreamChainingRule,
+        ExecutorServiceShutdownRule,
+    )
+    RESOURCE_RULES_AVAILABLE = True
+except ImportError:
+    RESOURCE_RULES_AVAILABLE = False
+
+try:
+    from rules.exception_handling import (
+        SwallowedExceptionRule,
+        GenericExceptionRule,
+        ThrowRuntimeExceptionRule,
+        ThrowsClauseRemovedRule,
+        FinallyBlockMissingRule,
+        ExceptionLoggingRule,
+    )
+    EXCEPTION_RULES_AVAILABLE = True
+except ImportError:
+    EXCEPTION_RULES_AVAILABLE = False
+
+try:
+    from rules.null_safety import (
+        NullReturnIgnoredRule,
+        OptionalUnwrapRule,
+        AutoboxingNPERule,
+        ChainedMethodCallNPERule,
+        ArrayIndexOutOfBoundsRule,
+        StringConcatNPERule,
+    )
+    NULL_SAFETY_RULES_AVAILABLE = True
+except ImportError:
+    NULL_SAFETY_RULES_AVAILABLE = False
+
+try:
+    from rules.collection_handling import (
+        RawTypeUsageRule,
+        UnmodifiableCollectionRule,
+        ConcurrentModificationRule,
+        MapComputeRule,
+        StreamCollectorRule,
+        ImmutableCollectionRule,
+        ListResizeRule,
+    )
+    COLLECTION_RULES_AVAILABLE = True
+except ImportError:
+    COLLECTION_RULES_AVAILABLE = False
+
+try:
+    from rules.api_compatibility import (
+        PublicMethodRemovedRule,
+        MethodSignatureChangedRule,
+        FieldRemovedRule,
+        ConstructorRemovedRule,
+        InterfaceChangedRule,
+        AnnotationRemovedRule,
+        DeprecatedApiAddedRule,
+        SerialVersionUIDChangedRule,
+    )
+    API_RULES_AVAILABLE = True
+except ImportError:
+    API_RULES_AVAILABLE = False
+
+try:
+    from rules.go_rules import (
+        GoGoroutineLeakRule,
+        GoChannelLeakRule,
+        GoDeferMisuseRule,
+        GoUnsafeUsageRule,
+        GoErrorHandlingRule,
+        GoNilPointerRule,
+        GoRaceConditionRule,
+        GoHTTPSecurityRule,
+    )
+    GO_RULES_AVAILABLE = True
+except ImportError:
+    GO_RULES_AVAILABLE = False
+
 class RuleEngine:
     def __init__(self, rules_path: Optional[str] = None, profile: Optional[str] = None, config: Optional[Dict[str, Any]] = None, pro_rules_path: Optional[str] = None):
         self.rules: List[Rule] = []
@@ -86,11 +169,66 @@ class RuleEngine:
     def _register_builtins(self):
         """
         Registers core rules that are implemented as Python classes.
+        Backward compatible: old rules always available, new rules loaded if present.
         """
+        # Original 4 concurrency rules (always available)
         self.rules.append(ThreadPoolSemanticChangeRule())
         self.rules.append(ConcurrencyRegressionRule())
         self.rules.append(ThreadSafetyRemovalRule())
         self.rules.append(LatchMisuseRule())
+        
+        # New built-in rules (loaded if available - backward compatible)
+        if RESOURCE_RULES_AVAILABLE:
+            self.rules.append(CloseableResourceLeakRule())
+            self.rules.append(DatabaseConnectionLeakRule())
+            self.rules.append(StreamWrapperRule())
+            self.rules.append(IOStreamChainingRule())
+            self.rules.append(ExecutorServiceShutdownRule())
+        
+        if EXCEPTION_RULES_AVAILABLE:
+            self.rules.append(SwallowedExceptionRule())
+            self.rules.append(GenericExceptionRule())
+            self.rules.append(ThrowRuntimeExceptionRule())
+            self.rules.append(ThrowsClauseRemovedRule())
+            self.rules.append(FinallyBlockMissingRule())
+            self.rules.append(ExceptionLoggingRule())
+        
+        if NULL_SAFETY_RULES_AVAILABLE:
+            self.rules.append(NullReturnIgnoredRule())
+            self.rules.append(OptionalUnwrapRule())
+            self.rules.append(AutoboxingNPERule())
+            self.rules.append(ChainedMethodCallNPERule())
+            self.rules.append(ArrayIndexOutOfBoundsRule())
+            self.rules.append(StringConcatNPERule())
+        
+        if COLLECTION_RULES_AVAILABLE:
+            self.rules.append(RawTypeUsageRule())
+            self.rules.append(UnmodifiableCollectionRule())
+            self.rules.append(ConcurrentModificationRule())
+            self.rules.append(MapComputeRule())
+            self.rules.append(StreamCollectorRule())
+            self.rules.append(ImmutableCollectionRule())
+            self.rules.append(ListResizeRule())
+        
+        if API_RULES_AVAILABLE:
+            self.rules.append(PublicMethodRemovedRule())
+            self.rules.append(MethodSignatureChangedRule())
+            self.rules.append(FieldRemovedRule())
+            self.rules.append(ConstructorRemovedRule())
+            self.rules.append(InterfaceChangedRule())
+            self.rules.append(AnnotationRemovedRule())
+            self.rules.append(DeprecatedApiAddedRule())
+            self.rules.append(SerialVersionUIDChangedRule())
+        
+        if GO_RULES_AVAILABLE:
+            self.rules.append(GoGoroutineLeakRule())
+            self.rules.append(GoChannelLeakRule())
+            self.rules.append(GoDeferMisuseRule())
+            self.rules.append(GoUnsafeUsageRule())
+            self.rules.append(GoErrorHandlingRule())
+            self.rules.append(GoNilPointerRule())
+            self.rules.append(GoRaceConditionRule())
+            self.rules.append(GoHTTPSecurityRule())
 
     def _load_yaml_rules(self, path: Optional[str], skip_single_rule_subdirs: bool = False):
         """
