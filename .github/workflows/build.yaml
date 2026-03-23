@@ -18,7 +18,9 @@ jobs:
           python-version: "3.10"
       - name: Install dependencies and run tests
         run: |
-          pip install -e "diffsense[dev]"
+          cd diffsense
+          pip install -e ".[dev]"
+          cd ..
           python -m pytest diffsense/tests/ -v
       - name: Integration tests (top-level tests/)
         run: |
