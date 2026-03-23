@@ -607,6 +607,7 @@ class RuleEngine:
                     severity = self._downgrade_severity(severity)
                 triggered = {
                     "id": rule.id,
+                    "title": rule.title,
                     "severity": severity,
                     "impact": rule.impact,
                     "rationale": rule.rationale,

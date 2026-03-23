@@ -31,6 +31,11 @@ class Rule(ABC):
         """Explanation of why this rule exists and what risk it prevents"""
         pass
 
+    @property
+    def title(self) -> str:
+        """Human-readable title for the rule (optional, defaults to rule id)"""
+        return self.id
+
     # Optional metadata (defaults for built-in rules; YamlRule overrides from YAML)
     @property
     def category(self) -> str:
