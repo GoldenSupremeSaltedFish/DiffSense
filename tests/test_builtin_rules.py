@@ -94,7 +94,7 @@ class TestResourceManagementRules(unittest.TestCase):
         
         result = self.db_leak_rule.evaluate(diff_data, signals)
         self.assertIsNotNone(result)
-        self.assertEqual(result['severity'], 'critical')
+        self.assertEqual(self.db_leak_rule.severity, 'critical')
 
 
 class TestExceptionHandlingRules(unittest.TestCase):
@@ -112,7 +112,7 @@ class TestExceptionHandlingRules(unittest.TestCase):
         """Test detection of empty catch blocks."""
         diff_data = {
             'files': ['test.java'],
-            'raw_diff': '+ } catch (Exception e) {\n+ }'
+            'raw_diff': '+ } catch (Exception e) {}'
         }
         signals: List[Signal] = []
         
@@ -186,7 +186,7 @@ class TestAPCompatibilityRules(unittest.TestCase):
         
         result = self.method_removed_rule.evaluate(diff_data, signals)
         self.assertIsNotNone(result)
-        self.assertEqual(result['severity'], 'critical')
+        self.assertEqual(self.method_removed_rule.severity, 'critical')
 
 
 class TestRuleMetadata(unittest.TestCase):

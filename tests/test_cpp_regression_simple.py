@@ -6,16 +6,13 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
-try:
+
+def test_cpp_cve_converter():
+    """Test C++ CVE converter initialization and conversion."""
     from diffsense.converters.cpp_cve_converter import CPPCVEConverter
-    print("==================================================")
-    print("C++ CVE REGRESSION TEST")
-    print("==================================================")
-    print("Starting C++ CVE Regression Test")
     
     # Initialize converter
     converter = CPPCVEConverter()
-    print("[SUCCESS] C++ CVE Converter initialized successfully")
     
     # Test with sample CVE data
     test_cve_data = {
@@ -26,22 +23,30 @@ try:
         "patch_url": "https://example.com/patch"
     }
     
-    converted_rule = converter.convert(test_cve_data)
-    if converted_rule:
-        print("[SUCCESS] CVE conversion completed successfully")
-        print(f"Generated rule name: {converted_rule.get('rule_name', 'N/A')}")
-        print(f"Rule severity: {converted_rule.get('severity', 'N/A')}")
-    else:
-        print("[FAILED] CVE conversion returned empty result")
-        
-    print("\n[SUCCESS] All tests passed!")
-    sys.exit(0)
+    converted_rule = converter.convert_cve_to_prorule(test_cve_data)
+    assert converted_rule is not None, "CVE conversion returned empty result"
+    assert converted_rule.get('id') is not None, "Generated rule should have an id"
+    assert converted_rule.get('severity') is not None, "Generated rule should have severity"
+
+
+if __name__ == "__main__":
+    # Run as standalone script
+    print("==================================================")
+    print("C++ CVE REGRESSION TEST")
+    print("==================================================")
+    print("Starting C++ CVE Regression Test")
     
-except ImportError as e:
-    print("ERROR: Module import failed")
-    print(f"Details: {e}")
-    sys.exit(1)
-except Exception as e:
-    print("ERROR: Test execution failed")
-    print(f"Details: {e}")
-    sys.exit(1)
+    try:
+        test_cpp_cve_converter()
+        print("[SUCCESS] C++ CVE Converter initialized successfully")
+        print("[SUCCESS] CVE conversion completed successfully")
+        print("\n[SUCCESS] All tests passed!")
+        sys.exit(0)
+    except ImportError as e:
+        print("ERROR: Module import failed")
+        print(f"Details: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print("ERROR: Test execution failed")
+        print(f"Details: {e}")
+        sys.exit(1)
