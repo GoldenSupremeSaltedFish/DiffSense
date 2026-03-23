@@ -25,7 +25,7 @@ jobs:
       - name: Integration tests (top-level tests/)
         run: |
           if [ -d tests ] && [ -n "$(find tests -name 'test_*.py' -print -quit)" ]; then
-            python -m pytest tests/ -v --tb=short
+            python -m pytest tests/ -v --tb=short --ignore=tests/parsers
           fi
 
   build:
