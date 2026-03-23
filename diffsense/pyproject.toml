@@ -31,4 +31,4 @@ include = ["adapters*", "core*", "governance*", "rules*", "rules.pro*", "config*
 config = ["*.yaml"]
 
 [tool.setuptools]
-py-modules = ["cli", "run_audit", "main"]
+py-modules = ["cli", "run_audit", "main", "banner"]
