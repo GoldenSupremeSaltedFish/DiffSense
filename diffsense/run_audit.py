@@ -16,39 +16,111 @@ from main import _load_baseline, _save_baseline, _baseline_items, _baseline_set,
 def run_audit(adapter, rules_path, profile=None, pro_rules_path=None, baseline=False, since_baseline=False, baseline_file=".diffsense-baseline.json", report_json="diffsense-report.json", report_html="diffsense-report.html", comments_json="diffsense-comments.json", quality_auto_tune=False, quality_disable_threshold=0.3, quality_downgrade_threshold=0.5, quality_min_samples=30, experimental=False, experimental_report_only=True):
     print_banner()
     print("Fetching diff...")
-    diff_content = adapter.fetch_diff()
     
-    print(f"DEBUG: Fetched diff content length: {len(diff_content)} chars")
+    # Try to fetch diff with error handling
+    try:
+        diff_content = adapter.fetch_diff()
+    except Exception as e:
+        print(f"❌ ERROR: Failed to fetch diff: {e}")
+        import traceback
+        traceback.print_exc()
+        # Save error to report
+        error_report = {
+            "error": str(e),
+            "review_level": "error",
+            "details": [],
+            "_metrics": {"fetch_error": str(e)}
+        }
+        _write_json(report_json, error_report)
+        return
+    
+    print(f"\n{'='*60}")
+    print("📊 DIFF FETCH SUMMARY")
+    print(f"{'='*60}")
+    print(f"✅ Diff fetched successfully")
+    print(f"📏 Length: {len(diff_content)} characters")
+    print(f"📏 Lines: {len(diff_content.splitlines())}")
+    
+    # Validate diff format
+    diff_lines = diff_content.splitlines()
+    has_git_diff = any(line.startswith("diff --git") for line in diff_lines)
+    has_plus = any(line.startswith("+") and not line.startswith("+++") for line in diff_lines)
+    has_minus = any(line.startswith("-") and not line.startswith("---") for line in diff_lines)
+    
+    print(f"\n📋 Diff validation:")
+    print(f"  - Has 'diff --git' headers: {has_git_diff}")
+    print(f"  - Has additions (+): {has_plus}")
+    print(f"  - Has deletions (-): {has_minus}")
+    
+    if not has_git_diff:
+        print("\n⚠️  WARNING: Diff doesn't contain expected 'diff --git' headers!")
+        print("First 1000 chars preview:")
+        print(diff_content[:1000])
+    
     if len(diff_content) < 500:
-        print(f"DEBUG: Diff content preview:\n{diff_content}")
+        print(f"\n📄 Full diff content:\n{diff_content}")
     else:
-        print(f"DEBUG: Diff content preview (first 500 chars):\n{diff_content[:500]}...")
+        print(f"\n📄 Diff preview (first 500 chars):\n{diff_content[:500]}...")
+    
+    print(f"{'='*60}\n")
 
     if not diff_content.strip():
-        print("Diff is empty, skipping audit.")
+        print("⚠️  Diff is empty, skipping audit.")
         return
 
     print("Running Core Analyzer...")
     
     # 1. Parse Diff (Structural)
+    print("\n🔍 Step 1: Parsing diff...")
     parser = DiffParser()
     diff_data = parser.parse(diff_content)
     
-    print(f"DEBUG: Parsed {len(diff_data.get('files', []))} files: {diff_data.get('files', [])}")
-    print(f"DEBUG: File patches count: {len(diff_data.get('file_patches', []))}")
+    print(f"\n{'='*60}")
+    print("📊 DIFF PARSING RESULTS")
+    print(f"{'='*60}")
+    print(f"✅ Parsed {len(diff_data.get('files', []))} files")
+    if diff_data.get('files'):
+        print(f"\n📁 Files:")
+        for f in diff_data.get('files', [])[:20]:  # Show first 20
+            print(f"  - {f}")
+        if len(diff_data.get('files', [])) > 20:
+            print(f"  ... and {len(diff_data.get('files', [])) - 20} more")
+    
+    print(f"\n📊 Stats:")
+    print(f"  - Additions: {diff_data.get('stats', {}).get('add', 0)}")
+    print(f"  - Deletions: {diff_data.get('stats', {}).get('del', 0)}")
+    print(f"  - New files: {len(diff_data.get('new_files', []))}")
+    print(f"  - Change types: {diff_data.get('change_types', [])}")
+    print(f"  - File patches: {len(diff_data.get('file_patches', []))}")
+    print(f"{'='*60}\n")
     
     # 2. Detect AST Signals (Semantic)
     # This is the "First-Class Signal Source"
-    print("Detecting AST Signals...")
+    print("\n🔍 Step 2: Detecting AST Signals...")
     ast_detector = ASTDetector()
     ast_signals = ast_detector.detect_signals(diff_data)
     
-    # Debug: Print signals
-    for sig in ast_signals:
-        print(f"  [AST Signal] {sig.id} in {sig.file}")
+    print(f"\n{'='*60}")
+    print("📊 AST SIGNALS DETECTED")
+    print(f"{'='*60}")
+    print(f"✅ Found {len(ast_signals)} AST signals")
+    if ast_signals:
+        print(f"\n📋 Signals by file:")
+        signals_by_file = {}
+        for sig in ast_signals:
+            if sig.file not in signals_by_file:
+                signals_by_file[sig.file] = []
+            signals_by_file[sig.file].append(sig.id)
+        
+        for file, signal_ids in signals_by_file.items():
+            print(f"  📁 {file}:")
+            for sid in signal_ids:
+                print(f"    - {sid}")
+    print(f"{'='*60}\n")
     
     # 3. Evaluate Rules (Policy / Context)
     # Rules now consume both diff_data (structure) and ast_signals (semantics)
+    print("\n🔍 Step 3: Loading rules and evaluating impacts...")
     quality_config = {
         "auto_tune": quality_auto_tune,
         "disable_threshold": quality_disable_threshold,
@@ -74,28 +146,82 @@ def run_audit(adapter, rules_path, profile=None, pro_rules_path=None, baseline=F
     }
     if run_cfg.get("dependency_versions"):
         engine_config["dependency_versions"] = run_cfg["dependency_versions"]
+    
+    print(f"\n📋 Rule configuration:")
+    print(f"  - Rules path: {rules_path}")
+    print(f"  - Profile: {profile or 'default'}")
+    print(f"  - Pro rules path: {pro_rules_path or 'not specified'}")
+    print(f"  - Quality auto-tune: {quality_auto_tune}")
+    
     engine = RuleEngine(
         rules_path,
         profile=profile,
         config=engine_config,
         pro_rules_path=pro_rules_path,
     )
+    
+    # Get rule stats before evaluation
+    rule_stats = engine.get_rule_stats()
+    print(f"\n📊 Rules loaded:")
+    print(f"  - Total rules: {rule_stats.get('total_rules', 'N/A')}")
+    print(f"  - Enabled rules: {rule_stats.get('enabled_rules', 'N/A')}")
+    print(f"  - Rule profiles: {rule_stats.get('profiles', 'N/A')}")
+    
     evaluator = ImpactEvaluator(engine)
-    # Evaluator needs update to pass ast_signals or we pass it via engine directly?
-    # Actually ImpactEvaluator calls engine.evaluate. Let's see ImpactEvaluator.
-    # We might need to bypass ImpactEvaluator or update it. 
-    # For now, let's look at ImpactEvaluator content.
-    # Assuming ImpactEvaluator wraps engine.evaluate
     
-    # We'll need to modify ImpactEvaluator or call engine directly if evaluator is just a thin wrapper.
-    # Let's check ImpactEvaluator first. Ideally we update it.
-    
-    # For now, I will modify this part after checking evaluator.
-    # But to proceed, I will assume I update ImpactEvaluator too or just call engine directly for this MVP integration
-    # The existing code used `evaluator.evaluate(diff_data)`.
-    # I should check `core/evaluator.py`.
-    
+    print("\n⚡ Evaluating rules against diff and AST signals...")
     impacts = evaluator.evaluate(diff_data, ast_signals=ast_signals)
+    
+    print(f"\n{'='*60}")
+    print("📊 RULE EVALUATION RESULTS")
+    print(f"{'='*60}")
+    print(f"🎯 Total impacts found: {len(impacts)}")
+    
+    if impacts:
+        # Group by file
+        print(f"\n📁 Files with triggered rules:")
+        severity_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3, "unknown": 4}
+        files_with_issues = {}
+        for r in impacts:
+            file_path = r.get("matched_file", "unknown")
+            if file_path not in files_with_issues:
+                files_with_issues[file_path] = []
+            files_with_issues[file_path].append(r)
+        
+        for file_path in sorted(files_with_issues.keys(), key=lambda x: (x == "unknown", x)):
+            issues = files_with_issues[file_path]
+            issues_count = len(issues)
+            max_severity = min(issues, key=lambda x: severity_rank.get(x.get("severity", "unknown"), 4))["severity"]
+            print(f"\n  📁 {file_path}")
+            print(f"     Issues: {issues_count} | Max severity: {max_severity.upper()}")
+            for issue in sorted(issues, key=lambda x: severity_rank.get(x.get("severity", "unknown"), 4)):
+                print(f"     - [{issue.get('severity', 'unknown').upper()}] {issue.get('id', 'N/A')}: {issue.get('title', 'N/A')[:60]}")
+        
+        # Group by rule
+        print(f"\n🎯 Triggered rules summary:")
+        rules_triggered = {}
+        for r in impacts:
+            rule_id = r.get("id", "unknown")
+            if rule_id not in rules_triggered:
+                rules_triggered[rule_id] = {"count": 0, "files": [], "severity": r.get("severity", "unknown")}
+            rules_triggered[rule_id]["count"] += 1
+            rules_triggered[rule_id]["files"].append(r.get("matched_file", "unknown"))
+        
+        for rule_id in sorted(rules_triggered.keys(), key=lambda x: severity_rank.get(rules_triggered[x]["severity"], 4)):
+            rule_info = rules_triggered[rule_id]
+            print(f"\n  🎯 {rule_id} [{rule_info['severity'].upper()}]")
+            print(f"     Triggered: {rule_info['count']} times")
+            print(f"     Files: {', '.join(set(rule_info['files']))[:100]}")
+    else:
+        print("\n⚠️  No rules were triggered!")
+        print("Possible reasons:")
+        print("  1. No files matched rule patterns")
+        print("  2. No AST signals detected")
+        print("  3. Rules are disabled or filtered out")
+        print("  4. Diff doesn't contain risky changes")
+    
+    print(f"\n{'='*60}\n")
+    
     if baseline:
         _save_baseline(baseline_file, _baseline_items(impacts))
     if since_baseline:
@@ -138,33 +264,68 @@ def run_audit(adapter, rules_path, profile=None, pro_rules_path=None, baseline=F
     inline_comments = _build_inline_comments(impacts, diff_data)
     _write_json(comments_json, inline_comments)
     
-    # Print risky files to stderr for CI logs
+    # Print comprehensive summary to stderr for CI logs
     import sys
+    sys.stderr.write("\n" + "="*80 + "\n")
+    sys.stderr.write("🔍 DIFFSENSE AUDIT COMPLETE\n")
+    sys.stderr.write("="*80 + "\n")
+    
     if impacts:
-        sys.stderr.write("\n" + "="*40 + "\n")
-        sys.stderr.write("🔍 DiffSense Risk Files\n")
-        sys.stderr.write("="*40 + "\n")
-        severity_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3, "unknown": 4}
-        files_with_issues = {}
-        for r in impacts:
-            file_path = r.get("matched_file", "unknown")
-            if file_path not in files_with_issues:
-                files_with_issues[file_path] = []
-            files_with_issues[file_path].append(r)
+        sys.stderr.write(f"\n📊 SUMMARY: {len(impacts)} issue(s) found in {len(files_with_issues)} file(s)\n\n")
         
-        for file_path in sorted(files_with_issues.keys()):
+        severity_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3, "unknown": 4}
+        
+        # Detailed file breakdown
+        sys.stderr.write("📁 FILES WITH ISSUES:\n")
+        for file_path in sorted(files_with_issues.keys(), key=lambda x: (x == "unknown", x)):
             if file_path != "unknown":
                 issues = files_with_issues[file_path]
                 issues_count = len(issues)
                 max_severity = min(issues, key=lambda x: severity_rank.get(x.get("severity", "unknown"), 4))["severity"]
-                sys.stderr.write(f"  📁 {file_path} ({issues_count} issue(s), severity: {max_severity.upper()})\n")
-        sys.stderr.write("="*40 + "\n\n")
+                sys.stderr.write(f"\n  📁 {file_path}\n")
+                sys.stderr.write(f"     └─ {issues_count} issue(s), max severity: {max_severity.upper()}\n")
+                for idx, issue in enumerate(sorted(issues, key=lambda x: severity_rank.get(x.get("severity", "unknown"), 4)), 1):
+                    sys.stderr.write(f"        {idx}. [{issue.get('severity', 'unknown').upper()}] {issue.get('id', '')}\n")
+                    sys.stderr.write(f"           └─ {issue.get('title', 'N/A')[:70]}\n")
         
-        # Print triggered rules summary
-        sys.stderr.write("🎯 Triggered Rules Summary:\n")
+        # Rule breakdown
+        sys.stderr.write("\n🎯 TRIGGERED RULES:\n")
+        rules_triggered = {}
         for r in impacts:
-            sys.stderr.write(f"  - {r.get('severity', '').upper()} {r.get('id', '')}: {r.get('matched_file', '')}\n")
-        sys.stderr.write("\n")
+            rule_id = r.get("id", "unknown")
+            if rule_id not in rules_triggered:
+                rules_triggered[rule_id] = {"count": 0, "files": set(), "severity": r.get("severity", "unknown")}
+            rules_triggered[rule_id]["count"] += 1
+            rules_triggered[rule_id]["files"].add(r.get("matched_file", "unknown"))
+        
+        for rule_id in sorted(rules_triggered.keys(), key=lambda x: severity_rank.get(rules_triggered[x]["severity"], 4)):
+            rule_info = rules_triggered[rule_id]
+            files_list = ", ".join(sorted(rule_info["files"]))
+            if len(files_list) > 80:
+                files_list = files_list[:77] + "..."
+            sys.stderr.write(f"\n  🎯 {rule_id} [{rule_info['severity'].upper()}]\n")
+            sys.stderr.write(f"     └─ Triggered {rule_info['count']} time(s) in: {files_list}\n")
+        
+        # Severity breakdown
+        sys.stderr.write("\n📊 SEVERITY BREAKDOWN:\n")
+        severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "unknown": 0}
+        for r in impacts:
+            sev = r.get("severity", "unknown")
+            if sev in severity_counts:
+                severity_counts[sev] += 1
+        
+        for sev in ["critical", "high", "medium", "low", "unknown"]:
+            if severity_counts[sev] > 0:
+                sys.stderr.write(f"     └─ {sev.upper()}: {severity_counts[sev]}\n")
+    else:
+        sys.stderr.write("\n⚠️  NO ISSUES FOUND\n")
+        sys.stderr.write("   Possible reasons:\n")
+        sys.stderr.write("     - No files matched rule patterns\n")
+        sys.stderr.write("     - No AST signals detected\n")
+        sys.stderr.write("     - Rules are disabled or filtered out\n")
+        sys.stderr.write("     - Diff doesn't contain risky changes\n")
+    
+    sys.stderr.write("\n" + "="*80 + "\n\n")
 
     print("Posting comment...")
     adapter.post_comment(report)

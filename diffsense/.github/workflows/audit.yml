@@ -37,9 +37,41 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo "🔍 Starting DiffSense Audit..."
+          echo "📊 Repository: ${{ github.repository }}"
+          echo "📊 PR Number: ${{ github.event.pull_request.number }}"
+          echo "📊 PR Head SHA: ${{ github.event.pull_request.head.sha }}"
+          echo "📊 PR Base SHA: ${{ github.event.pull_request.base.sha }}"
+          
           # Call the unified runner with GitHub parameters
           python run_audit.py \
             --platform github \
             --token "$GITHUB_TOKEN" \
             --repo "${{ github.repository }}" \
             --pr "${{ github.event.pull_request.number }}"
+          
+          # Display output files for debugging
+          echo ""
+          echo "📁 Checking output files..."
+          if [ -f "diffsense-report.json" ]; then
+            echo "✅ diffsense-report.json exists"
+            echo "📊 Report size: $(wc -c < diffsense-report.json) bytes"
+            echo "📄 Report preview:"
+            python -c "import json; data=json.load(open('diffsense-report.json')); print(f\"  Review Level: {data.get('review_level', 'N/A')}\"); print(f\"  Details count: {len(data.get('details', []))}\")"
+          else
+            echo "❌ diffsense-report.json not found"
+          fi
+          
+          if [ -f "diffsense-comments.json" ]; then
+            echo "✅ diffsense-comments.json exists"
+            echo "📄 Comments count: $(python -c "import json; print(len(json.load(open('diffsense-comments.json'))))")"
+          else
+            echo "❌ diffsense-comments.json not found"
+          fi
+          
+          if [ -f "diffsense-report.html" ]; then
+            echo "✅ diffsense-report.html exists"
+            echo "📊 HTML size: $(wc -c < diffsense-report.html) bytes"
+          else
+            echo "❌ diffsense-report.html not found"
+          fi

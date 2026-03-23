@@ -46,6 +46,10 @@ dist-ssr
 # Pro 规则集（商业/大量 CVE 规则，不纳入版本库）
 pro-rules/
 
+# CVE 数据库（外部克隆，体积大）
+advisory-database/
+cvelistV5/
+
 # Test files
 **/*.test.js
 **/*.spec.js
