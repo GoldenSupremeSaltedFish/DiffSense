@@ -1,0 +1,14 @@
+[
+  {
+    "cve_id": "CVE-2023-1234",
+    "language": "python",
+    "description": "Python pickle模块中的不安全反序列化漏洞",
+    "cvss_score": 9.8
+  },
+  {
+    "cve_id": "CVE-2023-5678",
+    "language": "go",
+    "description": "Go gob包中的反序列化漏洞",
+    "cvss_score": 8.5
+  }
+]

@@ -5,6 +5,7 @@ CVE数据集转换示例
 """
 
 import json
+from pathlib import Path
 from diffsense.converters import PythonCVEDatasetConverter, GoCVEDatasetConverter
 
 def convert_cve_dataset_to_pro_rules(cve_dataset_file: str, output_dir: str):
@@ -45,7 +46,7 @@ def convert_cve_dataset_to_pro_rules(cve_dataset_file: str, output_dir: str):
     _save_rules_to_yaml(python_rules, f"{output_dir}/python_cves.yaml")
     _save_rules_to_yaml(go_rules, f"{output_dir}/go_cves.yaml")
     
-    print(f"✅ 转换完成!")
+    print(f"OK 转换完成!")
     print(f"   Python CVE规则: {len(python_rules)} 条")
     print(f"   Go CVE规则: {len(go_rules)} 条")
     print(f"   输出目录: {output_dir}")
@@ -85,9 +86,12 @@ if __name__ == "__main__":
         }
     ]
     
-    # 保存示例数据
-    with open("sample_cve_dataset.json", "w", encoding="utf-8") as f:
+    # 保存示例数据到 fixtures 目录
+    fixtures_dir = Path(__file__).parent / "tests" / "fixtures" / "cve_samples" / "data"
+    fixtures_dir.mkdir(parents=True, exist_ok=True)
+    sample_cve_path = fixtures_dir / "sample_cve_dataset.json"
+    with open(sample_cve_path, "w", encoding="utf-8") as f:
         json.dump(sample_cve_data, f, ensure_ascii=False, indent=2)
     
     # 执行转换
-    convert_cve_dataset_to_pro_rules("sample_cve_dataset.json", "./pro-rules")
+    convert_cve_dataset_to_pro_rules(str(sample_cve_path), "./pro-rules")

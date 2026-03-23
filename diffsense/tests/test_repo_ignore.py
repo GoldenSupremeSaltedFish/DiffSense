@@ -2,7 +2,7 @@ import unittest
 import os
 import tempfile
 import shutil
-from core.ignore_manager import IgnoreManager
+from diffsense.core.ignore_manager import IgnoreManager
 
 class TestRepoIgnore(unittest.TestCase):
     def setUp(self):

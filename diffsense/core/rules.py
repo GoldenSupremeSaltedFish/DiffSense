@@ -52,6 +52,89 @@ from rules.concurrency import (
 )
 from rules.yaml_adapter import YamlRule
 
+# 导入新增的规则模块（向后兼容：如果模块不存在不会报错）
+try:
+    from rules.resource_management import (
+        CloseableResourceLeakRule,
+        DatabaseConnectionLeakRule,
+        StreamWrapperRule,
+        IOStreamChainingRule,
+        ExecutorServiceShutdownRule,
+    )
+    RESOURCE_RULES_AVAILABLE = True
+except ImportError:
+    RESOURCE_RULES_AVAILABLE = False
+
+try:
+    from rules.exception_handling import (
+        SwallowedExceptionRule,
+        GenericExceptionRule,
+        ThrowRuntimeExceptionRule,
+        ThrowsClauseRemovedRule,
+        FinallyBlockMissingRule,
+        ExceptionLoggingRule,
+    )
+    EXCEPTION_RULES_AVAILABLE = True
+except ImportError:
+    EXCEPTION_RULES_AVAILABLE = False
+
+try:
+    from rules.null_safety import (
+        NullReturnIgnoredRule,
+        OptionalUnwrapRule,
+        AutoboxingNPERule,
+        ChainedMethodCallNPERule,
+        ArrayIndexOutOfBoundsRule,
+        StringConcatNPERule,
+    )
+    NULL_SAFETY_RULES_AVAILABLE = True
+except ImportError:
+    NULL_SAFETY_RULES_AVAILABLE = False
+
+try:
+    from rules.collection_handling import (
+        RawTypeUsageRule,
+        UnmodifiableCollectionRule,
+        ConcurrentModificationRule,
+        MapComputeRule,
+        StreamCollectorRule,
+        ImmutableCollectionRule,
+        ListResizeRule,
+    )
+    COLLECTION_RULES_AVAILABLE = True
+except ImportError:
+    COLLECTION_RULES_AVAILABLE = False
+
+try:
+    from rules.api_compatibility import (
+        PublicMethodRemovedRule,
+        MethodSignatureChangedRule,
+        FieldRemovedRule,
+        ConstructorRemovedRule,
+        InterfaceChangedRule,
+        AnnotationRemovedRule,
+        DeprecatedApiAddedRule,
+        SerialVersionUIDChangedRule,
+    )
+    API_RULES_AVAILABLE = True
+except ImportError:
+    API_RULES_AVAILABLE = False
+
+try:
+    from rules.go_rules import (
+        GoGoroutineLeakRule,
+        GoChannelLeakRule,
+        GoDeferMisuseRule,
+        GoUnsafeUsageRule,
+        GoErrorHandlingRule,
+        GoNilPointerRule,
+        GoRaceConditionRule,
+        GoHTTPSecurityRule,
+    )
+    GO_RULES_AVAILABLE = True
+except ImportError:
+    GO_RULES_AVAILABLE = False
+
 class RuleEngine:
     def __init__(self, rules_path: Optional[str] = None, profile: Optional[str] = None, config: Optional[Dict[str, Any]] = None, pro_rules_path: Optional[str] = None):
         self.rules: List[Rule] = []
@@ -72,25 +155,80 @@ class RuleEngine:
         self._load_yaml_rules(rules_path)
 
         # 3. Load PRO rules if path is provided (skip java/go/python/cve subdirs with single-rule schema)
+        # Support tier-based loading for Java CVE rules
         if pro_rules_path and os.path.exists(pro_rules_path):
-            self._load_yaml_rules(pro_rules_path, skip_single_rule_subdirs=True)
+            self._load_pro_rules_with_tiers(pro_rules_path)
 
         # 4. Load rules from pip-installed packages (entry point group: diffsense.rules)
         self._load_entry_point_rules()
         self._load_rulesets_from_config()
 
-        # 4. Apply profile filter (lightweight = only critical; strict/None = all)
-        if profile == "lightweight":
-            self.rules = [r for r in self.rules if getattr(r, 'enabled', True) and getattr(r, 'severity', '') == "critical"]
+        # 5. Apply profile filter (lightweight = only critical; standard = critical+high; strict = all)
+        self._apply_profile_filter(profile)
 
     def _register_builtins(self):
         """
         Registers core rules that are implemented as Python classes.
+        Backward compatible: old rules always available, new rules loaded if present.
         """
+        # Original 4 concurrency rules (always available)
         self.rules.append(ThreadPoolSemanticChangeRule())
         self.rules.append(ConcurrencyRegressionRule())
         self.rules.append(ThreadSafetyRemovalRule())
         self.rules.append(LatchMisuseRule())
+        
+        # New built-in rules (loaded if available - backward compatible)
+        if RESOURCE_RULES_AVAILABLE:
+            self.rules.append(CloseableResourceLeakRule())
+            self.rules.append(DatabaseConnectionLeakRule())
+            self.rules.append(StreamWrapperRule())
+            self.rules.append(IOStreamChainingRule())
+            self.rules.append(ExecutorServiceShutdownRule())
+        
+        if EXCEPTION_RULES_AVAILABLE:
+            self.rules.append(SwallowedExceptionRule())
+            self.rules.append(GenericExceptionRule())
+            self.rules.append(ThrowRuntimeExceptionRule())
+            self.rules.append(ThrowsClauseRemovedRule())
+            self.rules.append(FinallyBlockMissingRule())
+            self.rules.append(ExceptionLoggingRule())
+        
+        if NULL_SAFETY_RULES_AVAILABLE:
+            self.rules.append(NullReturnIgnoredRule())
+            self.rules.append(OptionalUnwrapRule())
+            self.rules.append(AutoboxingNPERule())
+            self.rules.append(ChainedMethodCallNPERule())
+            self.rules.append(ArrayIndexOutOfBoundsRule())
+            self.rules.append(StringConcatNPERule())
+        
+        if COLLECTION_RULES_AVAILABLE:
+            self.rules.append(RawTypeUsageRule())
+            self.rules.append(UnmodifiableCollectionRule())
+            self.rules.append(ConcurrentModificationRule())
+            self.rules.append(MapComputeRule())
+            self.rules.append(StreamCollectorRule())
+            self.rules.append(ImmutableCollectionRule())
+            self.rules.append(ListResizeRule())
+        
+        if API_RULES_AVAILABLE:
+            self.rules.append(PublicMethodRemovedRule())
+            self.rules.append(MethodSignatureChangedRule())
+            self.rules.append(FieldRemovedRule())
+            self.rules.append(ConstructorRemovedRule())
+            self.rules.append(InterfaceChangedRule())
+            self.rules.append(AnnotationRemovedRule())
+            self.rules.append(DeprecatedApiAddedRule())
+            self.rules.append(SerialVersionUIDChangedRule())
+        
+        if GO_RULES_AVAILABLE:
+            self.rules.append(GoGoroutineLeakRule())
+            self.rules.append(GoChannelLeakRule())
+            self.rules.append(GoDeferMisuseRule())
+            self.rules.append(GoUnsafeUsageRule())
+            self.rules.append(GoErrorHandlingRule())
+            self.rules.append(GoNilPointerRule())
+            self.rules.append(GoRaceConditionRule())
+            self.rules.append(GoHTTPSecurityRule())
 
     def _load_yaml_rules(self, path: Optional[str], skip_single_rule_subdirs: bool = False):
         """
@@ -228,6 +366,82 @@ class RuleEngine:
         for path in rulesets:
             if os.path.exists(path):
                 self._load_yaml_rules(path)
+
+    def _load_pro_rules_with_tiers(self, pro_rules_path: str):
+        """
+        Load PRO rules with tier-based filtering for Java CVE rules.
+        Supports profile-based tier selection:
+        - lightweight: Load only tier1_critical
+        - standard: Load tier1_critical + tier2_high
+        - strict: Load all tiers
+        
+        For other pro-rules (non-tiered), loads normally.
+        """
+        if not os.path.exists(pro_rules_path):
+            return
+        
+        # Check if this is the java CVE directory with tier subdirs
+        java_tier_base = os.path.join(pro_rules_path, "cve", "java")
+        if os.path.isdir(java_tier_base):
+            # Load tier directories based on profile
+            tiers_to_load = self._get_tiers_for_profile()
+            for tier_dir in tiers_to_load:
+                tier_path = os.path.join(java_tier_base, tier_dir)
+                if os.path.isdir(tier_path):
+                    # Load tier rules, skip further subdirs
+                    self._load_yaml_rules(tier_path, skip_single_rule_subdirs=False)
+            
+            # Load non-tiered files in java root (if any)
+            for f in sorted(os.listdir(java_tier_base)):
+                if f.endswith('.yaml') and not f.startswith('tier'):
+                    self._load_yaml_file(os.path.join(java_tier_base, f))
+        else:
+            # Not a tiered directory, load normally
+            self._load_yaml_rules(pro_rules_path, skip_single_rule_subdirs=True)
+
+    def _get_tiers_for_profile(self) -> List[str]:
+        """
+        Get list of tier directories to load based on profile.
+        Returns tier directory names.
+        """
+        if self.profile == "lightweight":
+            return ["tier1_critical"]
+        elif self.profile == "standard":
+            return ["tier1_critical", "tier2_high"]
+        else:  # strict or None
+            return ["tier1_critical", "tier2_high", "tier3_medium", "tier4_low"]
+
+    def _apply_profile_filter(self, profile: Optional[str]):
+        """
+        Apply profile-based filtering to loaded rules.
+        - lightweight: Only severity=critical
+        - standard: severity in (critical, high)
+        - strict: All rules
+        """
+        if not profile or profile == "strict":
+            # No filtering, keep all rules
+            return
+        
+        filtered_rules = []
+        for rule in self.rules:
+            if not getattr(rule, 'enabled', True):
+                continue
+            
+            severity = getattr(rule, 'severity', '').lower()
+            
+            if profile == "lightweight":
+                # Only critical rules
+                if severity == "critical":
+                    filtered_rules.append(rule)
+            elif profile == "standard":
+                # Critical + high rules
+                if severity in ("critical", "high"):
+                    filtered_rules.append(rule)
+            else:
+                # Unknown profile, keep the rule
+                filtered_rules.append(rule)
+        
+        self.rules = filtered_rules
 
     def persist_rule_quality(self) -> None:
         self._update_quality_report()
