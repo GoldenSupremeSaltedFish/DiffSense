@@ -17,14 +17,14 @@ Usage:
     Custom rules can be added by extending BaseRule class.
 """
 
-from rules.concurrency import (
+from diffsense.rules.concurrency import (
     ThreadPoolSemanticChangeRule,
     ConcurrencyRegressionRule,
     ThreadSafetyRemovalRule,
     LatchMisuseRule,
 )
 
-from rules.resource_management import (
+from diffsense.rules.resource_management import (
     CloseableResourceLeakRule,
     DatabaseConnectionLeakRule,
     StreamWrapperRule,
@@ -32,7 +32,7 @@ from rules.resource_management import (
     ExecutorServiceShutdownRule,
 )
 
-from rules.exception_handling import (
+from diffsense.rules.exception_handling import (
     SwallowedExceptionRule,
     GenericExceptionRule,
     ThrowRuntimeExceptionRule,
@@ -41,7 +41,7 @@ from rules.exception_handling import (
     ExceptionLoggingRule,
 )
 
-from rules.null_safety import (
+from diffsense.rules.null_safety import (
     NullReturnIgnoredRule,
     OptionalUnwrapRule,
     AutoboxingNPERule,
@@ -50,7 +50,7 @@ from rules.null_safety import (
     StringConcatNPERule,
 )
 
-from rules.collection_handling import (
+from diffsense.rules.collection_handling import (
     RawTypeUsageRule,
     UnmodifiableCollectionRule,
     ConcurrentModificationRule,
@@ -60,7 +60,7 @@ from rules.collection_handling import (
     ListResizeRule,
 )
 
-from rules.api_compatibility import (
+from diffsense.rules.api_compatibility import (
     PublicMethodRemovedRule,
     MethodSignatureChangedRule,
     FieldRemovedRule,

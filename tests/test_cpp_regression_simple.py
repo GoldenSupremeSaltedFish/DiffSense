@@ -1,11 +1,13 @@
 import sys
 import os
+from pathlib import Path
 
 # Add the parent directory to the Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_ROOT))
 
 try:
-    from converters.cpp_cve_converter import CPPCVEConverter
+    from diffsense.converters.cpp_cve_converter import CPPCVEConverter
     print("==================================================")
     print("C++ CVE REGRESSION TEST")
     print("==================================================")

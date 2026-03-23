@@ -5,9 +5,9 @@ Test suite for DiffSense built-in rules.
 import unittest
 from typing import Dict, Any, List
 
-from sdk.rule import BaseRule
-from sdk.signal import Signal
-from rules import (
+from diffsense.sdk.rule import BaseRule
+from diffsense.sdk.signal import Signal
+from diffsense.rules import (
     get_all_builtin_rules,
     get_rules_by_category,
     get_rule_by_id,
@@ -54,7 +54,7 @@ class TestResourceManagementRules(unittest.TestCase):
     """Test resource management rules."""
     
     def setUp(self):
-        from rules.resource_management import (
+        from diffsense.rules.resource_management import (
             CloseableResourceLeakRule,
             DatabaseConnectionLeakRule,
         )
@@ -101,7 +101,7 @@ class TestExceptionHandlingRules(unittest.TestCase):
     """Test exception handling rules."""
     
     def setUp(self):
-        from rules.exception_handling import (
+        from diffsense.rules.exception_handling import (
             SwallowedExceptionRule,
             GenericExceptionRule,
         )
@@ -135,7 +135,7 @@ class TestNullSafetyRules(unittest.TestCase):
     """Test null safety rules."""
     
     def setUp(self):
-        from rules.null_safety import (
+        from diffsense.rules.null_safety import (
             NullReturnIgnoredRule,
             OptionalUnwrapRule,
         )
@@ -169,7 +169,7 @@ class TestAPCompatibilityRules(unittest.TestCase):
     """Test API compatibility rules."""
     
     def setUp(self):
-        from rules.api_compatibility import (
+        from diffsense.rules.api_compatibility import (
             PublicMethodRemovedRule,
             MethodSignatureChangedRule,
         )

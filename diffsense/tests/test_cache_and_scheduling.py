@@ -4,13 +4,13 @@ import shutil
 import tempfile
 import unittest
 from unittest.mock import patch, MagicMock
-from core.parser import DiffParser
-from core.ast_detector import ASTDetector
-from core.rules import RuleEngine
-from core.rule_base import Rule
-from core import CACHE_VERSION
-from main import _baseline_items, _baseline_set, _baseline_key
-from core.renderer import MarkdownRenderer, HtmlRenderer
+from diffsense.core.parser import DiffParser
+from diffsense.core.ast_detector import ASTDetector
+from diffsense.core.rules import RuleEngine
+from diffsense.core.rule_base import Rule
+from diffsense.core import CACHE_VERSION
+from diffsense.main import _baseline_items, _baseline_set, _baseline_key
+from diffsense.core.renderer import MarkdownRenderer, HtmlRenderer
 
 class MockRule(Rule):
     def __init__(self, rule_id, lang='*', scope='**'):

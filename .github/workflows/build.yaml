@@ -46,7 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       
-      # 设置Java环境
+      # 设置 Java 环境
       - name: Set up JDK
         uses: actions/setup-java@v3
         with:
@@ -54,12 +54,12 @@ jobs:
           distribution: "temurin"
           cache: maven
           
-      # 构建Java分析器
+      # 构建 Java 分析器
       - name: Build Java Analyzer
         working-directory: vscode-extension
         run: mvn clean package -DskipTests
       
-      # 设置Node环境
+      # 设置 Node 环境
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
@@ -93,12 +93,12 @@ jobs:
           ls -la
           ls -la dist/ || echo "dist/ directory not found"
           
-          # 如果dist目录存在，显示其内容和权限
+          # 如果 dist 目录存在，显示其内容和权限
           if [ -d "dist" ]; then
             echo "dist directory exists, contents and permissions:"
             ls -la dist/
             
-            # 确保dist目录有正确的权限
+            # 确保 dist 目录有正确的权限
             chmod -R 755 dist/
           else
             echo "dist directory was not created!"
@@ -150,8 +150,8 @@ jobs:
       - name: Build Complete
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/'))
         run: |
-          echo "✅ 构建完成，版本: ${{ env.VERSION }}"
-          echo "📦 产物位置: ${{ env.PLUGIN_DIR }}/release/"
+          echo "✅ 构建完成，版本：${{ env.VERSION }}"
+          echo "📦 产物位置：${{ env.PLUGIN_DIR }}/release/"
           echo "🔄 准备同步到子仓库..."
           
       # 上传构建产物（用于调试和验证）
@@ -179,7 +179,7 @@ jobs:
           
           echo "📦 准备构建产物..."
           
-          # 复制编译后的TypeScript代码
+          # 复制编译后的 TypeScript 代码
           if [ -d "dist" ]; then
             cp -r dist artifacts-staging/
             echo "✅ TypeScript 编译代码已复制"
@@ -191,16 +191,16 @@ jobs:
             echo "✅ 分析器产物已复制"
           fi
           
-          # 复制UI产物
+          # 复制 UI 产物
           if [ -d "ui" ]; then
             cp -r ui artifacts-staging/
-            echo "✅ UI产物已复制"
+            echo "✅ UI 产物已复制"
           fi
           
-          # 复制VSIX文件
+          # 复制 VSIX 文件
           if [ -d "release" ]; then
-            cp release/*.vsix artifacts-staging/ 2>/dev/null || echo "⚠️ 未找到VSIX文件"
-            echo "✅ VSIX文件已复制"
+            cp release/*.vsix artifacts-staging/ 2>/dev/null || echo "⚠️ 未找到 VSIX 文件"
+            echo "✅ VSIX 文件已复制"
           fi
           
           # 复制必要的配置文件
@@ -237,17 +237,17 @@ jobs:
           
           # 显示产物统计
           echo "📊 产物统计:"
-          find artifacts-staging -type f -name "*.jar" | wc -l | xargs echo "JAR文件:"
-          find artifacts-staging -type f -name "*.js" | wc -l | xargs echo "JS文件:"
-          find artifacts-staging -type f -name "*.html" | wc -l | xargs echo "HTML文件:"
-          find artifacts-staging -type f -name "*.vsix" | wc -l | xargs echo "VSIX文件:"
+          find artifacts-staging -type f -name "*.jar" | wc -l | xargs echo "JAR 文件:"
+          find artifacts-staging -type f -name "*.js" | wc -l | xargs echo "JS 文件:"
+          find artifacts-staging -type f -name "*.html" | wc -l | xargs echo "HTML 文件:"
+          find artifacts-staging -type f -name "*.vsix" | wc -l | xargs echo "VSIX 文件:"
           
           # 推送到 artifacts 仓库
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
           if [ -z "$ARTIFACTS_TOKEN" ]; then
-            echo "❌ 错误: ARTIFACTS_TOKEN 未设置"
+            echo "❌ 错误：ARTIFACTS_TOKEN 未设置"
             exit 1
           fi
           
