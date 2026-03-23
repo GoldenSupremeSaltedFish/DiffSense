@@ -66,6 +66,9 @@ class DecisionComposer:
             review_level = "critical"
         elif max_score >= 2:
             review_level = "elevated"
+        elif max_score >= 1 and len(triggered_rules) > 0:
+            # Any medium or higher severity issue requires acknowledgement
+            review_level = "elevated"
             
         # Construct Final JSON Contract
         suggested_action = "auto_merge"
