@@ -5,11 +5,13 @@ Ensures old rules still work and new rules are loaded when available.
 
 import sys
 import os
+from pathlib import Path
 
 # Add diffsense to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_ROOT))
 
-from core.rules import RuleEngine
+from diffsense.core.rules import RuleEngine
 
 
 def test_backward_compatibility():
