@@ -92,18 +92,17 @@ class GitLabAdapter(PlatformAdapter):
                 existing_note = note
                 break
         
+        # Ensure content is properly formatted with the tag
         final_body = f"{content}\n\n{self.comment_tag}"
         
         if existing_note:
+            # Update existing comment
             existing_note.body = final_body
             existing_note.save()
             print(f"Updated GitLab note {existing_note.id}")
         else:
-            # Create comment with markdown format explicitly specified
-            self.mr.notes.create({
-                'body': final_body,
-                'noteable_type': 'MergeRequest'
-            })
+            # Create new comment
+            self.mr.notes.create({'body': final_body})
             print("Created GitLab note")
 
     def post_inline_comments(self, comments):
