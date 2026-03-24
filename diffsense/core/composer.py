@@ -61,18 +61,15 @@ class DecisionComposer:
                     max_score = new_score
                 
         # Determine Review Level
-        # Default: any triggered rule requires acknowledgement (elevated)
-        # Only "normal" if no rules triggered
+        # 只对 CRITICAL 级别触发失败（需要确认），HIGH 及以下仅在评论中报告
         review_level = "normal"
         if len(triggered_rules) > 0:
-            # Any triggered rule → elevated (requires approval/reaction)
-            review_level = "elevated"
-            
-            # Upgrade to critical if:
-            # - Has blocking rule, OR
-            # - Max severity is critical (score >= 3)
+            # CRITICAL 级别触发 critical review（需要审批/反应）
+            # HIGH 及以下只报告，不阻止 CI
             if has_blocking_rule or max_score >= 3:
                 review_level = "critical"
+            else:
+                review_level = "low"  # 标记为低风险，仅报告不阻止
             
         # Construct Final JSON Contract
         suggested_action = "auto_merge"

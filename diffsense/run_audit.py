@@ -350,9 +350,9 @@ def run_audit(adapter, rules_path, profile=None, pro_rules_path=None, baseline=F
             pass
     
     # Enforcement Logic: Click-to-Ack (Approve-to-Ack)
-    # If risk is elevated/critical, require PR approval to pass CI.
+    # Only CRITICAL level blocks CI, HIGH and below only report in comments
     review_level = result_decision.get("review_level", "normal")
-    if review_level in ["elevated", "critical"]:
+    if review_level == "critical":
         print(f"Risk level: {review_level}. Checking for approval or acknowledgement...")
         
         is_approved = adapter.is_approved()
