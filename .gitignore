@@ -15,6 +15,7 @@ bin/
 .idea/
 *.swp
 /test
+/test-space/
 
 # Logs
 logs
