@@ -341,7 +341,9 @@ def run_audit(adapter, rules_path, profile=None, pro_rules_path=None, baseline=F
 
     print("Posting comment...")
     adapter.post_comment(report)
-    if hasattr(adapter, "post_inline_comments"):
+    # GitLab只保留一条主评论，避免额外的Inline摘要评论造成噪音；
+    # GitHub仍可保留inline评论能力。
+    if hasattr(adapter, "post_inline_comments") and type(adapter).__name__ != "GitLabAdapter":
         try:
             adapter.post_inline_comments(inline_comments)
         except Exception:
