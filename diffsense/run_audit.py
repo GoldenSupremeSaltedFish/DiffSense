@@ -15,6 +15,18 @@ from main import _load_baseline, _save_baseline, _baseline_items, _baseline_set,
 
 def run_audit(adapter, rules_path, profile=None, pro_rules_path=None, baseline=False, since_baseline=False, baseline_file=".diffsense-baseline.json", report_json="diffsense-report.json", report_html="diffsense-report.html", comments_json="diffsense-comments.json", quality_auto_tune=False, quality_disable_threshold=0.3, quality_downgrade_threshold=0.5, quality_min_samples=30, experimental=False, experimental_report_only=True):
     print_banner()
+    
+    # Print platform and configuration info
+    print(f"{'='*60}")
+    print("🚀 DIFFSENSE AUDIT STARTING")
+    print(f"{'='*60}")
+    print(f"📋 Platform: {type(adapter).__name__}")
+    print(f"📋 Profile: {profile or 'default'}")
+    print(f"📋 Rules path: {rules_path}")
+    if pro_rules_path:
+        print(f"📋 Pro rules: {pro_rules_path}")
+    print(f"{'='*60}\n")
+    
     print("Fetching diff...")
     
     # Try to fetch diff with error handling

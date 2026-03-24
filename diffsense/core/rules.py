@@ -607,6 +607,7 @@ class RuleEngine:
                     severity = self._downgrade_severity(severity)
                 triggered = {
                     "id": rule.id,
+                    "title": getattr(rule, 'title', rule.id),  # Fallback to id if title not available
                     "severity": severity,
                     "impact": rule.impact,
                     "rationale": rule.rationale,

@@ -39,6 +39,10 @@ class YamlRule(Rule):
         return self._rule_dict.get('rationale', '')
 
     @property
+    def title(self) -> str:
+        return self._rule_dict.get('title', self.id)
+
+    @property
     def category(self) -> str:
         return self._rule_dict.get('category', 'general')
 

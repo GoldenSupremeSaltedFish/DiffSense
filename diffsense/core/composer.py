@@ -61,11 +61,18 @@ class DecisionComposer:
                     max_score = new_score
                 
         # Determine Review Level
+        # Default: any triggered rule requires acknowledgement (elevated)
+        # Only "normal" if no rules triggered
         review_level = "normal"
-        if has_blocking_rule or max_score >= 3:
-            review_level = "critical"
-        elif max_score >= 2:
+        if len(triggered_rules) > 0:
+            # Any triggered rule → elevated (requires approval/reaction)
             review_level = "elevated"
+            
+            # Upgrade to critical if:
+            # - Has blocking rule, OR
+            # - Max severity is critical (score >= 3)
+            if has_blocking_rule or max_score >= 3:
+                review_level = "critical"
             
         # Construct Final JSON Contract
         suggested_action = "auto_merge"
