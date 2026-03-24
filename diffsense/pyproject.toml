@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "diffsense"
-version = "2.2.5"
+version = "2.2.6"
 description = "MR/PR risk audit: semantic diff + rule engine. Run in CI as image or pip."
 license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
