@@ -148,25 +148,36 @@ class AutoboxingNPERule(BaseRule):
 
 
 class ChainedMethodCallNPERule(BaseRule):
-    """检测链式调用的 NPE 风险"""
-    
+    """检测链式调用的 NPE 风险 - 仅在高风险场景触发"""
+
     def __init__(self):
+        # 更严格的链式调用模式：必须是方法调用链，不能是简单的属性访问
         self._chained_call = re.compile(
             r'^\+.*\w+\s*\.\s*\w+\s*\([^)]*\)\s*\.\s*\w+\s*\(',
             re.MULTILINE
         )
         self._null_safe = re.compile(
-            r'(?:Objects\.(?:requireNonNull|firstNonNull)|Optional\.ofNullable|\.map\s*\()',
+            r'(?:Objects\.(?:requireNonNull|firstNonNull)|Optional\.ofNullable|\.map\s*\(|\?\.)',
             re.IGNORECASE
         )
-        
+        # 高风险场景：DTO/Entity/Model 的 getter 链式调用
+        self._high_risk_patterns = [
+            r'/dto/',
+            r'/entity/',
+            r'/model/',
+            r'/vo/',
+            r'/bo/',
+            r'/domain/'
+        ]
+
     @property
     def id(self) -> str:
         return "null.chained_call_unsafe"
 
     @property
     def severity(self) -> str:
-        return "medium"
+        # 降级为 LOW，因为大多数业务代码的链式调用是安全的
+        return "low"
 
     @property
     def impact(self) -> str:
@@ -174,7 +185,7 @@ class ChainedMethodCallNPERule(BaseRule):
 
     @property
     def rationale(self) -> str:
-        return "Chained method calls without null safety, intermediate null causes NPE"
+        return "Chained method calls in DTO/Entity without null safety"
 
     @property
     def rule_type(self) -> str:
@@ -182,14 +193,17 @@ class ChainedMethodCallNPERule(BaseRule):
 
     def evaluate(self, diff_data: Dict[str, Any], signals: List[Signal]) -> Optional[Dict[str, Any]]:
         raw_diff = diff_data.get('raw_diff', "")
-        
+        files = diff_data.get('files', [])
+
         added_lines = [line for line in raw_diff.split('\n') if line.startswith('+')]
         for line in added_lines:
             if self._chained_call.search(line):
                 if not self._null_safe.search(line):
-                    files = diff_data.get('files', [])
-                    return {"file": files[0] if files else "unknown", "chain": line.strip()}
-        
+                    # 只在 DTO/Entity/Model 相关的文件中触发
+                    for f in files:
+                        if any(re.search(p, f, re.IGNORECASE) for p in self._high_risk_patterns):
+                            return {"file": f, "chain": line.strip()}
+
         return None
 
 
@@ -237,18 +251,13 @@ class ArrayIndexOutOfBoundsRule(BaseRule):
 
 
 class StringConcatNPERule(BaseRule):
-    """检测字符串拼接的 NPE 风险"""
-    
+    """检测字符串拼接的 NPE 风险 - 关闭，因为太容易误报"""
+
     def __init__(self):
-        self._concat_pattern = re.compile(
-            r'^\+.*"[^"]*"\s*\+\s*\w+(?!\.)',
-            re.MULTILINE
-        )
-        self._null_check_before = re.compile(
-            r'(?:if\s*\([^)]*!=\s*null|Objects\.(?:nonNull|requireNonNull))',
-            re.IGNORECASE
-        )
-        
+        # 禁用此规则：字符串拼接 "str" + var 是非常常见的模式
+        # 即使 var 可能为 null，Java 也不会抛 NPE，而是输出 "null" 字符串
+        pass
+
     @property
     def id(self) -> str:
         return "null.string_concat_unsafe"
@@ -263,21 +272,13 @@ class StringConcatNPERule(BaseRule):
 
     @property
     def rationale(self) -> str:
-        return "String concatenation with potentially null variable"
+        # 修改为更准确的描述
+        return "Disabled: Java string concatenation handles null gracefully"
 
     @property
     def rule_type(self) -> str:
         return "absolute"
 
     def evaluate(self, diff_data: Dict[str, Any], signals: List[Signal]) -> Optional[Dict[str, Any]]:
-        raw_diff = diff_data.get('raw_diff', "")
-        
-        added_lines = raw_diff.split('\n')
-        for i, line in enumerate(added_lines):
-            if line.startswith('+') and self._concat_pattern.search(line):
-                context = '\n'.join(added_lines[max(0,i-3):i+1])
-                if not self._null_check_before.search(context):
-                    files = diff_data.get('files', [])
-                    return {"file": files[0] if files else "unknown", "concat": line.strip()}
-        
+        # 禁用规则：总是返回 None
         return None

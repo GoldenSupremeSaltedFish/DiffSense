@@ -106,10 +106,13 @@ rules:
     rationale: "ThreadPoolExecutor creation detected. Ensure corePoolSize, maxPoolSize, and queueCapacity are configured correctly to avoid OOM or thread explosion."
 
   - id: runtime.service_layer
+    # 优化：只在 service 层修改了方法签名或新增业务逻辑时触发
+    # 仅文件路径匹配不再触发，必须有实际的方法签名变化
+    signal: "api.method_signature_changed"
     file: "**/service/**"
     impact: runtime
     severity: medium
-    rationale: "Changes in service layer may affect business logic"
+    rationale: "Service layer method signature changes may affect API contract"
 
   - id: data.destructive_schema
     match: "ALTER TABLE|DROP TABLE"
@@ -119,10 +122,12 @@ rules:
     rationale: "Destructive schema changes require careful review"
 
   - id: data.query_change
-    match: "SELECT|INSERT|UPDATE"
+    # 优化：只在 SQL 查询语句本身变化时触发，避免 DTO/Entity 修改误报
+    match: "^\\s*(SELECT|INSERT|UPDATE|DELETE)\\s+"
+    action: "changed"
     impact: data
     severity: medium
-    rationale: "SQL query modifications"
+    rationale: "SQL query modifications in SQL files or MyBatis mapper files"
 
   - id: architecture.dependency_change
     file: "**/package.json"
@@ -147,12 +152,13 @@ rules:
     rationale: "CRITICAL: Removal of input normalization/validation call (encode/decode/validate/check). High risk of data integrity or security issues."
 
   - id: data.pagination_semantic_change
+    # 优化：只在分页参数的实际语义变化时触发（如 limit 变为 limit+1）
     signal: "data.pagination_semantic_change"
     action: "changed"
     file: "**"
     impact: data
     severity: high
-    rationale: "Changes to pagination logic (pageNo/pageSize/start/limit) detected. High risk of off-by-one errors or data loss."
+    rationale: "Changes to pagination logic (pageNo/pageSize/start/limit) detected in diff. Verify if pagination semantics changed."
 
   - id: runtime.collection_mutation_inside_loop
     signal: "runtime.collection_mutation_inside_loop"
