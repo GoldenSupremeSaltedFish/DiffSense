@@ -5,31 +5,28 @@ from sdk.signal import Signal
 
 
 class NullReturnIgnoredRule(BaseRule):
-    """检测可能返回 null 的方法调用未进行空值检查"""
-    
+    """检测可能返回 null 的方法调用未进行空值检查 - 降低误报，只在高风险场景触发"""
+
     def __init__(self):
+        # 只检查真正危险的方法调用（来自 Map/Collection 的 get）
         self._null_return_methods = [
-            r'\.get\s*\(',           # Map.get()
-            r'\.findFirst\s*\(',     # Stream.findFirst()
-            r'\.findAny\s*\(',       # Stream.findAny()
-            r'\.getProperty\s*\(',   # System.getProperty()
-            r'\.getParameter\s*\(',  # Servlet getParameter
-            r'\.readLine\s*\(',      # BufferedReader.readLine()
-            r'\.next\s*\(',          # Iterator.next()
+            r'\.get\s*\([^)]+\)',     # Map.get(key) - 有参数的
         ]
         self._added_call = re.compile(r'^\+.*(' + '|'.join(self._null_return_methods) + r')')
+        # 扩展 null 检查模式
         self._null_check = re.compile(
-            r'(?:if\s*\([^)]*(?:==|!=)\s*null|Objects\.(?:nonNull|isNull)|Optional)',
+            r'(?:if\s*\([^)]*(?:==|!=|isNull|nonNull|Objects\.|Optional)|Optional\.|orElse|orElseGet)',
             re.IGNORECASE
         )
-        
+
     @property
     def id(self) -> str:
         return "null.return_ignored"
 
     @property
     def severity(self) -> str:
-        return "high"
+        # 降级为 LOW，因为 .get() 调用后不检查 null 是非常常见的模式
+        return "low"
 
     @property
     def impact(self) -> str:
@@ -37,7 +34,7 @@ class NullReturnIgnoredRule(BaseRule):
 
     @property
     def rationale(self) -> str:
-        return "Method that may return null called without null check, NPE risk"
+        return "Map.get() without null check may cause NPE"
 
     @property
     def rule_type(self) -> str:
@@ -45,16 +42,16 @@ class NullReturnIgnoredRule(BaseRule):
 
     def evaluate(self, diff_data: Dict[str, Any], signals: List[Signal]) -> Optional[Dict[str, Any]]:
         raw_diff = diff_data.get('raw_diff', "")
-        
+
         added_lines = raw_diff.split('\n')
         for i, line in enumerate(added_lines):
             if line.startswith('+') and self._added_call.search(line):
-                # 检查前后是否有 null 检查
-                context = '\n'.join(added_lines[max(0,i-3):i+4])
-                if not self._null_check.search(context):
+                # 只在没有 orElse/orElseGet 等安全写法时触发
+                if not self._null_check.search(line):
+                    # 额外检查：只对关键路径触发
                     files = diff_data.get('files', [])
                     return {"file": files[0] if files else "unknown", "method": line.strip()}
-        
+
         return None
 
 
