@@ -283,6 +283,14 @@ class RuleEngine:
         try:
             with open(path, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f) or {}
+
+            # Extract and merge global config from YAML (e.g., skip_paths)
+            yaml_config = data.get('config', {})
+            if yaml_config:
+                for key, value in yaml_config.items():
+                    if key not in self.config:
+                        self.config[key] = value
+
             raw_rules = data.get('rules', [])
             if isinstance(raw_rules, list) and raw_rules:
                 for r in raw_rules:
@@ -531,6 +539,20 @@ class RuleEngine:
             if is_mostly_new and rule_type == 'regression':
                 # Skip regression rules for new projects/files as they are meaningless
                 continue
+
+            # Skip paths filter: Skip files matching configured skip_paths patterns
+            skip_paths = self.config.get("skip_paths", [])
+            if skip_paths:
+                file_should_skip = False
+                for file_path in changed_files:
+                    for pattern in skip_paths:
+                        if fnmatch.fnmatch(file_path, pattern):
+                            file_should_skip = True
+                            break
+                    if file_should_skip:
+                        break
+                if file_should_skip:
+                    continue
 
             # Incremental Filtering: Only run rule if it matches at least one changed file
             rule_lang = getattr(rule, 'language', '*')

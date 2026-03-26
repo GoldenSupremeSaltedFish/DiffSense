@@ -16,6 +16,7 @@ class GitLabAdapter(PlatformAdapter):
                 print("   - Verify the GitLab URL is correct (defaults to gitlab.com if not specified).")
             raise e
         self.comment_tag = "<!-- diffsense_audit_report -->"
+        self.inline_comment_tag = "<!-- diffsense_inline_report -->"
         self.token = token # store for manual request if needed
 
     def fetch_diff(self) -> str:
@@ -92,31 +93,48 @@ class GitLabAdapter(PlatformAdapter):
                 existing_note = note
                 break
         
+        # Ensure content is properly formatted with the tag
         final_body = f"{content}\n\n{self.comment_tag}"
         
         if existing_note:
+            # Update existing comment
             existing_note.body = final_body
             existing_note.save()
             print(f"Updated GitLab note {existing_note.id}")
         else:
-            # Create comment with markdown format explicitly specified
-            self.mr.notes.create({
-                'body': final_body,
-                'noteable_type': 'MergeRequest'
-            })
+            # Create new comment
+            self.mr.notes.create({'body': final_body})
             print("Created GitLab note")
 
     def post_inline_comments(self, comments):
         if not comments:
             return
-        lines = []
+        # IMPORTANT:
+        # Do not call post_comment() here. That would overwrite the main
+        # markdown audit report (regression bug), causing plain text fallback.
+        lines = ["## Inline Findings", ""]
         for c in comments:
             path = c.get("path", "")
             line = c.get("line", "")
             body = c.get("body", "")
-            lines.append(f"{path}:{line} {body}")
+            lines.append(f"- `{path}:{line}` {body}")
         content = "\n".join(lines)
-        self.post_comment(content)
+        final_body = f"{content}\n\n{self.inline_comment_tag}"
+
+        notes = self.mr.notes.list(all=True)
+        existing_note = None
+        for note in notes:
+            if self.inline_comment_tag in note.body:
+                existing_note = note
+                break
+
+        if existing_note:
+            existing_note.body = final_body
+            existing_note.save()
+            print(f"Updated GitLab inline note {existing_note.id}")
+        else:
+            self.mr.notes.create({"body": final_body})
+            print("Created GitLab inline note")
 
     def is_approved(self) -> bool:
         """
