@@ -543,7 +543,6 @@ class RuleEngine:
             # Skip paths filter: Skip files matching configured skip_paths patterns
             skip_paths = self.config.get("skip_paths", [])
             if skip_paths:
-                import fnmatch
                 file_should_skip = False
                 for file_path in changed_files:
                     for pattern in skip_paths:
