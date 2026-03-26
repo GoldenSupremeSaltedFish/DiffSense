@@ -1,3 +1,9 @@
+# Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
 # 忽略所有target目录
 **/target/
 

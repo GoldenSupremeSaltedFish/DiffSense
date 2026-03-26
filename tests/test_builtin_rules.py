@@ -122,7 +122,7 @@ class TestExceptionHandlingRules(unittest.TestCase):
     def test_generic_exception_caught(self):
         """Test detection of generic exception catching."""
         diff_data = {
-            'files': ['test.java'],
+            'files': ['src/service/Test.java'],
             'raw_diff': '+ } catch (Exception e) {'
         }
         signals: List[Signal] = []

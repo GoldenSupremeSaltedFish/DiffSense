@@ -65,7 +65,7 @@ class OptionalUnwrapRule(BaseRule):
         )
         # 扩展安全模式：包含 orElseGet
         self._optional_safe = re.compile(
-            r'\.orElse(?:\w+)?\s*\(|',
+            r'\.orElse(?:Get)?\s*\(',
             re.MULTILINE
         )
 
