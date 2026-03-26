@@ -56,25 +56,27 @@ class NullReturnIgnoredRule(BaseRule):
 
 
 class OptionalUnwrapRule(BaseRule):
-    """检测 Optional 未正确解包"""
-    
+    """检测 Optional 未正确解包 - 排除安全的 orElse 用法"""
+
     def __init__(self):
         self._dangerous_get = re.compile(
-            r'^\+.*\.get\s*\(\s*\)(?!\s*//)',  # Optional.get() without check
+            r'^\+.*(?<!\.)\.get\s*\(\s*\)',  # Optional.get() without check
             re.MULTILINE
         )
-        self._optional_or_else = re.compile(
-            r'\.orElse(?:Else)?\s*\(|\.ifPresent\s*\(',
+        # 扩展安全模式：包含 orElseGet
+        self._optional_safe = re.compile(
+            r'\.orElse(?:\w+)?\s*\(|',
             re.MULTILINE
         )
-        
+
     @property
     def id(self) -> str:
         return "null.optional_unsafe_get"
 
     @property
     def severity(self) -> str:
-        return "high"
+        # 降级为 LOW，因为 Optional.get() 在很多场景是合理的
+        return "low"
 
     @property
     def impact(self) -> str:
@@ -82,7 +84,7 @@ class OptionalUnwrapRule(BaseRule):
 
     @property
     def rationale(self) -> str:
-        return "Optional.get() called without isPresent() check, may throw NoSuchElementException"
+        return "Optional.get() without isPresent() check - ensure null is handled"
 
     @property
     def rule_type(self) -> str:
@@ -90,6 +92,24 @@ class OptionalUnwrapRule(BaseRule):
 
     def evaluate(self, diff_data: Dict[str, Any], signals: List[Signal]) -> Optional[Dict[str, Any]]:
         raw_diff = diff_data.get('raw_diff', "")
+
+        # 查找所有 .get() 调用
+        import re as re_module
+        get_matches = re.findall(r'[^\n]*\.get\s*\(\s*\)[^\n]*', raw_diff)
+
+        for match in get_matches:
+            # 跳过已经使用 orElse/orElseGet 的代码
+            if self._optional_safe.search(match):
+                continue
+
+            # 跳过注释
+            if '//' in match or '/*' in match:
+                continue
+
+            files = diff_data.get('files', [])
+            return {"file": files[0] if files else "unknown"}
+
+        return None
         
         dangerous = self._dangerous_get.findall(raw_diff)
         if dangerous:
