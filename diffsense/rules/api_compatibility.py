@@ -17,13 +17,6 @@ class PublicMethodRemovedRule(BaseRule):
             r'^\+.*@Deprecated',
             re.MULTILINE
         )
-        # 排除测试文件
-        self._test_patterns = [
-            r'/test/',
-            r'/tests/',
-            r'\.Test\.',
-            r'Test\.java$'
-        ]
 
     @property
     def id(self) -> str:
@@ -49,11 +42,6 @@ class PublicMethodRemovedRule(BaseRule):
         raw_diff = diff_data.get('raw_diff', "")
         files = diff_data.get('files', [])
 
-        # 检查是否是测试文件
-        for f in files:
-            if any(re.search(p, f, re.IGNORECASE) for p in self._test_patterns):
-                return None
-
         if self._removed_method.search(raw_diff):
             # 如果没有添加@Deprecated 作为过渡，则报告
             if not self._added_deprecated.search(raw_diff):
@@ -66,13 +54,7 @@ class MethodSignatureChangedRule(BaseRule):
     """检测方法签名变更 - 只在真正破坏 API 兼容性时触发"""
 
     def __init__(self):
-        # 跳过测试文件
-        self._test_patterns = [
-            r'/test/',
-            r'/tests/',
-            r'\.Test\.',
-            r'Test\.java$'
-        ]
+        pass
 
     @property
     def id(self) -> str:
@@ -97,11 +79,6 @@ class MethodSignatureChangedRule(BaseRule):
     def evaluate(self, diff_data: Dict[str, Any], signals: List[Signal]) -> Optional[Dict[str, Any]]:
         raw_diff = diff_data.get('raw_diff', "")
         files = diff_data.get('files', [])
-
-        # 排除测试文件
-        for f in files:
-            if any(re.search(p, f, re.IGNORECASE) for p in self._test_patterns):
-                return None
 
         # 只检测真正的签名变化：同一方法名，参数数量或类型不同
         # 使用更严格的检测：必须有完整的参数列表变化

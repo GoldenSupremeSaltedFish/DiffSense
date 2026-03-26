@@ -1,3 +1,15 @@
+# 全局配置
+config:
+  # 跳过测试文件（支持通配符）
+  skip_paths:
+    - "**/test/**"
+    - "**/tests/**"
+    - "**/*Test*.java"
+    - "**/spec/**"
+    - "**/__tests__/**"
+    - "**/*_test.py"
+    - "**/test_*.py"
+
 rules:
   - id: runtime.concurrency_risk
     # Use AST Signal instead of regex match
