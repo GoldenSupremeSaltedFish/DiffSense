@@ -63,15 +63,16 @@ class PublicMethodRemovedRule(BaseRule):
 
 
 class MethodSignatureChangedRule(BaseRule):
-    """检测方法签名变更（参数类型/数量/返回类型）- 只在真正修改时触发"""
+    """检测方法签名变更 - 只在真正破坏 API 兼容性时触发"""
 
     def __init__(self):
-        # 更严格的正则：只匹配参数列表或返回类型的实际变化
-        # 排除只是添加 final/static/volatile 等修饰符的情况
-        self._signature_change = re.compile(
-            r'^[-+]\s*(?:public|protected|private)\s+(?!.*\bfinal\b)(?!.*\bstatic\b)(?!.*\bvolatile\b).*\s+\w+\s*\([^)]*\)',
-            re.MULTILINE
-        )
+        # 跳过测试文件
+        self._test_patterns = [
+            r'/test/',
+            r'/tests/',
+            r'\.Test\.',
+            r'Test\.java$'
+        ]
 
     @property
     def id(self) -> str:
@@ -87,7 +88,7 @@ class MethodSignatureChangedRule(BaseRule):
 
     @property
     def rationale(self) -> str:
-        return "Method signature changed (param/return type), may break callers"
+        return "Method signature changed in production code"
 
     @property
     def rule_type(self) -> str:
@@ -95,35 +96,34 @@ class MethodSignatureChangedRule(BaseRule):
 
     def evaluate(self, diff_data: Dict[str, Any], signals: List[Signal]) -> Optional[Dict[str, Any]]:
         raw_diff = diff_data.get('raw_diff', "")
+        files = diff_data.get('files', [])
 
-        # 查找有实质性签名变化的方法（排除只改修饰符的情况）
-        added_lines = [line for line in raw_diff.split('\n') if line.startswith('+')]
-        removed_lines = [line for line in raw_diff.split('\n') if line.startswith('-')]
+        # 排除测试文件
+        for f in files:
+            if any(re.search(p, f, re.IGNORECASE) for p in self._test_patterns):
+                return None
 
-        for rem in removed_lines:
-            # 跳过只有修饰符变化的情况
-            if 'final' in rem or 'static' in rem or 'volatile' in rem:
-                continue
+        # 只检测真正的签名变化：同一方法名，参数数量或类型不同
+        # 使用更严格的检测：必须有完整的参数列表变化
+        import re as re_module
 
-            # 查找方法名
-            rem_match = re.search(r'\s+(\w+)\s*\(', rem)
-            if not rem_match:
-                continue
+        # 查找同时有删除和添加的同一方法
+        removed_methods = re_module.findall(
+            r'^-\s*(?:public|protected)\s+(?:static\s+)?(?:\w+(?:<[^>]+>)?\s+)+(\w+)\s*\(([^)]*)\)',
+            raw_diff,
+            re_module.MULTILINE
+        )
 
-            method_name = rem_match.group(1)
-            # 检查参数列表是否有变化
-            rem_params = re.search(r'\(([^)]*)\)', rem)
-            if not rem_params:
-                continue
+        added_methods = re_module.findall(
+            r'^\+\s*(?:public|protected)\s+(?:static\s+)?(?:\w+(?:<[^>]+>)?\s+)+(\w+)\s*\(([^)]*)\)',
+            raw_diff,
+            re.MULTILINE
+        )
 
-            # 查找对应的添加行
-            for add in added_lines:
-                if method_name in add:
-                    add_params = re.search(r'\(([^)]*)\)', add)
-                    if add_params and rem_params.group(1) != add_params.group(1):
-                        # 参数列表确实变化了
-                        files = diff_data.get('files', [])
-                        return {"file": files[0] if files else "unknown", "method": method_name}
+        for rem_name, rem_params in removed_methods:
+            for add_name, add_params in added_methods:
+                if rem_name == add_name and rem_params != add_params:
+                    return {"file": files[0] if files else "unknown", "method": rem_name}
 
         return None
 
@@ -133,6 +133,16 @@ class FieldRemovedRule(BaseRule):
 
     def __init__(self):
         # 更严格的正则：确保是删除字段，而不是修改修饰符
+        self._removed_field = re.compile(
+            r'^-\s*(?:public|protected)\s+(?!.*\bfinal\b)(?!.*\bstatic\b).*\s+\w+\s+\w+\s*;',
+            re.MULTILINE
+        )
+
+
+class FieldRemovedRule(BaseRule):
+    """检测删除公共字段 - 只在真正删除字段时触发"""
+
+    def __init__(self):
         self._removed_field = re.compile(
             r'^-\s*(?:public|protected)\s+(?!.*\bfinal\b)(?!.*\bstatic\b).*\s+\w+\s+\w+\s*;',
             re.MULTILINE
