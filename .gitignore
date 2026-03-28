@@ -22,6 +22,7 @@ bin/
 *.swp
 /test
 /test-space/
+/localtest/
 
 # Logs
 logs
