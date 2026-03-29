@@ -60,6 +60,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
+            margin-left: 24px;
         }
         
         .logo-icon {
@@ -588,7 +589,7 @@
                     <div class="risk-header">
                         <div class="risk-icon performance">P</div>
                         <h4>性能风险</h4>
-                    </ul>
+                    </div>
                     <ul class="risk-examples">
                         <li>Thread.sleep() 添加</li>
                         <li>循环内集合修改</li>
@@ -606,29 +607,6 @@
                         <li>缓存过期策略删除</li>
                         <li>无界队列创建</li>
                         <li>资源泄漏风险</li>
-                    </ul>
-                </div>
-                <div class="risk-card">
-                    <div class="risk-header">
-                        <div class="risk-icon network">N</div>
-                        <h4>网络风险</h4>
-                    </div>
-                    <ul class="risk-examples">
-                        <li>超时设置移除</li>
-                        <li>重试机制删除</li>
-                        <li>连接池配置变更</li>
-                    </ul>
-                </div>
-                <div class="risk-card">
-                    <div class="risk-header">
-                        <div class="risk-icon data">D</div>
-                        <h4>数据风险</h4>
-                    </div>
-                    <ul class="risk-examples">
-                        <li>equals() 方法替换为 ==</li>
-                        <li>空值检查移除</li>
-                        <li>输入验证逻辑删除</li>
-                        <li>数据一致性保障缺失</li>
                     </ul>
                 </div>
             </div>
