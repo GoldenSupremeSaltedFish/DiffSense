@@ -49,6 +49,39 @@ DiffSense follows a strict **Three-Layer Architecture**. Please respect this sep
 3.  **Rule Engine**: Consumes *Signals* to make policy decisions (Severity, Rationale).
     *   *This layer should be thin and declarative.*
 
+### Language Adapter System
+
+DiffSense supports **multiple programming languages** through the LanguageAdapter abstraction:
+
+```
+sdk/
+├── rule.py                  # BaseRule (stable interface)
+├── language_adapter.py      # LanguageAdapter abstract class + AdapterFactory
+├── java_adapter.py          # Java-specific patterns
+├── go_adapter.py            # Go-specific patterns
+├── python_adapter.py        # Python-specific patterns
+└── signal.py                # Signal system
+```
+
+**When adding rules for a new language**:
+1.  Create a new `*_adapter.py` in `sdk/`
+2.  Implement `LanguageAdapter` abstract methods
+3.  Use `AdapterFactory.get_adapter(language)` in rules
+
+Example:
+```python
+from sdk.rule import BaseRule
+from sdk.language_adapter import AdapterFactory
+
+class MyRule(BaseRule):
+    def __init__(self, language: str = "java"):
+        self._adapter = AdapterFactory.get_adapter(language)
+    
+    def evaluate(self, diff_data, signals):
+        lock_patterns = self._adapter.get_lock_patterns()
+        # ... rule logic
+```
+
 **⚠️ Golden Rule:**
 > **Never encode complex analysis logic directly inside Rules.**
 > Move complex logic to the **Semantic Layer** (`core/ast_detector.py` or `core/semantic_diff.py`) and emit a standardized Signal. The Rule should only *evaluate* that Signal.
