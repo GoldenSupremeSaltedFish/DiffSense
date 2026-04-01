@@ -301,3 +301,62 @@ rules:
     impact: runtime
     severity: high
     rationale: "Semantic change: equals() replaced by == reference comparison."
+
+  # ==============================================
+  # Security Rules (Ported from SonarQube Core)
+  # These detect risks via Diff only - no full AST required
+  # ==============================================
+
+  # P0: Hardcoded Secrets
+  - id: security.hardcoded_secret
+    signal: "security.hardcoded_secret"
+    action: "added"
+    file: "**"
+    impact: security
+    severity: critical
+    rationale: "CRITICAL: Hardcoded password, secret, or API key detected. This is a major security risk - secrets should be in environment variables or secure vaults."
+    tags: ["security", "secret", "credentials"]
+    is_blocking: true
+
+  # P0: SQL Injection
+  - id: security.sql_injection
+    signal: "security.sql_injection"
+    action: "added"
+    file: "**"
+    impact: security
+    severity: critical
+    rationale: "CRITICAL: SQL string concatenation detected. High risk of SQL injection. Use parameterized queries (PreparedStatement) or ORM instead."
+    tags: ["security", "sql", "injection"]
+    is_blocking: true
+    scan_mode: incremental
+
+  # P1: Weak Cryptography
+  - id: security.weak_crypto
+    signal: "security.weak_crypto"
+    action: "added"
+    file: "**"
+    impact: security
+    severity: high
+    rationale: "Weak cryptographic algorithm detected (DES, MD5, SHA1, RC4). These are cryptographically broken and should not be used."
+    tags: ["security", "crypto", "encryption"]
+
+  # P1: Command Injection
+  - id: security.command_injection
+    signal: "security.command_injection"
+    action: "added"
+    file: "**"
+    impact: security
+    severity: critical
+    rationale: "CRITICAL: Command execution (Runtime.exec, ProcessBuilder) detected. Ensure input is sanitized to prevent command injection."
+    tags: ["security", "command", "injection"]
+    is_blocking: true
+
+  # P2: Secret Removed (Regression)
+  - id: security.hardcoded_secret_removed
+    signal: "security.hardcoded_secret_removed"
+    action: "removed"
+    file: "**"
+    impact: security
+    severity: medium
+    rationale: "Hardcoded secret was removed. Verify this is intentional and not a security regression."
+    tags: ["security", "secret"]

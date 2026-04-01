@@ -21,6 +21,32 @@ class ASTDetector:
         self.cache_dir = self._resolve_cache_dir()
         self.metrics = {"hits": 0, "misses": 0, "saved_ms": 0}
 
+        # === Security Detection Patterns ===
+        # Hardcoded secrets patterns (regex-based detection in token analysis)
+        self.secret_patterns = {
+            "password", "passwd", "pwd", "secret", "token", "api_key", "apikey",
+            "access_key", "accesskey", "private_key", "privatekey", "credential"
+        }
+
+        # Dangerous method calls
+        self.sql_concat_methods = {"concat", "append", "+"}
+        self.dangerous_methods = {
+            "execute", "exec", "query", "executeQuery", "executeUpdate",
+            "createStatement", "prepareStatement"
+        }
+
+        # Insecure crypto algorithms
+        self.weak_crypto = {
+            "DES", "RC4", "MD5", "SHA1", "MessageDigest",
+            "setAlgorithm"  # Common method pattern
+        }
+
+        # Command injection risks
+        self.command_methods = {
+            "exec", "runtime", "processbuilder", "ProcessBuilder",
+            "getRuntime", "system"
+        }
+
     def _resolve_cache_dir(self) -> str:
         base_dir = os.environ.get("DIFFSENSE_CACHE_DIR")
         if not base_dir:
@@ -256,6 +282,28 @@ class ASTDetector:
         if change.symbol == "equals_to_ref":
              return "runtime.data.equals_to_reference_compare"
 
+        # === Security Signals ===
+        # Hardcoded secrets
+        if change.symbol == "hardcoded_secret":
+             if change.kind == ChangeKind.LITERAL_ADDED:
+                 return "security.hardcoded_secret"
+             if change.kind == ChangeKind.LITERAL_REMOVED:
+                 return "security.hardcoded_secret_removed"
+
+        # SQL injection risk
+        if change.symbol == "sql_concat":
+            if change.meta.get("risk") == "sql_injection":
+                return "security.sql_injection"
+
+        # Weak encryption
+        if change.symbol == "weak_crypto":
+            return "security.weak_crypto"
+
+        # Command injection
+        if change.symbol == "command_execution":
+            return "security.command_injection"
+        # === End Security Signals ===
+
         if change.kind == ChangeKind.CALL_ADDED:
             if change.symbol == "sleep":
                 return "runtime.performance.sleep_added"
@@ -283,9 +331,9 @@ class ASTDetector:
         return None
 
     def _map_kind_to_action(self, kind: ChangeKind) -> str:
-        if kind in [ChangeKind.CALL_ADDED, ChangeKind.FIELD_ADDED, ChangeKind.MODIFIER_ADDED, ChangeKind.OBJECT_CREATION]:
+        if kind in [ChangeKind.CALL_ADDED, ChangeKind.FIELD_ADDED, ChangeKind.MODIFIER_ADDED, ChangeKind.OBJECT_CREATION, ChangeKind.LITERAL_ADDED]:
             return "added"
-        if kind in [ChangeKind.CALL_REMOVED, ChangeKind.FIELD_REMOVED, ChangeKind.MODIFIER_REMOVED]:
+        if kind in [ChangeKind.CALL_REMOVED, ChangeKind.FIELD_REMOVED, ChangeKind.MODIFIER_REMOVED, ChangeKind.LITERAL_REMOVED]:
             return "removed"
         if kind == ChangeKind.TYPE_CHANGED:
             return "downgrade" # Specific mapping for now
@@ -425,6 +473,65 @@ class ASTDetector:
             if tokens[i].value in self.critical_calls and tokens[i+1].value == "(":
                 kind = ChangeKind.CALL_ADDED if is_added else ChangeKind.CALL_REMOVED
                 changes.append(Change(kind=kind, file=filename, symbol=tokens[i].value, line_no=tokens[i].position.line))
+
+        # === Security Detection ===
+        # 1. Hardcoded secrets (String literals containing sensitive keywords)
+        for i, token in enumerate(tokens):
+            if hasattr(token, 'value') and isinstance(token.value, str):
+                token_val = token.value.strip('"\'`')
+                # Check for hardcoded secrets
+                if any(secret in token_val.lower() for secret in self.secret_patterns):
+                    if len(token_val) > 3 and ("=" in token_val or ":" in token_val):
+                        changes.append(Change(
+                            kind=ChangeKind.LITERAL_ADDED if is_added else ChangeKind.LITERAL_REMOVED,
+                            file=filename,
+                            symbol="hardcoded_secret",
+                            meta={"type": "secret", "value_hint": token_val[:20]},
+                            line_no=token.position.line
+                        ))
+
+        # 2. SQL string concatenation patterns
+        for i in range(len(tokens) - 1):
+            token_val = tokens[i].value
+            # String concatenation in SQL context: "SELECT ... " + var
+            if token_val in self.sql_concat_methods:
+                # Check context - is this in an SQL statement?
+                context = self._get_sql_context(tokens, i)
+                if context:
+                    changes.append(Change(
+                        kind=ChangeKind.CALL_ADDED if is_added else ChangeKind.CALL_REMOVED,
+                        file=filename,
+                        symbol="sql_concat",
+                        meta={"risk": "sql_injection"},
+                        line_no=tokens[i].position.line
+                    ))
+
+        # 3. Insecure crypto usage
+        for token in tokens:
+            if hasattr(token, 'value'):
+                token_val = token.value
+                if token_val in self.weak_crypto:
+                    changes.append(Change(
+                        kind=ChangeKind.CALL_ADDED if is_added else ChangeKind.CALL_REMOVED,
+                        file=filename,
+                        symbol="weak_crypto",
+                        meta={"algorithm": token_val, "risk": "weak_encryption"},
+                        line_no=token.position.line
+                    ))
+
+        # 4. Command injection (Runtime.exec, ProcessBuilder)
+        for i in range(len(tokens) - 1):
+            token_val = tokens[i].value
+            if token_val in self.command_methods and tokens[i+1].value == "(":
+                changes.append(Change(
+                    kind=ChangeKind.CALL_ADDED if is_added else ChangeKind.CALL_REMOVED,
+                    file=filename,
+                    symbol="command_execution",
+                    meta={"risk": "command_injection"},
+                    line_no=tokens[i].position.line
+                ))
+
+        # === End Security Detection ===
 
         # Stop here if mode is 'light'
         if mode == "light":
@@ -710,6 +817,27 @@ class ASTDetector:
                 if self._is_inside_loop(path):
                     changes.append(Change(kind=kind, file=filename, symbol="remove", meta={"in_loop": True}, line_no=line_no))
 
+
+    def _get_sql_context(self, tokens, pos: int) -> Optional[str]:
+        """
+        Check if the concatenation is in SQL context.
+        Looks for SQL keywords nearby in the token stream.
+        """
+        # Look back for SQL keywords
+        look_back = 20
+        start = max(0, pos - look_back)
+        nearby_tokens = [t.value for t in tokens[start:pos]]
+
+        sql_keywords = {
+            "SELECT", "INSERT", "UPDATE", "DELETE", "FROM", "WHERE", "JOIN",
+            "TABLE", "CREATE", "DROP", "ALTER", "query", "sql"
+        }
+
+        for token_val in nearby_tokens:
+            if token_val.upper() in sql_keywords or token_val.lower() in sql_keywords:
+                return "sql_statement"
+
+        return None
 
     def _is_inside_loop(self, path: Tuple) -> bool:
         """

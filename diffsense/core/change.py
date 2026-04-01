@@ -13,6 +13,9 @@ class ChangeKind(Enum):
     ANNOTATION_REMOVED = "ANNOTATION_REMOVED"
     ANNOTATION_ADDED = "ANNOTATION_ADDED"
     OBJECT_CREATION = "OBJECT_CREATION"
+    # Security-related changes
+    LITERAL_ADDED = "LITERAL_ADDED"  # Hardcoded secrets/passwords
+    LITERAL_REMOVED = "LITERAL_REMOVED"
     # Fallback/Generic
     UNKNOWN = "UNKNOWN"
 

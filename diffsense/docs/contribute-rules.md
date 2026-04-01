@@ -30,18 +30,110 @@
 1. **贡献清单**：见 [CONTRIBUTING.md](../CONTRIBUTING.md) 中「Rule Development Checklist」：
    - 提供真实场景的 `.diff` fixture；
    - Replay 验证；
-   - 单规则执行 &lt; 5ms；
+   - 单规则执行 < 5ms；
    - 误报与命中率说明。
 2. **架构约束**：复杂逻辑放在 Semantic 层（如 `core/ast_detector.py`），规则层只做「对 signal 的判定」；不满足的 PR 会被要求重构。
 3. **修改位置**：YAML 规则加到 `config/rules.yaml`；若需新 **Signal**，需在 `core/ast_detector.py`（或 semantic 层）增加产出，并在 [signals.md](signals.md) 与 `core/signals_registry.py` 中登记。
 
 ---
 
+## 新增 Signal 检测（高级）
+
+如果现有 Signal 无法满足需求，需要添加新的检测逻辑，请按以下步骤：
+
+### 步骤 1：在 `core/change.py` 中添加 ChangeKind（如需要）
+
+```python
+# diffsense/core/change.py
+class ChangeKind(Enum):
+    # ... 现有项 ...
+    LITERAL_ADDED = "LITERAL_ADDED"
+    LITERAL_REMOVED = "LITERAL_REMOVED"
+```
+
+### 步骤 2：在 `core/ast_detector.py` 中添加检测逻辑
+
+在 `ASTDetector` 类的 `__init__` 中定义检测模式：
+
+```python
+# 定义敏感模式（如密码、密钥等）
+self.secret_patterns = {
+    "password", "passwd", "pwd", "secret", "token",
+    "api_key", "apikey", "access_key", "private_key"
+}
+```
+
+在 Token 分析循环中添加检测（约 `_analyze_snippet_for_changes` 方法）：
+
+```python
+# === Security Detection ===
+# 示例：检测硬编码密钥
+for i, token in enumerate(tokens):
+    if hasattr(token, 'value') and isinstance(token.value, str):
+        token_val = token.value.strip('"\'`')
+        if any(secret in token_val.lower() for secret in self.secret_patterns):
+            if len(token_val) > 3 and ("=" in token_val or ":" in token_val):
+                changes.append(Change(
+                    kind=ChangeKind.LITERAL_ADDED if is_added else ChangeKind.LITERAL_REMOVED,
+                    file=filename,
+                    symbol="hardcoded_secret",
+                    meta={"type": "secret", "value_hint": token_val[:20]},
+                    line_no=token.position.line
+                ))
+```
+
+### 步骤 3：添加 Signal ID 映射
+
+在 `_map_change_to_signal_id` 方法中映射：
+
+```python
+# 在 _map_change_to_signal_id 方法中
+if change.symbol == "hardcoded_secret":
+     if change.kind == ChangeKind.LITERAL_ADDED:
+         return "security.hardcoded_secret"
+     if change.kind == ChangeKind.LITERAL_REMOVED:
+         return "security.hardcoded_secret_removed"
+```
+
+### 步骤 4：在 `config/rules.yaml` 中添加规则
+
+```yaml
+- id: security.hardcoded_secret
+  signal: "security.hardcoded_secret"
+  action: "added"
+  file: "**"
+  impact: security
+  severity: critical
+  rationale: "CRITICAL: Hardcoded password or secret detected."
+  tags: ["security", "secret"]
+  is_blocking: true
+```
+
+### 工作流程总结
+
+```
+1. 定义检测模式（__init__）
+       ↓
+2. Token 级别检测（_analyze_snippet_for_changes）
+       ↓
+3. 映射到 Signal ID（_map_change_to_signal_id）
+       ↓
+4. 编写 YAML 规则
+```
+
+**优势**：
+- 新增检测只需改 Python（检测逻辑） + YAML（规则定义）
+- 不需要编写复杂的 Python Rule 类
+- Signal 可被多条规则复用
+
+---
+
 ## 快速对照
 
-| 你想… | 看哪份文档 | 命令 |
+| | 你想… | 看哪份文档 | 命令 |
 |--------|------------|------|
-| 10 分钟写一条规则 | [rule-quickstart.md](rule-quickstart.md) | `diffsense signals`、`diffsense rules list` |
-| 查所有可用的 signal | [signals.md](signals.md) | `diffsense signals` |
-| 发自己的规则包 | [rule-plugins.md](rule-plugins.md) | `pip install -e .` 后 `diffsense replay` |
-| 把规则贡献进主仓 | [CONTRIBUTING.md](../CONTRIBUTING.md) | 提 PR，满足 Checklist |
+| | 10 分钟写一条规则 | [rule-quickstart.md](rule-quickstart.md) | `diffsense signals`、`diffsense rules list` |
+| | 查所有可用的 signal | [signals.md](signals.md) | `diffsense signals` |
+| | 发自己的规则包 | [rule-plugins.md](rule-plugins.md) | `pip install -e .` 后 `diffsense replay` |
+| | 把规则贡献进主仓 | [CONTRIBUTING.md](../CONTRIBUTING.md) | 提 PR，满足 Checklist |
+| | 新增 Signal 检测 | 本文档「新增 Signal 检测」部分 | - |
