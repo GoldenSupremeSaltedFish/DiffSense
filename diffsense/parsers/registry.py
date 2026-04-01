@@ -1,13 +1,15 @@
 from typing import Dict, Type, Optional
 from .base_parser import BaseParser
 from .java_parser import JavaParser
-from .go_parser import GoParser  
+from .go_parser import GoParser
+from .go_ast_parser import GoASTParser
 from .python_parser import PythonParser
 
 # Registry of available parsers
+# Note: GoASTParser is the primary Go parser with tree-sitter support
 PARSER_REGISTRY: Dict[str, Type[BaseParser]] = {
     "java": JavaParser,
-    "go": GoParser,
+    "go": GoASTParser,  # Primary Go parser with tree-sitter AST
     "python": PythonParser
 }
 

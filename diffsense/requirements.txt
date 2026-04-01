@@ -5,3 +5,5 @@ requests
 javalang
 typer>=0.9.0
 pytest
+tree-sitter>=0.20.0
+tree-sitter-go>=2.0.0
