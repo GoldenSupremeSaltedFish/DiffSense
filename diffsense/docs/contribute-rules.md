@@ -130,10 +130,39 @@ if change.symbol == "hardcoded_secret":
 
 ## 快速对照
 
-| | 你想… | 看哪份文档 | 命令 |
-|--------|------------|------|
-| | 10 分钟写一条规则 | [rule-quickstart.md](rule-quickstart.md) | `diffsense signals`、`diffsense rules list` |
-| | 查所有可用的 signal | [signals.md](signals.md) | `diffsense signals` |
-| | 发自己的规则包 | [rule-plugins.md](rule-plugins.md) | `pip install -e .` 后 `diffsense replay` |
-| | 把规则贡献进主仓 | [CONTRIBUTING.md](../CONTRIBUTING.md) | 提 PR，满足 Checklist |
-| | 新增 Signal 检测 | 本文档「新增 Signal 检测」部分 | - |
+| 场景 | 文档 | 命令 |
+|------|------|------|
+| 10 分钟写一条规则 | [rule-quickstart.md](rule-quickstart.md) | `diffsense signals`、`diffsense rules list` |
+| 查所有可用的 signal | [signals.md](signals.md) | `diffsense signals` |
+| 发自己的规则包 | [rule-plugins.md](rule-plugins.md) | `pip install -e .` 后 `diffsense replay` |
+| 把规则贡献进主仓 | [CONTRIBUTING.md](../CONTRIBUTING.md) | 提 PR，满足 Checklist |
+| 新增 Signal 检测 | 本文档「新增 Signal 检测」部分 | - |
+| 编写跨语言规则 | [RULES_README.md](../rules/RULES_README.md) | 使用 LanguageAdapter |
+
+---
+
+## 附录：LanguageAdapter 跨语言支持
+
+DiffSense 支持通过 `LanguageAdapter` 编写跨语言规则。详细信息请参考 [RULES_README.md](../rules/RULES_README.md)。
+
+### 支持的语言
+
+- **Java**: `sdk/java_adapter.py`
+- **Go**: `sdk/go_adapter.py`
+- **Python**: `sdk/python_adapter.py`
+
+### 使用示例
+
+```python
+from sdk.rule import BaseRule
+from sdk.language_adapter import AdapterFactory
+
+class MyRule(BaseRule):
+    def __init__(self, language: str = "java"):
+        self._adapter = AdapterFactory.get_adapter(language)
+    
+    def evaluate(self, diff_data, signals):
+        # 使用 adapter 获取语言特定的模式
+        lock_patterns = self._adapter.get_lock_patterns()
+        # ... 规则逻辑
+```

@@ -71,6 +71,17 @@ from rules.api_compatibility import (
     SerialVersionUIDChangedRule,
 )
 
+from rules.go_rules import (
+    GoGoroutineLeakRule,
+    GoChannelLeakRule,
+    GoDeferMisuseRule,
+    GoUnsafeUsageRule,
+    GoErrorHandlingRule,
+    GoNilPointerRule,
+    GoRaceConditionRule,
+    GoHTTPSecurityRule,
+)
+
 # Registry of all built-in rules
 BUILTIN_RULES = [
     # Concurrency (4 rules)
@@ -120,9 +131,19 @@ BUILTIN_RULES = [
     AnnotationRemovedRule,
     DeprecatedApiAddedRule,
     SerialVersionUIDChangedRule,
+    
+    # Go Language Rules (8 rules)
+    GoGoroutineLeakRule,
+    GoChannelLeakRule,
+    GoDeferMisuseRule,
+    GoUnsafeUsageRule,
+    GoErrorHandlingRule,
+    GoNilPointerRule,
+    GoRaceConditionRule,
+    GoHTTPSecurityRule,
 ]
 
-# Total: 36 built-in rules
+# Total: 44 built-in rules (36 Java + 8 Go)
 
 
 def get_all_builtin_rules():
@@ -194,6 +215,17 @@ def get_rules_by_category(category: str):
             AnnotationRemovedRule,
             DeprecatedApiAddedRule,
             SerialVersionUIDChangedRule,
+        ],
+        
+        'go': [
+            GoGoroutineLeakRule,
+            GoChannelLeakRule,
+            GoDeferMisuseRule,
+            GoUnsafeUsageRule,
+            GoErrorHandlingRule,
+            GoNilPointerRule,
+            GoRaceConditionRule,
+            GoHTTPSecurityRule,
         ],
     }
     

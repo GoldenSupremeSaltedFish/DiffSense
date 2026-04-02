@@ -2,7 +2,7 @@
 
 本文档列出了 DiffSense 的所有内置规则，按类别组织。
 
-## 规则总数：36 条
+## 规则总数：44 条（36 Java + 8 Go）
 
 ---
 
@@ -96,6 +96,25 @@
 
 ---
 
+## 7. Go 语言规则 (Go Language) - 8 条
+
+检测 Go 语言特有的风险模式。
+
+| 规则 ID | 严重程度 | 类型 | 说明 |
+|---------|---------|------|------|
+| `resource.goroutine_leak` | High | Absolute | 检测 goroutine 泄漏风险（未正确退出的 goroutine） |
+| `resource.channel_leak` | High | Absolute | 检测 channel 使用问题（未关闭、缓冲通道泄漏等） |
+| `resource.defer_misuse` | Medium | Absolute | 检测 defer 误用（循环中 defer、defer 参数问题） |
+| `security.unsafe_usage` | High | Absolute | 检测 unsafe 包的使用（类型转换、指针运算） |
+| `exception.error_ignored` | Medium | Absolute | 检测错误处理不当（忽略 error 返回值） |
+| `null.nil_dereference` | High | Absolute | 检测 nil 指针解引用风险 |
+| `runtime.race_condition` | High | Regression | 检测竞态条件风险（共享变量无锁保护） |
+| `security.http_vulnerability` | High | Absolute | 检测 HTTP 安全问题（路径遍历、未验证输入等） |
+
+> 注意：Go 规则使用基于正则的轻量级检测。更多语义级检测请参考 `parsers/go_ast_parser.py`。
+
+---
+
 ## 规则类型说明
 
 ### Absolute（绝对规则）
@@ -177,13 +196,92 @@ class MyCustomRule(BaseRule):
 diffsense/rules/
 ├── __init__.py                    # 规则注册和导出
 ├── concurrency.py                 # 并发规则 (4 条)
+├── concurrency_adapter.py         # 基于 Adapter 的并发规则（跨语言）
 ├── resource_management.py         # 资源管理规则 (5 条)
 ├── exception_handling.py          # 异常处理规则 (6 条)
 ├── null_safety.py                 # 空安全规则 (6 条)
 ├── collection_handling.py         # 集合处理规则 (7 条)
 ├── api_compatibility.py           # API 兼容性规则 (8 条)
+├── go_rules.py                    # Go 语言规则 (8 条)
 └── yaml_adapter.py                # YAML 规则适配器
+
+diffsense/sdk/
+├── rule.py                        # BaseRule 抽象类
+├── language_adapter.py            # LanguageAdapter 抽象 + AdapterFactory
+├── java_adapter.py                # Java 语言适配器
+├── go_adapter.py                  # Go 语言适配器
+├── python_adapter.py              # Python 语言适配器
+└── signal.py                      # 信号系统
 ```
+
+---
+
+## 使用 LanguageAdapter 编写跨语言规则
+
+DiffSense 提供 `LanguageAdapter` 系统，支持编写一次即可跨 Java、Go、Python 运行的规则。
+
+### 示例：使用 Adapter 创建规则
+
+```python
+from sdk.rule import BaseRule
+from sdk.language_adapter import AdapterFactory, LanguageAdapter
+from sdk.signal import Signal
+from typing import Dict, Any, List, Optional
+
+class ThreadSafetyRemovalRule(BaseRule):
+    """线程安全移除规则 - 使用 Adapter 实现跨语言支持"""
+    
+    def __init__(self, language: str = "java"):
+        self._adapter = AdapterFactory.get_adapter(language)
+        self._language = language
+    
+    @property
+    def id(self) -> str:
+        return "runtime.thread_safety_removal"
+    
+    @property
+    def severity(self) -> str:
+        return "high"
+    
+    @property
+    def language(self) -> str:
+        return self._language
+    
+    @property
+    def rule_type(self) -> str:
+        return "regression"
+    
+    def evaluate(self, diff_data: Dict[str, Any], signals: List[Signal]) -> Optional[Dict[str, Any]]:
+        raw_diff = diff_data.get('raw_diff', "")
+        
+        # 使用 adapter 获取语言特定的模式
+        lock_patterns = self._adapter.get_lock_patterns()
+        
+        # 检查是否移除了锁
+        for pattern in lock_patterns:
+            if pattern.search(raw_diff):
+                return {"file": "lock_removed"}
+        
+        return None
+
+# 使用不同语言创建规则实例
+java_rule = ThreadSafetyRemovalRule(language="java")
+go_rule = ThreadSafetyRemovalRule(language="go")
+python_rule = ThreadSafetyRemovalRule(language="python")
+```
+
+### Adapter 提供的能力
+
+| 方法 | 说明 |
+|------|------|
+| `get_thread_safe_types()` | 获取线程安全类型集合 |
+| `get_unsafe_types()` | 获取非线程安全类型集合 |
+| `get_lock_patterns()` | 获取锁模式正则列表 |
+| `get_unlock_patterns()` | 获取解锁模式正则列表 |
+| `get_cleanup_keywords()` | 获取资源清理关键词 |
+| `get_error_check_patterns()` | 获取错误检查模式 |
+| `get_concurrency_primitives()` | 获取并发原语集合 |
+| `get_dangerous_patterns()` | 获取安全相关模式字典 |
 
 ---
 
