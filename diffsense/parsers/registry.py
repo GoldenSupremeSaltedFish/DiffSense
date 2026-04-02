@@ -4,13 +4,17 @@ from .java_parser import JavaParser
 from .go_parser import GoParser
 from .go_ast_parser import GoASTParser
 from .python_parser import PythonParser
+from .cpp_ast_parser import CppASTParser
+from .js_ast_parser import JavaScriptASTParser
 
 # Registry of available parsers
-# Note: GoASTParser is the primary Go parser with tree-sitter support
+# Note: AST parsers take priority over legacy parsers
 PARSER_REGISTRY: Dict[str, Type[BaseParser]] = {
     "java": JavaParser,
-    "go": GoASTParser,  # Primary Go parser with tree-sitter AST
-    "python": PythonParser
+    "go": GoASTParser,           # Primary Go parser with tree-sitter AST
+    "python": PythonParser,
+    "cpp": CppASTParser,          # C++ parser with tree-sitter AST
+    "javascript": JavaScriptASTParser,  # JS/TS parser with tree-sitter AST
 }
 
 def get_parser_for_language(language: str) -> Optional[BaseParser]:
