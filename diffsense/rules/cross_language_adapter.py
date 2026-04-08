@@ -133,27 +133,28 @@ class LanguageAdapter:
 class GenericResourceLeakRule(BaseRule):
     """
     通用资源泄漏检测规则 - 通过适配器支持多语言
-    
+
     语义模式：
     1. 创建了可关闭资源
     2. 没有在使用后正确关闭
     """
-    
+
     def __init__(self, language: str = '*'):
         self.adapter = LanguageAdapter(language)
         self._language = language
-        
+
         # 使用适配器获取语言特定的模式
         closeable_types = self.adapter.get_closeable_types()
         open_pattern = self.adapter.get_resource_open_pattern()
         close_pattern = self.adapter.get_resource_close_pattern()
-        
+
         self._open_re = re.compile(open_pattern) if open_pattern else None
         self._close_re = re.compile(close_pattern) if close_pattern else None
-    
+
     @property
     def id(self) -> str:
-        return "resource.leak_generic"
+        # Use prorule prefix to match test expectations for pro rules
+        return f"prorule.{self._language}.resource_leak"
     
     @property
     def severity(self) -> str:
@@ -254,7 +255,7 @@ class GenericNullSafetyRule(BaseRule):
     
     @property
     def id(self) -> str:
-        return "null.safety_generic"
+        return f"prorule.{self._language}.null_safety"
     
     @property
     def severity(self) -> str:
@@ -313,7 +314,7 @@ class GenericExceptionHandlingRule(BaseRule):
     
     @property
     def id(self) -> str:
-        return "exception.swallowed_generic"
+        return f"prorule.{self._language}.exception_swallowed"
     
     @property
     def severity(self) -> str:
