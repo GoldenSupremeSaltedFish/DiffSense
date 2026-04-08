@@ -6,7 +6,7 @@
 """
 
 import re
-from typing import Dict, Any, List, Optional, Callable
+from typing import Dict, Any, List, Optional, Callable, Set
 from sdk.rule import BaseRule
 from sdk.signal import Signal
 
@@ -40,42 +40,62 @@ class LanguageAdapter:
             'java': r'(?:new\s+\w+(?:InputStream|OutputStream|Reader|Writer|Connection)\s*\()',
             'go': r'(?:os\.Open|os\.Create|net\.Dial|sql\.Open|os\.Pipe)\s*\(',
             'python': r'(?:open\s*\(|socket\.socket\(|connect\s*\()',
+            'javascript': r'(?:fs\.open\(|fs\.createReadStream\(|new\s+Client\(\)\.connect\()',
+            'typescript': r'(?:fs\.open\(|fs\.createReadStream\(|new\s+Client\(\)\.connect\()',
+            'cpp': r'(?:new\s+\w+|fopen\s*\(|ifstream\s*\()',
+            'c': r'(?:malloc\s*\(|fopen\s*\(|calloc\s*\()',
         }
         return patterns.get(self.language, r'')
-    
+
     def get_resource_close_pattern(self) -> str:
         """获取资源关闭的正则模式"""
         patterns = {
             'java': r'(?:\.close\(\)|try\s*\([^)]*\.close)',
             'go': r'(?:\.Close\(\)|defer\s+.*\.Close)',
             'python': r'(?:\.close\(\)|with\s+)',
+            'javascript': r'(?:\.close\(\)|\.end\(\)|\.destroy\(\))',
+            'typescript': r'(?:\.close\(\)|\.end\(\)|\.destroy\(\))',
+            'cpp': r'(?:delete\s+|fclose\s*\(|close\s*\()',
+            'c': r'(?:free\s*\(|fclose\s*\(|close\s*\()',
         }
         return patterns.get(self.language, r'')
-    
+
     def get_null_check_pattern(self) -> str:
         """获取空值检查的正则模式"""
         patterns = {
             'java': r'(?:if\s*\([^)]*(?:==|!=)\s*null|Objects\.(?:nonNull|isNull)|Optional)',
             'go': r'(?:if\s+\w+\s*(?:==|!=)\s*nil|if\s+err\s*(?:!=|==)\s*nil)',
             'python': r'(?:if\s+\w+\s+(?:is|is\s+not|==|!=)\s+None)',
+            'javascript': r'(?:if\s*\(\s*\w+\s*(?:===|!==|==|!=)\s*(?:null|undefined)|if\s*\(\s*!\w+)',
+            'typescript': r'(?:if\s*\(\s*\w+\s*(?:===|!==|==|!=)\s*(?:null|undefined)|if\s*\(\s*!\w+)',
+            'cpp': r'(?:if\s*\(\s*\w+\s*(?:==|!=)\s*nullptr|if\s*\(\s*!\w+)',
+            'c': r'(?:if\s*\(\s*\w+\s*(?:==|!=)\s*NULL|if\s*\(\s*!\w+)',
         }
         return patterns.get(self.language, r'')
-    
+
     def get_exception_catch_pattern(self) -> str:
         """获取异常捕获的正则模式"""
         patterns = {
             'java': r'(?:catch\s*\([^)]+\)\s*{)',
             'go': r'(?:if\s+err\s*(?:!=|==)\s*nil)',
             'python': r'(?:except\s+.*:)',
+            'javascript': r'(?:catch\s*\([^)]*\)\s*\{)',
+            'typescript': r'(?:catch\s*\([^)]*\)\s*\{)',
+            'cpp': r'(?:catch\s*\([^)]*\)\s*\{)',
+            'c': r'(?:if\s*\([^)]*error[^)]*\)|if\s*\([^)]*errno)',
         }
         return patterns.get(self.language, r'')
-    
+
     def get_empty_catch_pattern(self) -> str:
         """获取空异常处理的正则模式"""
         patterns = {
             'java': r'(?:catch\s*\([^)]+\)\s*{\s*})',
             'go': r'(?:if\s+err\s*(?:!=|==)\s*nil\s*{\s*})',
             'python': r'(?:except\s+.*:\s*\n\s*pass)',
+            'javascript': r'(?:catch\s*\([^)]*\)\s*\{\s*\})',
+            'typescript': r'(?:catch\s*\([^)]*\)\s*\{\s*\})',
+            'cpp': r'(?:catch\s*\([^)]*\)\s*\{\s*\})',
+            'c': r'(?:if\s*\([^)]*error[^)]*\)\s*\{\s*\})',
         }
         return patterns.get(self.language, r'')
     
@@ -85,8 +105,25 @@ class LanguageAdapter:
             'java': 'null',
             'go': 'nil',
             'python': 'None',
+            'javascript': 'null',
+            'typescript': 'null',
+            'cpp': 'nullptr',
+            'c': 'NULL',
         }
         return mapping.get(self.language, 'null')
+
+    def get_file_extensions(self) -> List[str]:
+        """获取该语言的文件扩展名"""
+        mapping = {
+            'java': ['.java'],
+            'go': ['.go'],
+            'python': ['.py'],
+            'javascript': ['.js', '.jsx', '.mjs', '.cjs'],
+            'typescript': ['.ts', '.tsx'],
+            'cpp': ['.cpp', '.cc', '.cxx', '.h', '.hpp'],
+            'c': ['.c', '.h'],
+        }
+        return mapping.get(self.language, [])
 
 
 # ============================================================================
@@ -96,27 +133,28 @@ class LanguageAdapter:
 class GenericResourceLeakRule(BaseRule):
     """
     通用资源泄漏检测规则 - 通过适配器支持多语言
-    
+
     语义模式：
     1. 创建了可关闭资源
     2. 没有在使用后正确关闭
     """
-    
+
     def __init__(self, language: str = '*'):
         self.adapter = LanguageAdapter(language)
         self._language = language
-        
+
         # 使用适配器获取语言特定的模式
         closeable_types = self.adapter.get_closeable_types()
         open_pattern = self.adapter.get_resource_open_pattern()
         close_pattern = self.adapter.get_resource_close_pattern()
-        
+
         self._open_re = re.compile(open_pattern) if open_pattern else None
         self._close_re = re.compile(close_pattern) if close_pattern else None
-    
+
     @property
     def id(self) -> str:
-        return "resource.leak_generic"
+        # Use prorule prefix to match test expectations for pro rules
+        return f"prorule.{self._language}.resource_leak"
     
     @property
     def severity(self) -> str:
@@ -192,12 +230,32 @@ class GenericNullSafetyRule(BaseRule):
                 r'\.pop\s*\(',           # dict.pop()
                 r'\[.*\]',               # 索引访问
             ],
+            'javascript': [
+                r'\.get\s*\(',           # Map.get()
+                r'\.find\s*\(',         # Array.find()
+                r'\.findFirst\s*\(',    # Optional.findFirst()
+                r'\[.*\]',               # 索引访问
+            ],
+            'typescript': [
+                r'\.get\s*\(',           # Map.get()
+                r'\.find\s*\(',         # Array.find()
+                r'\[.*\]',               # 索引访问
+            ],
+            'cpp': [
+                r'->\w+',                # 指针访问
+                r'\.at\s*\(',            # std::vector::at()
+                r'\[\s*\w+\s*\]',        # 数组索引
+            ],
+            'c': [
+                r'->\w+',                # 结构体指针访问
+                r'\[\s*\w+\s*\]',        # 数组索引
+            ],
         }
         return mapping.get(self._language, [])
     
     @property
     def id(self) -> str:
-        return "null.safety_generic"
+        return f"prorule.{self._language}.null_safety"
     
     @property
     def severity(self) -> str:
@@ -256,7 +314,7 @@ class GenericExceptionHandlingRule(BaseRule):
     
     @property
     def id(self) -> str:
-        return "exception.swallowed_generic"
+        return f"prorule.{self._language}.exception_swallowed"
     
     @property
     def severity(self) -> str:
@@ -298,34 +356,48 @@ class GenericExceptionHandlingRule(BaseRule):
 # 3. 规则工厂：根据语言自动创建规则实例
 # ============================================================================
 
+# 支持的语言列表
+SUPPORTED_LANGUAGES = ['java', 'go', 'python', 'javascript', 'typescript', 'cpp', 'c']
+
+
 class CrossLanguageRuleFactory:
     """
     跨语言规则工厂：根据目标语言创建适当的规则实例。
     """
-    
+
     @staticmethod
     def create_resource_leak_rule(language: str) -> BaseRule:
         """创建资源泄漏检测规则"""
         return GenericResourceLeakRule(language=language)
-    
+
     @staticmethod
     def create_null_safety_rule(language: str) -> BaseRule:
         """创建空值安全检查规则"""
         return GenericNullSafetyRule(language=language)
-    
+
     @staticmethod
     def create_exception_handling_rule(language: str) -> BaseRule:
         """创建异常处理检查规则"""
         return GenericExceptionHandlingRule(language=language)
-    
+
     @staticmethod
     def create_all_rules_for_language(language: str) -> List[BaseRule]:
         """为指定语言创建所有适用的规则"""
+        if language not in SUPPORTED_LANGUAGES:
+            return []
         return [
             CrossLanguageRuleFactory.create_resource_leak_rule(language),
             CrossLanguageRuleFactory.create_null_safety_rule(language),
             CrossLanguageRuleFactory.create_exception_handling_rule(language),
         ]
+
+    @staticmethod
+    def create_all_rules_for_all_languages() -> Dict[str, List[BaseRule]]:
+        """为所有支持的语言创建规则"""
+        result = {}
+        for language in SUPPORTED_LANGUAGES:
+            result[language] = CrossLanguageRuleFactory.create_all_rules_for_language(language)
+        return result
 
 
 # ============================================================================

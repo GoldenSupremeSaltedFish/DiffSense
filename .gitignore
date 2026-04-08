@@ -62,3 +62,13 @@ cvelistV5/
 **/*.test.js
 **/*.spec.js
 **/run-*-tests.js
+
+# Test scripts (temporary)
+scripts/batch_rule_test.py
+scripts/quick_test.py
+
+# Temp files
+diffsense/temp_test.diff
+diffsense/diffsense-report.html
+diffsense/rule_metrics.json
+diffsense/out_report.json

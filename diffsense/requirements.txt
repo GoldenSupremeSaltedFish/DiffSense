@@ -7,3 +7,5 @@ typer>=0.9.0
 pytest
 tree-sitter>=0.20.0
 tree-sitter-go>=2.0.0
+tree-sitter-cpp>=0.2.0
+tree-sitter-javascript>=0.5.0

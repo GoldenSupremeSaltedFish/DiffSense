@@ -135,6 +135,15 @@ try:
 except ImportError:
     GO_RULES_AVAILABLE = False
 
+# Cross-language rules (Python, JavaScript, C++)
+try:
+    from rules.cross_language_adapter import (
+        CrossLanguageRuleFactory,
+    )
+    CROSS_LANGUAGE_RULES_AVAILABLE = True
+except ImportError:
+    CROSS_LANGUAGE_RULES_AVAILABLE = False
+
 class RuleEngine:
     def __init__(self, rules_path: Optional[str] = None, profile: Optional[str] = None, config: Optional[Dict[str, Any]] = None, pro_rules_path: Optional[str] = None):
         self.rules: List[Rule] = []
@@ -229,6 +238,13 @@ class RuleEngine:
             self.rules.append(GoNilPointerRule())
             self.rules.append(GoRaceConditionRule())
             self.rules.append(GoHTTPSecurityRule())
+
+        # Cross-language rules (Python, JavaScript, C++)
+        if CROSS_LANGUAGE_RULES_AVAILABLE:
+            for language in ['python', 'javascript', 'cpp', 'c']:
+                rules = CrossLanguageRuleFactory.create_all_rules_for_language(language)
+                for rule in rules:
+                    self.rules.append(rule)
 
     def _load_yaml_rules(self, path: Optional[str], skip_single_rule_subdirs: bool = False):
         """
@@ -557,21 +573,41 @@ class RuleEngine:
             # Incremental Filtering: Only run rule if it matches at least one changed file
             rule_lang = getattr(rule, 'language', '*')
             rule_scope = getattr(rule, 'scope', '**')
-            
+
+            # Map language to file extensions
+            lang_extensions = {
+                'java': ['.java'],
+                'go': ['.go'],
+                'python': ['.py'],
+                'javascript': ['.js', '.jsx', '.mjs', '.cjs'],
+                'typescript': ['.ts', '.tsx'],
+                'cpp': ['.cpp', '.cc', '.cxx', '.h', '.hpp', '.c++'],
+                'c': ['.c', '.h'],
+            }
+
             should_run = False
             if rule_lang == '*' and rule_scope == '**':
                 should_run = True
             else:
                 for file_path in changed_files:
-                    # Simple language check
-                    if rule_lang != '*' and not file_path.endswith(f".{rule_lang}"):
+                    # Get extensions for this language
+                    extensions = lang_extensions.get(rule_lang, [f".{rule_lang}"])
+
+                    # Check if file matches any extension
+                    lang_match = False
+                    for ext in extensions:
+                        if file_path.endswith(ext):
+                            lang_match = True
+                            break
+
+                    if rule_lang != '*' and not lang_match:
                         continue
                     # Simple scope check (basic substring for now, could be improved to glob)
                     if rule_scope != '**' and not fnmatch.fnmatch(file_path, rule_scope):
                         continue
                     should_run = True
                     break
-            
+
             if not should_run:
                 continue
 
