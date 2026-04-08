@@ -82,6 +82,18 @@ from rules.go_rules import (
     GoHTTPSecurityRule,
 )
 
+# Cross-language rules (support multiple languages)
+try:
+    from rules.cross_language_adapter import (
+        CrossLanguageRuleFactory,
+        GenericResourceLeakRule,
+        GenericNullSafetyRule,
+        GenericExceptionHandlingRule,
+    )
+    CROSS_LANGUAGE_RULES_AVAILABLE = True
+except ImportError:
+    CROSS_LANGUAGE_RULES_AVAILABLE = False
+
 # Registry of all built-in rules
 BUILTIN_RULES = [
     # Concurrency (4 rules)
@@ -143,7 +155,17 @@ BUILTIN_RULES = [
     GoHTTPSecurityRule,
 ]
 
-# Total: 44 built-in rules (36 Java + 8 Go)
+# Total: 44 built-in rules + cross-language rules
+
+# Cross-language rule support (Python, JavaScript, C++)
+CROSS_LANGUAGE_RULES_LIST = []
+
+if CROSS_LANGUAGE_RULES_AVAILABLE:
+    # Create rules for each supported language
+    for language in ['python', 'javascript', 'cpp', 'c']:
+        CROSS_LANGUAGE_RULES_LIST.extend(
+            CrossLanguageRuleFactory.create_all_rules_for_language(language)
+        )
 
 
 def get_all_builtin_rules():

@@ -298,7 +298,13 @@ class AdapterFactory:
         elif language == "python":
             from .python_adapter import PythonAdapter
             cls._adapters[language] = PythonAdapter()
-        
+        elif language == "javascript":
+            from .javascript_adapter import JavaScriptAdapter
+            cls._adapters[language] = JavaScriptAdapter()
+        elif language == "cpp" or language == "c":
+            from .cpp_adapter import CppAdapter
+            cls._adapters[language] = CppAdapter()
+
         return cls._adapters.get(language)
     
     @classmethod
