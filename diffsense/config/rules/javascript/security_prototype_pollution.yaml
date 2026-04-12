@@ -1,0 +1,8 @@
+rules:
+  - id: javascript.security.prototype_pollution
+    language: javascript
+    severity: high
+    impact: security
+    file: "**/*.js"
+    match: '__proto__'
+    rationale: "Prototype pollution"

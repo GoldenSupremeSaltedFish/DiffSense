@@ -146,10 +146,13 @@ class ASTDetector:
         for entry in file_patches:
             filename = entry.get('file', 'unknown')
             patch_content = entry.get('patch', '')
+
+            # Supported languages: Java, Python, C++, JavaScript
+            supported_extensions = {'.java', '.py', '.cpp', '.cc', '.cxx', '.c', '.h', '.hpp', '.js', '.jsx', '.ts', '.tsx'}
+            ext = os.path.splitext(filename)[1].lower() if '.' in filename else ''
             
-            # Strict check: must be .java
-            if not filename.endswith('.java'):
-                print(f"DEBUG: Skipping non-Java file: {filename}")
+            if ext not in supported_extensions:
+                print(f"DEBUG: Skipping unsupported file: {filename}")
                 continue
             
             print(f"DEBUG: Analyzing Java file: {filename}")

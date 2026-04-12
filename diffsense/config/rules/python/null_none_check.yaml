@@ -1,0 +1,8 @@
+rules:
+  - id: python.null.none_check
+    language: python
+    severity: high
+    impact: runtime
+    file: "**/*.py"
+    match: '\.\w+\('
+    rationale: "Null check"

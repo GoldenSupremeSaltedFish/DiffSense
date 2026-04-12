@@ -1,0 +1,8 @@
+rules:
+  - id: javascript.maintenance.debug_code
+    language: javascript
+    severity: low
+    impact: maintenance
+    file: "**/*.js"
+    match: 'console.log'
+    rationale: "Debug code"

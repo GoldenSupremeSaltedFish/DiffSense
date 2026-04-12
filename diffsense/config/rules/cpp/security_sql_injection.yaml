@@ -1,0 +1,8 @@
+rules:
+  - id: cpp.security.sql_injection
+    language: cpp
+    severity: critical
+    impact: security
+    file: "**/*.cpp"
+    match: 'execute\('
+    rationale: "SQL injection"

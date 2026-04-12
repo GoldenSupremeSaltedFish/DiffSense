@@ -1,0 +1,8 @@
+rules:
+  - id: cpp.resource.memory_leak
+    language: cpp
+    severity: high
+    impact: runtime
+    file: "**/*.cpp"
+    match: '\bnew\b'
+    rationale: "Memory leak"

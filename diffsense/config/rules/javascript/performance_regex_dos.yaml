@@ -1,0 +1,8 @@
+rules:
+  - id: javascript.performance.regex_dos
+    language: javascript
+    severity: medium
+    impact: performance
+    file: "**/*.js"
+    match: '/.**/'
+    rationale: "ReDoS"

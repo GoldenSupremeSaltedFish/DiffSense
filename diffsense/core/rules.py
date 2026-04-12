@@ -135,78 +135,12 @@ try:
 except ImportError:
     GO_RULES_AVAILABLE = False
 
-# Python rules
-try:
-    from rules.python_rules import (
-        PythonHardcodedSecretRule,
-        PythonCommandInjectionRule,
-        PythonEvalUsageRule,
-        PythonSQLInjectionRule,
-        PythonResourceLeakRule,
-        PythonThreadSafetyRule,
-        PythonSwallowedExceptionRule,
-        PythonBroadExceptionRule,
-        PythonNoneCheckRule,
-        PythonTypeSafetyRule,
-        PythonLoopInEfficientRule,
-        PythonInMemoryLargeDataRule,
-        PythonSensitiveImportRule,
-        PythonWeakCryptographyRule,
-        PythonDebugCodeRule,
-        PythonMutableDefaultArgRule,
-        PythonPathTraversalRule,
-    )
-    PYTHON_RULES_AVAILABLE = True
-except ImportError:
-    PYTHON_RULES_AVAILABLE = False
+# Python/C++/JavaScript 规则已迁移到 YAML 配置
+# 参见 diffsense/config/rules/ 目录
 
-# C++ rules
-try:
-    from rules.cpp_rules import (
-        CppMemoryLeakRule,
-        CppRawPointerRule,
-        CppBufferOverflowRule,
-        CppHardcodedSecretRule,
-        CppCommandInjectionRule,
-        CppSQLInjectionRule,
-        CppUnsafeCastRule,
-        CppThreadSafetyRule,
-        CppDataRaceRule,
-        CppResourceLeakRule,
-        CppSwallowedExceptionRule,
-        CppNoexceptRule,
-        CppNullPointerRule,
-        CppInefficientCopyRule,
-        CppUnboundedVectorRule,
-        CppMagicNumberRule,
-        CppIntegerOverflowRule,
-        CppUninitializedRule,
-    )
-    CPP_RULES_AVAILABLE = True
-except ImportError:
-    CPP_RULES_AVAILABLE = False
-
-# JavaScript rules
-try:
-    from rules.js_rules import (
-        JSHardcodedSecretRule,
-        JSEvalUsageRule,
-        JSXSSRule,
-        JSPrototypePollutionRule,
-        JSCommandInjectionRule,
-        JSOpenRedirectRule,
-        JSConsoleLogRule,
-        JSDebuggerRule,
-        JSPromiseRejectRule,
-        JSTypeNarrowingRule,
-        JSDynamicImportRule,
-        JSLocalStorageSecretRule,
-        JSReDoSRule,
-        JSDeprecatedAPIRule,
-    )
-    JAVASCRIPT_RULES_AVAILABLE = True
-except ImportError:
-    JAVASCRIPT_RULES_AVAILABLE = False
+PYTHON_RULES_AVAILABLE = False
+CPP_RULES_AVAILABLE = False
+JAVASCRIPT_RULES_AVAILABLE = False
 
 # Cross-language rules (Python, JavaScript, C++)
 try:
@@ -312,63 +246,8 @@ class RuleEngine:
             self.rules.append(GoRaceConditionRule())
             self.rules.append(GoHTTPSecurityRule())
 
-        # Python rules
-        if PYTHON_RULES_AVAILABLE:
-            self.rules.append(PythonHardcodedSecretRule())
-            self.rules.append(PythonCommandInjectionRule())
-            self.rules.append(PythonEvalUsageRule())
-            self.rules.append(PythonSQLInjectionRule())
-            self.rules.append(PythonResourceLeakRule())
-            self.rules.append(PythonThreadSafetyRule())
-            self.rules.append(PythonSwallowedExceptionRule())
-            self.rules.append(PythonBroadExceptionRule())
-            self.rules.append(PythonNoneCheckRule())
-            self.rules.append(PythonTypeSafetyRule())
-            self.rules.append(PythonLoopInEfficientRule())
-            self.rules.append(PythonInMemoryLargeDataRule())
-            self.rules.append(PythonSensitiveImportRule())
-            self.rules.append(PythonWeakCryptographyRule())
-            self.rules.append(PythonDebugCodeRule())
-            self.rules.append(PythonMutableDefaultArgRule())
-            self.rules.append(PythonPathTraversalRule())
-
-        # C++ rules
-        if CPP_RULES_AVAILABLE:
-            self.rules.append(CppMemoryLeakRule())
-            self.rules.append(CppRawPointerRule())
-            self.rules.append(CppBufferOverflowRule())
-            self.rules.append(CppHardcodedSecretRule())
-            self.rules.append(CppCommandInjectionRule())
-            self.rules.append(CppSQLInjectionRule())
-            self.rules.append(CppUnsafeCastRule())
-            self.rules.append(CppThreadSafetyRule())
-            self.rules.append(CppDataRaceRule())
-            self.rules.append(CppResourceLeakRule())
-            self.rules.append(CppSwallowedExceptionRule())
-            self.rules.append(CppNoexceptRule())
-            self.rules.append(CppNullPointerRule())
-            self.rules.append(CppInefficientCopyRule())
-            self.rules.append(CppUnboundedVectorRule())
-            self.rules.append(CppMagicNumberRule())
-            self.rules.append(CppIntegerOverflowRule())
-            self.rules.append(CppUninitializedRule())
-
-        # JavaScript rules
-        if JAVASCRIPT_RULES_AVAILABLE:
-            self.rules.append(JSHardcodedSecretRule())
-            self.rules.append(JSEvalUsageRule())
-            self.rules.append(JSXSSRule())
-            self.rules.append(JSPrototypePollutionRule())
-            self.rules.append(JSCommandInjectionRule())
-            self.rules.append(JSOpenRedirectRule())
-            self.rules.append(JSConsoleLogRule())
-            self.rules.append(JSDebuggerRule())
-            self.rules.append(JSPromiseRejectRule())
-            self.rules.append(JSTypeNarrowingRule())
-            self.rules.append(JSDynamicImportRule())
-            self.rules.append(JSLocalStorageSecretRule())
-            self.rules.append(JSReDoSRule())
-            self.rules.append(JSDeprecatedAPIRule())
+        # Python/C++/JavaScript 规则已迁移到 YAML 配置
+        # 参见 diffsense/config/rules/ 目录
 
         # Cross-language rules (Python, JavaScript, C++)
         if CROSS_LANGUAGE_RULES_AVAILABLE:

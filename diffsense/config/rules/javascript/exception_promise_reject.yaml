@@ -1,0 +1,8 @@
+rules:
+  - id: javascript.exception.promise_reject
+    language: javascript
+    severity: medium
+    impact: runtime
+    file: "**/*.js"
+    match: '\.reject\('
+    rationale: "Promise reject"

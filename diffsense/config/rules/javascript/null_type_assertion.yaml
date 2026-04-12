@@ -1,0 +1,8 @@
+rules:
+  - id: javascript.null.type_assertion
+    language: javascript
+    severity: medium
+    impact: runtime
+    file: "**/*.js"
+    match: ' as '
+    rationale: "Type assertion"

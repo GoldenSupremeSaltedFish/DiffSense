@@ -1,0 +1,8 @@
+rules:
+  - id: python.performance.memory
+    language: python
+    severity: medium
+    impact: performance
+    file: "**/*.py"
+    match: '\.read\(\)'
+    rationale: "Memory issue"

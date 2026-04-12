@@ -1,0 +1,8 @@
+rules:
+  - id: cpp.performance.inefficient_copy
+    language: cpp
+    severity: low
+    impact: performance
+    file: "**/*.cpp"
+    match: 'push_back'
+    rationale: "Inefficient copy"

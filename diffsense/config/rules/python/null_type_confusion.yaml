@@ -1,0 +1,8 @@
+rules:
+  - id: python.null.type_confusion
+    language: python
+    severity: medium
+    impact: runtime
+    file: "**/*.py"
+    match: 'cast\('
+    rationale: "Type confusion"

@@ -1,0 +1,8 @@
+rules:
+  - id: javascript.security.open_redirect
+    language: javascript
+    severity: medium
+    impact: security
+    file: "**/*.js"
+    match: 'location='
+    rationale: "Open redirect"

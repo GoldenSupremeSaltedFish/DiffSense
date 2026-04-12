@@ -1,0 +1,8 @@
+rules:
+  - id: python.runtime.mutable_default
+    language: python
+    severity: high
+    impact: maintenance
+    file: "**/*.py"
+    match: 'def.*='
+    rationale: "Mutable default"

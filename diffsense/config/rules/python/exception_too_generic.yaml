@@ -1,0 +1,8 @@
+rules:
+  - id: python.exception.too_generic
+    language: python
+    severity: medium
+    impact: maintenance
+    file: "**/*.py"
+    match: 'except Exception'
+    rationale: "Broad exception"

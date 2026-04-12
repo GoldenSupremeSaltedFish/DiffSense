@@ -1,0 +1,8 @@
+rules:
+  - id: cpp.security.unsafe_cast
+    language: cpp
+    severity: high
+    impact: security
+    file: "**/*.cpp"
+    match: 'reinterpret_cast'
+    rationale: "Unsafe cast"

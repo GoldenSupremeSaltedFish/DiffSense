@@ -1,0 +1,8 @@
+rules:
+  - id: python.security.path_traversal
+    language: python
+    severity: high
+    impact: security
+    file: "**/*.py"
+    match: 'open\('
+    rationale: "Path traversal"

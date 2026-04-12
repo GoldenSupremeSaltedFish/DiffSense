@@ -2,7 +2,7 @@
   "review_level": "normal",
   "reasons": [],
   "files": [
-    "test_vulnerable_code.go"
+    "app.py"
   ],
   "impacts": {},
   "details": [],
@@ -15,115 +15,234 @@
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 2700,
+      "time_ns": 9000,
       "errors": 0
     },
-    "runtime.concurrency_regression": {
+    "resource.closeable_leak": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 19700,
+      "time_ns": 2400,
       "errors": 0
     },
-    "runtime.thread_safety_removal": {
-      "calls": 1,
-      "hits": 0,
-      "ignores": 0,
-      "time_ns": 8300,
-      "errors": 0
-    },
-    "runtime.latch_misuse": {
-      "calls": 1,
-      "hits": 0,
-      "ignores": 0,
-      "time_ns": 2900,
-      "errors": 0
-    },
-    "runtime.concurrency_synchronized_removed_critical": {
+    "resource.database_connection_leak": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
       "time_ns": 1100,
       "errors": 0
     },
-    "runtime.concurrency_lock_removed_critical": {
+    "resource.stream_encoding_missing": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 1100,
+      "errors": 0
+    },
+    "resource.stream_chaining_leak": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
       "time_ns": 700,
       "errors": 0
     },
-    "runtime.concurrency_volatile_removed_risk": {
+    "resource.executor_shutdown_missing": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 800,
+      "errors": 0
+    },
+    "exception.swallowed": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 6900,
+      "errors": 0
+    },
+    "exception.too_generic": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 4900,
+      "errors": 0
+    },
+    "exception.runtime_throw": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 1000,
+      "errors": 0
+    },
+    "exception.finally_missing": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 6800,
+      "errors": 0
+    },
+    "exception.not_logged": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 4200,
+      "errors": 0
+    },
+    "null.return_ignored": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 4200,
+      "errors": 0
+    },
+    "null.optional_unsafe_get": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 71500,
+      "errors": 0
+    },
+    "null.autoboxing_npe": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 3700,
+      "errors": 0
+    },
+    "null.chained_call_unsafe": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 19900,
+      "errors": 0
+    },
+    "null.array_index_unsafe": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 15900,
+      "errors": 0
+    },
+    "null.string_concat_unsafe": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
       "time_ns": 400,
       "errors": 0
     },
-    "runtime.concurrency_map_removed_risk": {
+    "collection.raw_type": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 300,
+      "time_ns": 5800,
+      "errors": 0
+    },
+    "collection.mutable_return": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 4500,
+      "errors": 0
+    },
+    "collection.concurrent_modification": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 4500,
+      "errors": 0
+    },
+    "collection.map_compute_opportunity": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 1200,
+      "errors": 0
+    },
+    "collection.stream_collector_unsafe": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 2800,
+      "errors": 0
+    },
+    "collection.legacy_factory": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 2700,
+      "errors": 0
+    },
+    "collection.aslist_modify": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 72000,
+      "errors": 0
+    },
+    "api.deprecated_added": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 2500,
+      "errors": 0
+    },
+    "prorule.python.resource_leak": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 3800,
+      "errors": 0
+    },
+    "prorule.python.null_safety": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 6300,
+      "errors": 0
+    },
+    "prorule.python.exception_swallowed": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 3300,
       "errors": 0
     },
     "runtime.concurrency.thread_safety_downgrade": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 300,
+      "time_ns": 1200,
       "errors": 0
     },
     "runtime.concurrency.static_unsafe_collection": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 200,
+      "time_ns": 800,
       "errors": 0
     },
     "runtime.performance.sleep_added": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 300,
+      "time_ns": 500,
       "errors": 0
     },
     "runtime.concurrency.executors_factory_risk": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 300,
+      "time_ns": 400,
       "errors": 0
     },
     "runtime.concurrency.future_get_without_timeout": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 200,
-      "errors": 0
-    },
-    "runtime.concurrency.threadpool_creation": {
-      "calls": 1,
-      "hits": 0,
-      "ignores": 0,
       "time_ns": 300,
       "errors": 0
     },
-    "data.query_change": {
-      "calls": 1,
-      "hits": 0,
-      "ignores": 0,
-      "time_ns": 2900,
-      "errors": 0
-    },
-    "runtime.input_normalization_removed": {
-      "calls": 1,
-      "hits": 0,
-      "ignores": 0,
-      "time_ns": 600,
-      "errors": 0
-    },
-    "data.pagination_semantic_change": {
+    "runtime.concurrency.threadpool_creation": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
@@ -134,49 +253,14 @@
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 300,
-      "errors": 0
-    },
-    "runtime.concurrency.lock_removed": {
-      "calls": 1,
-      "hits": 0,
-      "ignores": 0,
       "time_ns": 600,
-      "errors": 0
-    },
-    "runtime.concurrency.volatile_removed": {
-      "calls": 1,
-      "hits": 0,
-      "ignores": 0,
-      "time_ns": 300,
-      "errors": 0
-    },
-    "runtime.concurrency.final_removed": {
-      "calls": 1,
-      "hits": 0,
-      "ignores": 0,
-      "time_ns": 300,
-      "errors": 0
-    },
-    "runtime.concurrency.atomic_to_non_atomic_write": {
-      "calls": 1,
-      "hits": 0,
-      "ignores": 0,
-      "time_ns": 300,
-      "errors": 0
-    },
-    "runtime.concurrency.threadpool_param_change": {
-      "calls": 1,
-      "hits": 0,
-      "ignores": 0,
-      "time_ns": 300,
       "errors": 0
     },
     "runtime.concurrency.threadpool_unbounded_queue": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 300,
+      "time_ns": 500,
       "errors": 0
     },
     "runtime.concurrency.busy_wait_added": {
@@ -186,105 +270,151 @@
       "time_ns": 300,
       "errors": 0
     },
-    "runtime.resource.try_with_resource_removed": {
+    "security.hardcoded_secret": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
       "time_ns": 300,
       "errors": 0
     },
-    "runtime.resource.cache_eviction_removed": {
+    "security.sql_injection": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
       "time_ns": 200,
       "errors": 0
     },
-    "runtime.network.timeout_removed": {
+    "security.weak_crypto": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
       "time_ns": 300,
       "errors": 0
     },
-    "runtime.data.null_check_removed": {
+    "security.command_injection": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 300,
+      "time_ns": 600,
       "errors": 0
     },
-    "runtime.data.equals_to_reference_compare": {
+    "absolute.concurrency.new_thread": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 300,
+      "time_ns": 2600,
       "errors": 0
     },
-    "example.custom.risk": {
+    "absolute.concurrency.fixed_threadpool_1": {
       "calls": 1,
       "hits": 0,
       "ignores": 0,
-      "time_ns": 300,
+      "time_ns": 2600,
+      "errors": 0
+    },
+    "absolute.concurrency.sleep_long": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 1400,
+      "errors": 0
+    },
+    "absolute.security.sql_injection": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 1100,
+      "errors": 0
+    },
+    "absolute.security.plaintext_token": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 12400,
+      "errors": 0
+    },
+    "absolute.security.http_url": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 1000,
+      "errors": 0
+    },
+    "absolute.stability.catch_exception": {
+      "calls": 1,
+      "hits": 0,
+      "ignores": 0,
+      "time_ns": 900,
       "errors": 0
     },
     "cache": {
       "diff": {
-        "hits": 1,
-        "misses": 0,
-        "saved_ms": 0
+        "hits": 0,
+        "misses": 1,
+        "saved_ms": 0.29206275939941406
       },
       "ast": {
         "hits": 0,
-        "misses": 0,
+        "misses": 2,
         "saved_ms": 0
       }
     },
     "rule_stats": {
-      "total_rules": 42,
-      "executed_count": 31,
+      "total_rules": 18306,
+      "executed_count": 48,
       "top_slow": [
         {
-          "rule_id": "runtime.concurrency_regression",
+          "rule_id": "collection.aslist_modify",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0197,
-          "avg_time_ms": 0.0197,
+          "time_ms": 0.072,
+          "avg_time_ms": 0.072,
           "fp_rate": 0.0,
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.thread_safety_removal",
+          "rule_id": "null.optional_unsafe_get",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0083,
-          "avg_time_ms": 0.0083,
+          "time_ms": 0.0715,
+          "avg_time_ms": 0.0715,
           "fp_rate": 0.0,
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.latch_misuse",
+          "rule_id": "null.chained_call_unsafe",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0029,
-          "avg_time_ms": 0.0029,
+          "time_ms": 0.0199,
+          "avg_time_ms": 0.0199,
           "fp_rate": 0.0,
           "precision": 1.0
         },
         {
-          "rule_id": "data.query_change",
+          "rule_id": "null.array_index_unsafe",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0029,
-          "avg_time_ms": 0.0029,
+          "time_ms": 0.0159,
+          "avg_time_ms": 0.0159,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "absolute.security.plaintext_token",
+          "calls": 1,
+          "hits": 0,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0124,
+          "avg_time_ms": 0.0124,
           "fp_rate": 0.0,
           "precision": 1.0
         },
@@ -294,63 +424,52 @@
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0027,
-          "avg_time_ms": 0.0027,
+          "time_ms": 0.009,
+          "avg_time_ms": 0.009,
           "fp_rate": 0.0,
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.concurrency_synchronized_removed_critical",
+          "rule_id": "exception.swallowed",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0011,
-          "avg_time_ms": 0.0011,
+          "time_ms": 0.0069,
+          "avg_time_ms": 0.0069,
           "fp_rate": 0.0,
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.concurrency_lock_removed_critical",
+          "rule_id": "exception.finally_missing",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0007,
-          "avg_time_ms": 0.0007,
+          "time_ms": 0.0068,
+          "avg_time_ms": 0.0068,
           "fp_rate": 0.0,
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.input_normalization_removed",
+          "rule_id": "prorule.python.null_safety",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0006,
-          "avg_time_ms": 0.0006,
+          "time_ms": 0.0063,
+          "avg_time_ms": 0.0063,
           "fp_rate": 0.0,
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.concurrency.lock_removed",
+          "rule_id": "collection.raw_type",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0006,
-          "avg_time_ms": 0.0006,
-          "fp_rate": 0.0,
-          "precision": 1.0
-        },
-        {
-          "rule_id": "runtime.concurrency_volatile_removed_risk",
-          "calls": 1,
-          "hits": 0,
-          "ignores": 0,
-          "errors": 0,
-          "time_ms": 0.0004,
-          "avg_time_ms": 0.0004,
+          "time_ms": 0.0058,
+          "avg_time_ms": 0.0058,
           "fp_rate": 0.0,
           "precision": 1.0
         }
@@ -362,46 +481,24 @@
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0027,
-          "avg_time_ms": 0.0027,
+          "time_ms": 0.009,
+          "avg_time_ms": 0.009,
           "fp_rate": 0.0,
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.concurrency_regression",
+          "rule_id": "resource.closeable_leak",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0197,
-          "avg_time_ms": 0.0197,
+          "time_ms": 0.0024,
+          "avg_time_ms": 0.0024,
           "fp_rate": 0.0,
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.thread_safety_removal",
-          "calls": 1,
-          "hits": 0,
-          "ignores": 0,
-          "errors": 0,
-          "time_ms": 0.0083,
-          "avg_time_ms": 0.0083,
-          "fp_rate": 0.0,
-          "precision": 1.0
-        },
-        {
-          "rule_id": "runtime.latch_misuse",
-          "calls": 1,
-          "hits": 0,
-          "ignores": 0,
-          "errors": 0,
-          "time_ms": 0.0029,
-          "avg_time_ms": 0.0029,
-          "fp_rate": 0.0,
-          "precision": 1.0
-        },
-        {
-          "rule_id": "runtime.concurrency_synchronized_removed_critical",
+          "rule_id": "resource.database_connection_leak",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
@@ -412,7 +509,18 @@
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.concurrency_lock_removed_critical",
+          "rule_id": "resource.stream_encoding_missing",
+          "calls": 1,
+          "hits": 0,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0011,
+          "avg_time_ms": 0.0011,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "resource.stream_chaining_leak",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
@@ -423,46 +531,57 @@
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.concurrency_volatile_removed_risk",
+          "rule_id": "resource.executor_shutdown_missing",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0004,
-          "avg_time_ms": 0.0004,
+          "time_ms": 0.0008,
+          "avg_time_ms": 0.0008,
           "fp_rate": 0.0,
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.concurrency_map_removed_risk",
+          "rule_id": "exception.swallowed",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0003,
-          "avg_time_ms": 0.0003,
+          "time_ms": 0.0069,
+          "avg_time_ms": 0.0069,
           "fp_rate": 0.0,
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.concurrency.thread_safety_downgrade",
+          "rule_id": "exception.too_generic",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0003,
-          "avg_time_ms": 0.0003,
+          "time_ms": 0.0049,
+          "avg_time_ms": 0.0049,
           "fp_rate": 0.0,
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.concurrency.static_unsafe_collection",
+          "rule_id": "exception.runtime_throw",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0002,
-          "avg_time_ms": 0.0002,
+          "time_ms": 0.001,
+          "avg_time_ms": 0.001,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "exception.finally_missing",
+          "calls": 1,
+          "hits": 0,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0068,
+          "avg_time_ms": 0.0068,
           "fp_rate": 0.0,
           "precision": 1.0
         }
@@ -474,46 +593,24 @@
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0027,
-          "avg_time_ms": 0.0027,
+          "time_ms": 0.009,
+          "avg_time_ms": 0.009,
           "fp_rate": 0.0,
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.concurrency_regression",
+          "rule_id": "resource.closeable_leak",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0197,
-          "avg_time_ms": 0.0197,
+          "time_ms": 0.0024,
+          "avg_time_ms": 0.0024,
           "fp_rate": 0.0,
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.thread_safety_removal",
-          "calls": 1,
-          "hits": 0,
-          "ignores": 0,
-          "errors": 0,
-          "time_ms": 0.0083,
-          "avg_time_ms": 0.0083,
-          "fp_rate": 0.0,
-          "precision": 1.0
-        },
-        {
-          "rule_id": "runtime.latch_misuse",
-          "calls": 1,
-          "hits": 0,
-          "ignores": 0,
-          "errors": 0,
-          "time_ms": 0.0029,
-          "avg_time_ms": 0.0029,
-          "fp_rate": 0.0,
-          "precision": 1.0
-        },
-        {
-          "rule_id": "runtime.concurrency_synchronized_removed_critical",
+          "rule_id": "resource.database_connection_leak",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
@@ -524,7 +621,18 @@
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.concurrency_lock_removed_critical",
+          "rule_id": "resource.stream_encoding_missing",
+          "calls": 1,
+          "hits": 0,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0011,
+          "avg_time_ms": 0.0011,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "resource.stream_chaining_leak",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
@@ -535,46 +643,57 @@
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.concurrency_volatile_removed_risk",
+          "rule_id": "resource.executor_shutdown_missing",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0004,
-          "avg_time_ms": 0.0004,
+          "time_ms": 0.0008,
+          "avg_time_ms": 0.0008,
           "fp_rate": 0.0,
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.concurrency_map_removed_risk",
+          "rule_id": "exception.swallowed",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0003,
-          "avg_time_ms": 0.0003,
+          "time_ms": 0.0069,
+          "avg_time_ms": 0.0069,
           "fp_rate": 0.0,
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.concurrency.thread_safety_downgrade",
+          "rule_id": "exception.too_generic",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0003,
-          "avg_time_ms": 0.0003,
+          "time_ms": 0.0049,
+          "avg_time_ms": 0.0049,
           "fp_rate": 0.0,
           "precision": 1.0
         },
         {
-          "rule_id": "runtime.concurrency.static_unsafe_collection",
+          "rule_id": "exception.runtime_throw",
           "calls": 1,
           "hits": 0,
           "ignores": 0,
           "errors": 0,
-          "time_ms": 0.0002,
-          "avg_time_ms": 0.0002,
+          "time_ms": 0.001,
+          "avg_time_ms": 0.001,
+          "fp_rate": 0.0,
+          "precision": 1.0
+        },
+        {
+          "rule_id": "exception.finally_missing",
+          "calls": 1,
+          "hits": 0,
+          "ignores": 0,
+          "errors": 0,
+          "time_ms": 0.0068,
+          "avg_time_ms": 0.0068,
           "fp_rate": 0.0,
           "precision": 1.0
         }
@@ -587,42 +706,18 @@
       "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0027,
+      "avg_time_ms": 0.009,
       "confidence": 1.0
     },
-    "runtime.concurrency_regression": {
-      "hits": 3,
-      "confirmed": 3,
-      "false_positive": 0,
-      "precision": 1.0,
-      "avg_time_ms": 0.0197,
-      "confidence": 1.0
-    },
-    "runtime.thread_safety_removal": {
-      "hits": 3,
-      "confirmed": 3,
-      "false_positive": 0,
-      "precision": 1.0,
-      "avg_time_ms": 0.0083,
-      "confidence": 1.0
-    },
-    "runtime.latch_misuse": {
+    "resource.closeable_leak": {
       "hits": 0,
       "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0029,
+      "avg_time_ms": 0.0024,
       "confidence": 1.0
     },
-    "runtime.concurrency_risk": {
-      "hits": 0,
-      "confirmed": 0,
-      "false_positive": 0,
-      "precision": 1.0,
-      "avg_time_ms": 0.0014,
-      "confidence": 1.0
-    },
-    "runtime.concurrency_synchronized_removed_critical": {
+    "resource.database_connection_leak": {
       "hits": 0,
       "confirmed": 0,
       "false_positive": 0,
@@ -630,15 +725,15 @@
       "avg_time_ms": 0.0011,
       "confidence": 1.0
     },
-    "runtime.concurrency_lock_risk": {
+    "resource.stream_encoding_missing": {
       "hits": 0,
       "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0005,
+      "avg_time_ms": 0.0011,
       "confidence": 1.0
     },
-    "runtime.concurrency_lock_removed_critical": {
+    "resource.stream_chaining_leak": {
       "hits": 0,
       "confirmed": 0,
       "false_positive": 0,
@@ -646,12 +741,660 @@
       "avg_time_ms": 0.0007,
       "confidence": 1.0
     },
-    "runtime.concurrency_volatile_risk": {
+    "resource.executor_shutdown_missing": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0008,
+      "confidence": 1.0
+    },
+    "exception.swallowed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0069,
+      "confidence": 1.0
+    },
+    "exception.too_generic": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0049,
+      "confidence": 1.0
+    },
+    "exception.runtime_throw": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.001,
+      "confidence": 1.0
+    },
+    "exception.finally_missing": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0068,
+      "confidence": 1.0
+    },
+    "exception.not_logged": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0042,
+      "confidence": 1.0
+    },
+    "null.return_ignored": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0042,
+      "confidence": 1.0
+    },
+    "null.optional_unsafe_get": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0715,
+      "confidence": 1.0
+    },
+    "null.autoboxing_npe": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0037,
+      "confidence": 1.0
+    },
+    "null.chained_call_unsafe": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0199,
+      "confidence": 1.0
+    },
+    "null.array_index_unsafe": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0159,
+      "confidence": 1.0
+    },
+    "null.string_concat_unsafe": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0004,
+      "confidence": 1.0
+    },
+    "collection.raw_type": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0058,
+      "confidence": 1.0
+    },
+    "collection.mutable_return": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0045,
+      "confidence": 1.0
+    },
+    "collection.concurrent_modification": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0045,
+      "confidence": 1.0
+    },
+    "collection.map_compute_opportunity": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0012,
+      "confidence": 1.0
+    },
+    "collection.stream_collector_unsafe": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0028,
+      "confidence": 1.0
+    },
+    "collection.legacy_factory": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0027,
+      "confidence": 1.0
+    },
+    "collection.aslist_modify": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.072,
+      "confidence": 1.0
+    },
+    "api.deprecated_added": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0025,
+      "confidence": 1.0
+    },
+    "security.hardcoded_secret": {
+      "hits": 3,
+      "confirmed": 3,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0003,
+      "confidence": 1.0
+    },
+    "security.command_injection": {
+      "hits": 3,
+      "confirmed": 3,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0006,
+      "confidence": 1.0
+    },
+    "security.code_injection": {
+      "hits": 2,
+      "confirmed": 2,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0085,
+      "confidence": 1.0
+    },
+    "security.sql_injection": {
+      "hits": 3,
+      "confirmed": 3,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0002,
+      "confidence": 1.0
+    },
+    "resource.file_leak": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0059,
+      "confidence": 1.0
+    },
+    "null.none_check": {
+      "hits": 2,
+      "confirmed": 2,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0172,
+      "confidence": 1.0
+    },
+    "null.type_confusion": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0024,
+      "confidence": 1.0
+    },
+    "performance.inefficient_loop": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0016,
+      "confidence": 1.0
+    },
+    "performance.memory": {
+      "hits": 2,
+      "confirmed": 2,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.002,
+      "confidence": 1.0
+    },
+    "security.sensitive_import": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.015,
+      "confidence": 1.0
+    },
+    "security.weak_crypto": {
       "hits": 0,
       "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
       "avg_time_ms": 0.0003,
+      "confidence": 1.0
+    },
+    "maintenance.debug_code": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0036,
+      "confidence": 1.0
+    },
+    "runtime.mutable_default": {
+      "hits": 2,
+      "confirmed": 2,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0022,
+      "confidence": 1.0
+    },
+    "security.path_traversal": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.002,
+      "confidence": 1.0
+    },
+    "prorule.python.resource_leak": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0038,
+      "confidence": 1.0
+    },
+    "prorule.python.null_safety": {
+      "hits": 2,
+      "confirmed": 2,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0063,
+      "confidence": 1.0
+    },
+    "prorule.python.exception_swallowed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0033,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.thread_safety_downgrade": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0012,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.static_unsafe_collection": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0008,
+      "confidence": 1.0
+    },
+    "runtime.performance.sleep_added": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0005,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.executors_factory_risk": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0004,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.future_get_without_timeout": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0003,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.threadpool_creation": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0003,
+      "confidence": 1.0
+    },
+    "runtime.collection_mutation_inside_loop": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0006,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.threadpool_unbounded_queue": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0005,
+      "confidence": 1.0
+    },
+    "runtime.concurrency.busy_wait_added": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0003,
+      "confidence": 1.0
+    },
+    "absolute.concurrency.new_thread": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0026,
+      "confidence": 1.0
+    },
+    "absolute.concurrency.fixed_threadpool_1": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0026,
+      "confidence": 1.0
+    },
+    "absolute.concurrency.sleep_long": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0014,
+      "confidence": 1.0
+    },
+    "absolute.security.sql_injection": {
+      "hits": 3,
+      "confirmed": 3,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0011,
+      "confidence": 1.0
+    },
+    "absolute.security.plaintext_token": {
+      "hits": 3,
+      "confirmed": 3,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0124,
+      "confidence": 1.0
+    },
+    "absolute.security.http_url": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.001,
+      "confidence": 1.0
+    },
+    "absolute.stability.catch_exception": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0009,
+      "confidence": 1.0
+    },
+    "resource.memory_leak": {
+      "hits": 1,
+      "confirmed": 1,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0166,
+      "confidence": 1.0
+    },
+    "resource.raw_pointer": {
+      "hits": 1,
+      "confirmed": 1,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0067,
+      "confidence": 1.0
+    },
+    "security.buffer_overflow": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0471,
+      "confidence": 1.0
+    },
+    "security.unsafe_cast": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0031,
+      "confidence": 1.0
+    },
+    "runtime.data_race": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0015,
+      "confidence": 1.0
+    },
+    "resource.leak": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0075,
+      "confidence": 1.0
+    },
+    "exception.noexcept": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.001,
+      "confidence": 1.0
+    },
+    "null.dereference": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0075,
+      "confidence": 1.0
+    },
+    "performance.inefficient_copy": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0018,
+      "confidence": 1.0
+    },
+    "performance.unbounded_vector": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0031,
+      "confidence": 1.0
+    },
+    "maintenance.magic_number": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.013,
+      "confidence": 1.0
+    },
+    "security.integer_overflow": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0036,
+      "confidence": 1.0
+    },
+    "runtime.uninitialized": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0069,
+      "confidence": 1.0
+    },
+    "prorule.cpp.resource_leak": {
+      "hits": 1,
+      "confirmed": 1,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0069,
+      "confidence": 1.0
+    },
+    "prorule.cpp.null_safety": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0094,
+      "confidence": 1.0
+    },
+    "prorule.cpp.exception_swallowed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.004,
+      "confidence": 1.0
+    },
+    "runtime.concurrency_regression": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0201,
+      "confidence": 1.0
+    },
+    "runtime.thread_safety_removal": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0093,
+      "confidence": 1.0
+    },
+    "runtime.latch_misuse": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0034,
+      "confidence": 1.0
+    },
+    "exception.throws_removed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0032,
+      "confidence": 1.0
+    },
+    "api.public_method_removed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0034,
+      "confidence": 1.0
+    },
+    "api.method_signature_changed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.3169,
+      "confidence": 1.0
+    },
+    "api.public_field_removed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0039,
+      "confidence": 1.0
+    },
+    "api.constructor_removed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0032,
+      "confidence": 1.0
+    },
+    "api.interface_changed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0112,
+      "confidence": 1.0
+    },
+    "api.important_annotation_removed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0033,
+      "confidence": 1.0
+    },
+    "api.serialversionuid_changed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.003,
+      "confidence": 1.0
+    },
+    "runtime.concurrency_synchronized_removed_critical": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.001,
+      "confidence": 1.0
+    },
+    "runtime.concurrency_lock_removed_critical": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "avg_time_ms": 0.0006,
       "confidence": 1.0
     },
     "runtime.concurrency_volatile_removed_risk": {
@@ -670,60 +1413,12 @@
       "avg_time_ms": 0.0003,
       "confidence": 1.0
     },
-    "runtime.concurrency.thread_safety_downgrade": {
-      "hits": 3,
-      "confirmed": 3,
-      "false_positive": 0,
-      "precision": 1.0,
-      "avg_time_ms": 0.0003,
-      "confidence": 1.0
-    },
-    "runtime.concurrency.static_unsafe_collection": {
-      "hits": 3,
-      "confirmed": 3,
-      "false_positive": 0,
-      "precision": 1.0,
-      "avg_time_ms": 0.0002,
-      "confidence": 1.0
-    },
-    "runtime.performance.sleep_added": {
-      "hits": 3,
-      "confirmed": 3,
-      "false_positive": 0,
-      "precision": 1.0,
-      "avg_time_ms": 0.0003,
-      "confidence": 1.0
-    },
-    "runtime.concurrency.executors_factory_risk": {
-      "hits": 0,
-      "confirmed": 0,
-      "false_positive": 0,
-      "precision": 1.0,
-      "avg_time_ms": 0.0003,
-      "confidence": 1.0
-    },
-    "runtime.concurrency.future_get_without_timeout": {
-      "hits": 0,
-      "confirmed": 0,
-      "false_positive": 0,
-      "precision": 1.0,
-      "avg_time_ms": 0.0002,
-      "confidence": 1.0
-    },
-    "runtime.concurrency.threadpool_creation": {
-      "hits": 0,
-      "confirmed": 0,
-      "false_positive": 0,
-      "precision": 1.0,
-      "avg_time_ms": 0.0003,
-      "confidence": 1.0
-    },
     "data.query_change": {
       "hits": 0,
       "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0029,
+      "avg_time_ms": 0.002,
       "confidence": 1.0
     },
     "runtime.input_normalization_removed": {
@@ -731,7 +1426,7 @@
       "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0006,
+      "avg_time_ms": 0.0004,
       "confidence": 1.0
     },
     "data.pagination_semantic_change": {
@@ -742,7 +1437,7 @@
       "avg_time_ms": 0.0003,
       "confidence": 1.0
     },
-    "runtime.collection_mutation_inside_loop": {
+    "runtime.concurrency.lock_removed": {
       "hits": 0,
       "confirmed": 0,
       "false_positive": 0,
@@ -750,25 +1445,17 @@
       "avg_time_ms": 0.0003,
       "confidence": 1.0
     },
-    "runtime.concurrency.lock_removed": {
-      "hits": 3,
-      "confirmed": 3,
-      "false_positive": 0,
-      "precision": 1.0,
-      "avg_time_ms": 0.0006,
-      "confidence": 1.0
-    },
     "runtime.concurrency.volatile_removed": {
-      "hits": 3,
-      "confirmed": 3,
+      "hits": 0,
+      "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
       "avg_time_ms": 0.0003,
       "confidence": 1.0
     },
     "runtime.concurrency.final_removed": {
-      "hits": 3,
-      "confirmed": 3,
+      "hits": 0,
+      "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
       "avg_time_ms": 0.0003,
@@ -779,7 +1466,7 @@
       "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0003,
+      "avg_time_ms": 0.0002,
       "confidence": 1.0
     },
     "runtime.concurrency.threadpool_param_change": {
@@ -787,23 +1474,7 @@
       "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0003,
-      "confidence": 1.0
-    },
-    "runtime.concurrency.threadpool_unbounded_queue": {
-      "hits": 0,
-      "confirmed": 0,
-      "false_positive": 0,
-      "precision": 1.0,
-      "avg_time_ms": 0.0003,
-      "confidence": 1.0
-    },
-    "runtime.concurrency.busy_wait_added": {
-      "hits": 0,
-      "confirmed": 0,
-      "false_positive": 0,
-      "precision": 1.0,
-      "avg_time_ms": 0.0003,
+      "avg_time_ms": 0.0005,
       "confidence": 1.0
     },
     "runtime.resource.try_with_resource_removed": {
@@ -811,7 +1482,7 @@
       "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0003,
+      "avg_time_ms": 0.0002,
       "confidence": 1.0
     },
     "runtime.resource.cache_eviction_removed": {
@@ -843,23 +1514,15 @@
       "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
+      "avg_time_ms": 0.0002,
+      "confidence": 1.0
+    },
+    "security.hardcoded_secret_removed": {
+      "hits": 0,
+      "confirmed": 0,
+      "false_positive": 0,
+      "precision": 1.0,
       "avg_time_ms": 0.0003,
-      "confidence": 1.0
-    },
-    "cache": {
-      "hits": 0,
-      "confirmed": 0,
-      "false_positive": 0,
-      "precision": 1.0,
-      "avg_time_ms": 0.0,
-      "confidence": 1.0
-    },
-    "rule_stats": {
-      "hits": 0,
-      "confirmed": 0,
-      "false_positive": 0,
-      "precision": 1.0,
-      "avg_time_ms": 0.0,
       "confidence": 1.0
     },
     "example.custom.risk": {
@@ -867,28 +1530,28 @@
       "confirmed": 0,
       "false_positive": 0,
       "precision": 1.0,
-      "avg_time_ms": 0.0003,
+      "avg_time_ms": 0.0013,
       "confidence": 1.0
     }
   },
   "_quality_warnings": [],
   "_performance": {
-    "wall_clock_s": 0.043,
+    "wall_clock_s": 32.37,
     "cache": {
       "diff": {
-        "hits": 1,
-        "misses": 0,
-        "saved_ms": 0
+        "hits": 0,
+        "misses": 1,
+        "saved_ms": 0.29206275939941406
       },
       "ast": {
         "hits": 0,
-        "misses": 0,
+        "misses": 2,
         "saved_ms": 0
       }
     },
-    "cache_hit_rate_pct": 100.0,
-    "rules_executed": 31,
-    "rules_total": 42,
-    "rules_executed_pct": 73.81
+    "cache_hit_rate_pct": 0.0,
+    "rules_executed": 48,
+    "rules_total": 18306,
+    "rules_executed_pct": 0.26
   }
 }

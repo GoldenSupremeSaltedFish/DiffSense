@@ -1,0 +1,8 @@
+rules:
+  - id: cpp.security.buffer_overflow
+    language: cpp
+    severity: critical
+    impact: security
+    file: "**/*.cpp"
+    match: 'strcpy'
+    rationale: "Buffer overflow"

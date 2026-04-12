@@ -1,0 +1,8 @@
+rules:
+  - id: javascript.security.code_injection
+    language: javascript
+    severity: critical
+    impact: security
+    file: "**/*.js"
+    match: 'eval\('
+    rationale: "Code injection"

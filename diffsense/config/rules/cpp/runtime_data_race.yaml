@@ -1,0 +1,8 @@
+rules:
+  - id: cpp.runtime.data_race
+    language: cpp
+    severity: high
+    impact: runtime
+    file: "**/*.cpp"
+    match: 'std::'
+    rationale: "Data race"

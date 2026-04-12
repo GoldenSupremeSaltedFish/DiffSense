@@ -1,0 +1,8 @@
+rules:
+  - id: cpp.resource.leak
+    language: cpp
+    severity: high
+    impact: runtime
+    file: "**/*.cpp"
+    match: 'fopen'
+    rationale: "Resource leak"

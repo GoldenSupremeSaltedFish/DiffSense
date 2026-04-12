@@ -1,0 +1,8 @@
+rules:
+  - id: python.exception.swallowed
+    language: python
+    severity: high
+    impact: runtime
+    file: "**/*.py"
+    match: 'except:'
+    rationale: "Exception swallowed"

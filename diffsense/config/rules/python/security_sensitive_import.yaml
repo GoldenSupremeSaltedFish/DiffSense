@@ -1,0 +1,8 @@
+rules:
+  - id: python.security.sensitive_import
+    language: python
+    severity: medium
+    impact: security
+    file: "**/*.py"
+    match: 'import os'
+    rationale: "Sensitive import"

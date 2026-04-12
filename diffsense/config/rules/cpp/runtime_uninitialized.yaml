@@ -1,0 +1,8 @@
+rules:
+  - id: cpp.runtime.uninitialized
+    language: cpp
+    severity: high
+    impact: runtime
+    file: "**/*.cpp"
+    match: 'int x;'
+    rationale: "Uninitialized"

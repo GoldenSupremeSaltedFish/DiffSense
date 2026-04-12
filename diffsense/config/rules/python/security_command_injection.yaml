@@ -1,0 +1,8 @@
+rules:
+  - id: python.security.command_injection
+    language: python
+    severity: critical
+    impact: security
+    file: "**/*.py"
+    match: 'os.system'
+    rationale: "Command injection"

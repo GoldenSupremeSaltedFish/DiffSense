@@ -82,63 +82,8 @@ from rules.go_rules import (
     GoHTTPSecurityRule,
 )
 
-from rules.python_rules import (
-    PythonHardcodedSecretRule,
-    PythonCommandInjectionRule,
-    PythonEvalUsageRule,
-    PythonSQLInjectionRule,
-    PythonResourceLeakRule,
-    PythonThreadSafetyRule,
-    PythonSwallowedExceptionRule,
-    PythonBroadExceptionRule,
-    PythonNoneCheckRule,
-    PythonTypeSafetyRule,
-    PythonLoopInEfficientRule,
-    PythonInMemoryLargeDataRule,
-    PythonSensitiveImportRule,
-    PythonWeakCryptographyRule,
-    PythonDebugCodeRule,
-    PythonMutableDefaultArgRule,
-    PythonPathTraversalRule,
-)
-
-from rules.cpp_rules import (
-    CppMemoryLeakRule,
-    CppRawPointerRule,
-    CppBufferOverflowRule,
-    CppHardcodedSecretRule,
-    CppCommandInjectionRule,
-    CppSQLInjectionRule,
-    CppUnsafeCastRule,
-    CppThreadSafetyRule,
-    CppDataRaceRule,
-    CppResourceLeakRule,
-    CppSwallowedExceptionRule,
-    CppNoexceptRule,
-    CppNullPointerRule,
-    CppInefficientCopyRule,
-    CppUnboundedVectorRule,
-    CppMagicNumberRule,
-    CppIntegerOverflowRule,
-    CppUninitializedRule,
-)
-
-from rules.js_rules import (
-    JSHardcodedSecretRule,
-    JSEvalUsageRule,
-    JSXSSRule,
-    JSPrototypePollutionRule,
-    JSCommandInjectionRule,
-    JSOpenRedirectRule,
-    JSConsoleLogRule,
-    JSDebuggerRule,
-    JSPromiseRejectRule,
-    JSTypeNarrowingRule,
-    JSDynamicImportRule,
-    JSLocalStorageSecretRule,
-    JSReDoSRule,
-    JSDeprecatedAPIRule,
-)
+# Python、C++、JavaScript 规则已迁移到 YAML 配置
+# 参见 diffsense/config/rules/ 目录
 
 # Cross-language rules (support multiple languages)
 try:
@@ -212,60 +157,8 @@ BUILTIN_RULES = [
     GoRaceConditionRule,
     GoHTTPSecurityRule,
     
-    # Python Language Rules (19 rules)
-    PythonHardcodedSecretRule,
-    PythonCommandInjectionRule,
-    PythonEvalUsageRule,
-    PythonSQLInjectionRule,
-    PythonResourceLeakRule,
-    PythonThreadSafetyRule,
-    PythonSwallowedExceptionRule,
-    PythonBroadExceptionRule,
-    PythonNoneCheckRule,
-    PythonTypeSafetyRule,
-    PythonLoopInEfficientRule,
-    PythonInMemoryLargeDataRule,
-    PythonSensitiveImportRule,
-    PythonWeakCryptographyRule,
-    PythonDebugCodeRule,
-    PythonMutableDefaultArgRule,
-    PythonPathTraversalRule,
-    
-    # C++ Language Rules (19 rules)
-    CppMemoryLeakRule,
-    CppRawPointerRule,
-    CppBufferOverflowRule,
-    CppHardcodedSecretRule,
-    CppCommandInjectionRule,
-    CppSQLInjectionRule,
-    CppUnsafeCastRule,
-    CppThreadSafetyRule,
-    CppDataRaceRule,
-    CppResourceLeakRule,
-    CppSwallowedExceptionRule,
-    CppNoexceptRule,
-    CppNullPointerRule,
-    CppInefficientCopyRule,
-    CppUnboundedVectorRule,
-    CppMagicNumberRule,
-    CppIntegerOverflowRule,
-    CppUninitializedRule,
-    
-    # JavaScript Language Rules (15 rules)
-    JSHardcodedSecretRule,
-    JSEvalUsageRule,
-    JSXSSRule,
-    JSPrototypePollutionRule,
-    JSCommandInjectionRule,
-    JSOpenRedirectRule,
-    JSConsoleLogRule,
-    JSDebuggerRule,
-    JSPromiseRejectRule,
-    JSTypeNarrowingRule,
-    JSDynamicImportRule,
-    JSLocalStorageSecretRule,
-    JSReDoSRule,
-    JSDeprecatedAPIRule,
+    # Python/C++/JavaScript 规则已迁移到 YAML 配置
+    # 参见 diffsense/config/rules/ 目录
 ]
 
 # Total: 44 built-in rules + cross-language rules

@@ -1,0 +1,8 @@
+rules:
+  - id: python.maintenance.debug_code
+    language: python
+    severity: low
+    impact: maintenance
+    file: "**/*.py"
+    match: 'print\('
+    rationale: "Debug code"

@@ -1,0 +1,8 @@
+rules:
+  - id: python.security.code_injection
+    language: python
+    severity: high
+    impact: security
+    file: "**/*.py"
+    match: 'eval\('
+    rationale: "Code injection"
