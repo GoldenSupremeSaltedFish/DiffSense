@@ -1,0 +1,8 @@
+rules:
+  - id: javascript.maintenance.deprecated_api
+    language: javascript
+    severity: low
+    impact: maintenance
+    file: "**/*.js"
+    match: 'defineGetter'
+    rationale: "Deprecated API"

@@ -1,0 +1,8 @@
+rules:
+  - id: python.performance.inefficient_loop
+    language: python
+    severity: low
+    impact: performance
+    file: "**/*.py"
+    match: 'for.*range'
+    rationale: "Inefficient loop"

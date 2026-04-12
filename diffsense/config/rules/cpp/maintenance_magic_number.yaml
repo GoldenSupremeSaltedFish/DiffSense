@@ -1,0 +1,8 @@
+rules:
+  - id: cpp.maintenance.magic_number
+    language: cpp
+    severity: low
+    impact: maintenance
+    file: "**/*.cpp"
+    match: '1000'
+    rationale: "Magic number"

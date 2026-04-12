@@ -1,0 +1,8 @@
+rules:
+  - id: python.security.weak_crypto
+    language: python
+    severity: high
+    impact: security
+    file: "**/*.py"
+    match: 'md5\('
+    rationale: "Weak crypto"

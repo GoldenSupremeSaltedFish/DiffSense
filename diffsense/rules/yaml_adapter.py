@@ -1,7 +1,26 @@
 import re
 import fnmatch
+import os
 from typing import Dict, Any, List, Optional
 from core.rule_base import Rule
+
+def _match_file_pattern(filename: str, pattern: str) -> bool:
+    """Match file against pattern, supporting ** for recursive matching."""
+    if pattern == '**' or pattern == '*':
+        return True
+    
+    # Handle **/*.py style patterns (ends with extension)
+    if pattern.startswith('**/') and '*' not in pattern[3:]:
+        # Convert **/*.py to *.py
+        pattern = pattern[3:]
+    
+    # Handle **/auth/** style patterns (match directory in path)
+    if pattern.startswith('**/') and pattern.endswith('/**'):
+        # Extract the directory name and check if it's in the path
+        dir_name = pattern[3:-2]  # Remove **/ and /**
+        return dir_name in filename
+    
+    return fnmatch.fnmatch(filename, pattern)
 
 class YamlRule(Rule):
     """
@@ -132,11 +151,10 @@ class YamlRule(Rule):
                     # We match file pattern against the signal's file
                     rule_file_pattern = self._rule_dict.get('file')
                     if rule_file_pattern:
-                        # Use fnmatch to check if sig.file matches pattern
-                        # But handle "**" and similar
-                        if rule_file_pattern != "**" and not fnmatch.fnmatch(sig.file, rule_file_pattern):
-                             continue
-                    
+                        # Use _match_file_pattern to check if sig.file matches pattern
+                        if rule_file_pattern != "**" and not _match_file_pattern(sig.file, rule_file_pattern):
+                            continue
+
                     return {"file": sig.file}
             
             # If we are looking for a signal but didn't find it, rule fails
@@ -149,9 +167,9 @@ class YamlRule(Rule):
         if self._file_pattern:
             pattern = self._file_pattern
             for f in diff_data.get('files', []):
-                if fnmatch.fnmatch(f, pattern):
+                if _match_file_pattern(f, pattern):
                     matched_files.append(f)
-            
+
             if not matched_files:
                 return None # File pattern constraint failed
         else:
@@ -160,7 +178,13 @@ class YamlRule(Rule):
 
         # 2. Check Content Match (Regex)
         if self._rule_dict.get('match'):
-            raw_diff = diff_data.get('raw_diff', "")
+            # Get raw diff from file_patches or raw_diff field
+            raw_diff = diff_data.get('raw_diff', '')
+            if not raw_diff:
+                file_patches = diff_data.get('file_patches', [])
+                for fp in file_patches:
+                    raw_diff += fp.get('patch', '')
+            
             if not self._compiled_match:
                 return None
             if not self._compiled_match.search(raw_diff):

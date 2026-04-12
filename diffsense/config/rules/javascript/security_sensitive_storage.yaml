@@ -1,0 +1,8 @@
+rules:
+  - id: javascript.security.sensitive_storage
+    language: javascript
+    severity: medium
+    impact: security
+    file: "**/*.js"
+    match: 'localStorage'
+    rationale: "Sensitive storage"

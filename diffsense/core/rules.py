@@ -135,6 +135,13 @@ try:
 except ImportError:
     GO_RULES_AVAILABLE = False
 
+# Python/C++/JavaScript 规则已迁移到 YAML 配置
+# 参见 diffsense/config/rules/ 目录
+
+PYTHON_RULES_AVAILABLE = False
+CPP_RULES_AVAILABLE = False
+JAVASCRIPT_RULES_AVAILABLE = False
+
 # Cross-language rules (Python, JavaScript, C++)
 try:
     from rules.cross_language_adapter import (
@@ -238,6 +245,9 @@ class RuleEngine:
             self.rules.append(GoNilPointerRule())
             self.rules.append(GoRaceConditionRule())
             self.rules.append(GoHTTPSecurityRule())
+
+        # Python/C++/JavaScript 规则已迁移到 YAML 配置
+        # 参见 diffsense/config/rules/ 目录
 
         # Cross-language rules (Python, JavaScript, C++)
         if CROSS_LANGUAGE_RULES_AVAILABLE:

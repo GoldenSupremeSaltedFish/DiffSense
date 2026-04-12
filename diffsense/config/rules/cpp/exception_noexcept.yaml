@@ -1,0 +1,8 @@
+rules:
+  - id: cpp.exception.noexcept
+    language: cpp
+    severity: medium
+    impact: runtime
+    file: "**/*.cpp"
+    match: 'noexcept'
+    rationale: "noexcept"

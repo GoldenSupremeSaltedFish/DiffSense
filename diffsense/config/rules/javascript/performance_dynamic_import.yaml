@@ -1,0 +1,8 @@
+rules:
+  - id: javascript.performance.dynamic_import
+    language: javascript
+    severity: low
+    impact: performance
+    file: "**/*.js"
+    match: 'import\('
+    rationale: "Dynamic import"

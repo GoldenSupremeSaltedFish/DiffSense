@@ -1,0 +1,8 @@
+rules:
+  - id: javascript.security.xss
+    language: javascript
+    severity: high
+    impact: security
+    file: "**/*.js"
+    match: 'innerHTML'
+    rationale: "XSS"

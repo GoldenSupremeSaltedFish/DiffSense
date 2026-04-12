@@ -1,0 +1,8 @@
+rules:
+  - id: cpp.resource.raw_pointer
+    language: cpp
+    severity: medium
+    impact: security
+    file: "**/*.cpp"
+    match: 'int\*'
+    rationale: "Raw pointer"

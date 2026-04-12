@@ -1,0 +1,8 @@
+rules:
+  - id: python.resource.file_leak
+    language: python
+    severity: high
+    impact: security
+    file: "**/*.py"
+    match: 'open\('
+    rationale: "File leak"

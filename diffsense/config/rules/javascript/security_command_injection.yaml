@@ -1,0 +1,8 @@
+rules:
+  - id: javascript.security.command_injection
+    language: javascript
+    severity: critical
+    impact: security
+    file: "**/*.js"
+    match: 'exec\('
+    rationale: "Command injection"

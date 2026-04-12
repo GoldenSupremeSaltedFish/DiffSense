@@ -1,0 +1,8 @@
+rules:
+  - id: cpp.performance.unbounded_vector
+    language: cpp
+    severity: low
+    impact: performance
+    file: "**/*.cpp"
+    match: 'push_back'
+    rationale: "Unbounded vector"
