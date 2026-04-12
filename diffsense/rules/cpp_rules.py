@@ -23,7 +23,7 @@ class CppMemoryLeakRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "resource.memory_leak"
+        return "cpp.resource.memory_leak"
 
     @property
     def severity(self) -> str:
@@ -66,7 +66,7 @@ class CppRawPointerRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "resource.raw_pointer"
+        return "cpp.resource.raw_pointer"
 
     @property
     def severity(self) -> str:
@@ -112,7 +112,7 @@ class CppBufferOverflowRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "security.buffer_overflow"
+        return "cpp.security.buffer_overflow"
 
     @property
     def severity(self) -> str:
@@ -163,7 +163,7 @@ class CppHardcodedSecretRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "security.hardcoded_secret"
+        return "cpp.security.hardcoded_secret"
 
     @property
     def severity(self) -> str:
@@ -207,7 +207,7 @@ class CppCommandInjectionRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "security.command_injection"
+        return "cpp.security.command_injection"
 
     @property
     def severity(self) -> str:
@@ -256,7 +256,7 @@ class CppSQLInjectionRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "security.sql_injection"
+        return "cpp.security.sql_injection"
 
     @property
     def severity(self) -> str:
@@ -298,7 +298,7 @@ class CppUnsafeCastRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "security.unsafe_cast"
+        return "cpp.security.unsafe_cast"
 
     @property
     def severity(self) -> str:
@@ -340,7 +340,7 @@ class CppThreadSafetyRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "runtime.thread_safety"
+        return "cpp.runtime.thread_safety"
 
     @property
     def severity(self) -> str:
@@ -384,7 +384,7 @@ class CppDataRaceRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "runtime.data_race"
+        return "cpp.runtime.data_race"
 
     @property
     def severity(self) -> str:
@@ -434,7 +434,7 @@ class CppResourceLeakRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "resource.leak"
+        return "cpp.resource.leak"
 
     @property
     def severity(self) -> str:
@@ -478,7 +478,7 @@ class CppSwallowedExceptionRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "exception.swallowed"
+        return "cpp.exception.swallowed"
 
     @property
     def severity(self) -> str:
@@ -515,7 +515,7 @@ class CppNoexceptRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "exception.noexcept"
+        return "cpp.exception.noexcept"
 
     @property
     def severity(self) -> str:
@@ -559,7 +559,7 @@ class CppNullPointerRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "null.dereference"
+        return "cpp.null.dereference"
 
     @property
     def severity(self) -> str:
@@ -608,7 +608,7 @@ class CppInefficientCopyRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "performance.inefficient_copy"
+        return "cpp.performance.inefficient_copy"
 
     @property
     def severity(self) -> str:
@@ -646,7 +646,7 @@ class CppUnboundedVectorRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "performance.unbounded_vector"
+        return "cpp.performance.unbounded_vector"
 
     @property
     def severity(self) -> str:
@@ -685,7 +685,7 @@ class CppMagicNumberRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "maintenance.magic_number"
+        return "cpp.maintenance.magic_number"
 
     @property
     def severity(self) -> str:
@@ -726,7 +726,7 @@ class CppUnusedVariableRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "maintenance.unused_variable"
+        return "cpp.maintenance.unused_variable"
 
     @property
     def severity(self) -> str:
@@ -767,7 +767,7 @@ class CppIntegerOverflowRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "security.integer_overflow"
+        return "cpp.security.integer_overflow"
 
     @property
     def severity(self) -> str:
@@ -807,7 +807,7 @@ class CppTemplateTypeDeductionRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "maintenance.template_type"
+        return "cpp.maintenance.template_type"
 
     @property
     def severity(self) -> str:
@@ -844,7 +844,7 @@ class CppUninitializedRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "runtime.uninitialized"
+        return "cpp.runtime.uninitialized"
 
     @property
     def severity(self) -> str:

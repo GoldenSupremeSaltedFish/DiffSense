@@ -29,7 +29,7 @@ class PythonHardcodedSecretRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "security.hardcoded_secret"
+        return "python.security.hardcoded_secret"
 
     @property
     def severity(self) -> str:
@@ -74,7 +74,7 @@ class PythonCommandInjectionRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "security.command_injection"
+        return "python.security.command_injection"
 
     @property
     def severity(self) -> str:
@@ -121,7 +121,7 @@ class PythonEvalUsageRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "security.code_injection"
+        return "python.security.code_injection"
 
     @property
     def severity(self) -> str:
@@ -165,7 +165,7 @@ class PythonSQLInjectionRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "security.sql_injection"
+        return "python.security.sql_injection"
 
     @property
     def severity(self) -> str:
@@ -211,7 +211,7 @@ class PythonResourceLeakRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "resource.file_leak"
+        return "python.resource.file_leak"
 
     @property
     def severity(self) -> str:
@@ -265,7 +265,7 @@ class PythonThreadSafetyRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "runtime.thread_safety"
+        return "python.runtime.thread_safety"
 
     @property
     def severity(self) -> str:
@@ -314,7 +314,7 @@ class PythonSwallowedExceptionRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "exception.swallowed"
+        return "python.exception.swallowed"
 
     @property
     def severity(self) -> str:
@@ -356,7 +356,7 @@ class PythonBroadExceptionRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "exception.too_generic"
+        return "python.exception.too_generic"
 
     @property
     def severity(self) -> str:
@@ -397,7 +397,7 @@ class PythonNoneCheckRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "null.none_check"
+        return "python.null.none_check"
 
     @property
     def severity(self) -> str:
@@ -445,7 +445,7 @@ class PythonTypeSafetyRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "null.type_confusion"
+        return "python.null.type_confusion"
 
     @property
     def severity(self) -> str:
@@ -488,7 +488,7 @@ class PythonLoopInEfficientRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "performance.inefficient_loop"
+        return "python.performance.inefficient_loop"
 
     @property
     def severity(self) -> str:
@@ -530,7 +530,7 @@ class PythonInMemoryLargeDataRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "performance.memory"
+        return "python.performance.memory"
 
     @property
     def severity(self) -> str:
@@ -578,7 +578,7 @@ class PythonSensitiveImportRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "security.sensitive_import"
+        return "python.security.sensitive_import"
 
     @property
     def severity(self) -> str:
@@ -628,7 +628,7 @@ class PythonWeakCryptographyRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "security.weak_crypto"
+        return "python.security.weak_crypto"
 
     @property
     def severity(self) -> str:
@@ -675,7 +675,7 @@ class PythonDebugCodeRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "maintenance.debug_code"
+        return "python.maintenance.debug_code"
 
     @property
     def severity(self) -> str:
@@ -715,7 +715,7 @@ class PythonMutableDefaultArgRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "runtime.mutable_default"
+        return "python.runtime.mutable_default"
 
     @property
     def severity(self) -> str:
@@ -758,7 +758,7 @@ class PythonPathTraversalRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "security.path_traversal"
+        return "python.security.path_traversal"
 
     @property
     def severity(self) -> str:

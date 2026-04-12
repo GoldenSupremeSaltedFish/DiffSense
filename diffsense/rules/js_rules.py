@@ -27,7 +27,7 @@ class JSHardcodedSecretRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "security.hardcoded_secret"
+        return "javascript.security.hardcoded_secret"
 
     @property
     def severity(self) -> str:
@@ -71,7 +71,7 @@ class JSEvalUsageRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "security.code_injection"
+        return "javascript.security.code_injection"
 
     @property
     def severity(self) -> str:
@@ -115,7 +115,7 @@ class JSXSSRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "security.xss"
+        return "javascript.security.xss"
 
     @property
     def severity(self) -> str:
@@ -162,7 +162,7 @@ class JSPrototypePollutionRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "security.prototype_pollution"
+        return "javascript.security.prototype_pollution"
 
     @property
     def severity(self) -> str:
@@ -206,7 +206,7 @@ class JSCommandInjectionRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "security.command_injection"
+        return "javascript.security.command_injection"
 
     @property
     def severity(self) -> str:
@@ -254,7 +254,7 @@ class JSOpenRedirectRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "security.open_redirect"
+        return "javascript.security.open_redirect"
 
     @property
     def severity(self) -> str:
@@ -296,7 +296,7 @@ class JSConsoleLogRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "maintenance.debug_code"
+        return "javascript.maintenance.debug_code"
 
     @property
     def severity(self) -> str:
@@ -338,7 +338,7 @@ class JSDebuggerRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "maintenance.debugger"
+        return "javascript.maintenance.debugger"
 
     @property
     def severity(self) -> str:
@@ -377,7 +377,7 @@ class JSPromiseRejectRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "exception.promise_reject"
+        return "javascript.exception.promise_reject"
 
     @property
     def severity(self) -> str:
@@ -419,7 +419,7 @@ class JSTypeNarrowingRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "null.type_assertion"
+        return "javascript.null.type_assertion"
 
     @property
     def severity(self) -> str:
@@ -459,7 +459,7 @@ class JSDynamicImportRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "performance.dynamic_import"
+        return "javascript.performance.dynamic_import"
 
     @property
     def severity(self) -> str:
@@ -501,7 +501,7 @@ class JSLocalStorageSecretRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "security.sensitive_storage"
+        return "javascript.security.sensitive_storage"
 
     @property
     def severity(self) -> str:
@@ -546,7 +546,7 @@ class JSReDoSRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "performance.regex_dos"
+        return "javascript.performance.regex_dos"
 
     @property
     def severity(self) -> str:
@@ -591,7 +591,7 @@ class JSDeprecatedAPIRule(BaseRule):
 
     @property
     def id(self) -> str:
-        return "maintenance.deprecated_api"
+        return "javascript.maintenance.deprecated_api"
 
     @property
     def severity(self) -> str:
