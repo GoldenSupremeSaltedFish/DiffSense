@@ -8,11 +8,18 @@ def _match_file_pattern(filename: str, pattern: str) -> bool:
     """Match file against pattern, supporting ** for recursive matching."""
     if pattern == '**' or pattern == '*':
         return True
-    # Handle **/*.py style patterns
-    if pattern.startswith('**'):
-        # Convert **/*.py to *.py for fnmatch
-        pattern = pattern[2:].lstrip('/')
-    # Also handle patterns like *.py, test.py, etc.
+    
+    # Handle **/*.py style patterns (ends with extension)
+    if pattern.startswith('**/') and '*' not in pattern[3:]:
+        # Convert **/*.py to *.py
+        pattern = pattern[3:]
+    
+    # Handle **/auth/** style patterns (match directory in path)
+    if pattern.startswith('**/') and pattern.endswith('/**'):
+        # Extract the directory name and check if it's in the path
+        dir_name = pattern[3:-2]  # Remove **/ and /**
+        return dir_name in filename
+    
     return fnmatch.fnmatch(filename, pattern)
 
 class YamlRule(Rule):
@@ -171,11 +178,12 @@ class YamlRule(Rule):
 
         # 2. Check Content Match (Regex)
         if self._rule_dict.get('match'):
-            # Get raw diff from file_patches
-            file_patches = diff_data.get('file_patches', [])
-            raw_diff = ""
-            for fp in file_patches:
-                raw_diff += fp.get('patch', '')
+            # Get raw diff from file_patches or raw_diff field
+            raw_diff = diff_data.get('raw_diff', '')
+            if not raw_diff:
+                file_patches = diff_data.get('file_patches', [])
+                for fp in file_patches:
+                    raw_diff += fp.get('patch', '')
             
             if not self._compiled_match:
                 return None
