@@ -1,0 +1,8 @@
+rules:
+  - id: go.security.sql_injection
+    language: go
+    severity: critical
+    impact: security
+    file: "**/*.go"
+    match: 'fmt\.Sprintf\(\s*"(?:SELECT|INSERT|UPDATE|DELETE)\b'
+    rationale: "Dynamic SQL composition via fmt.Sprintf in Go introduces SQL injection risk; use parameterized queries."

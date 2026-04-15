@@ -111,7 +111,7 @@
 | `runtime.race_condition` | High | Regression | 检测竞态条件风险（共享变量无锁保护） |
 | `security.http_vulnerability` | High | Absolute | 检测 HTTP 安全问题（路径遍历、未验证输入等） |
 
-> 注意：Go 规则使用基于正则的轻量级检测。更多语义级检测请参考 `parsers/go_ast_parser.py`。
+> 注意：Go 规则现已 YAML 化，规则文件位于 `config/rules/go/`；`go_rules.py` 仅保留兼容代码，不再作为默认加载来源。
 
 ---
 
@@ -202,8 +202,15 @@ diffsense/rules/
 ├── null_safety.py                 # 空安全规则 (6 条)
 ├── collection_handling.py         # 集合处理规则 (7 条)
 ├── api_compatibility.py           # API 兼容性规则 (8 条)
-├── go_rules.py                    # Go 语言规则 (8 条)
+├── go_rules.py                    # Go 旧版实现（兼容保留，默认不加载）
 └── yaml_adapter.py                # YAML 规则适配器
+
+diffsense/config/rules/
+├── go/*.yaml                      # Go 规则（默认加载）
+├── python/*.yaml                  # Python 规则
+├── javascript/*.yaml              # JavaScript 规则
+├── typescript/*.yaml              # TypeScript 规则
+└── cpp/*.yaml                     # C/C++ 规则
 
 diffsense/sdk/
 ├── rule.py                        # BaseRule 抽象类

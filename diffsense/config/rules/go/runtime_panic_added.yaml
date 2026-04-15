@@ -1,0 +1,8 @@
+rules:
+  - id: go.runtime.panic_added
+    language: go
+    severity: medium
+    impact: runtime
+    file: "**/*.go"
+    match: '\bpanic\s*\('
+    rationale: "panic() added in Go code; ensure panic is not used for recoverable errors in request paths."

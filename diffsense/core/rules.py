@@ -120,20 +120,8 @@ try:
 except ImportError:
     API_RULES_AVAILABLE = False
 
-try:
-    from rules.go_rules import (
-        GoGoroutineLeakRule,
-        GoChannelLeakRule,
-        GoDeferMisuseRule,
-        GoUnsafeUsageRule,
-        GoErrorHandlingRule,
-        GoNilPointerRule,
-        GoRaceConditionRule,
-        GoHTTPSecurityRule,
-    )
-    GO_RULES_AVAILABLE = True
-except ImportError:
-    GO_RULES_AVAILABLE = False
+# Go 规则已迁移到 YAML 配置
+GO_RULES_AVAILABLE = False
 
 # Python/C++/JavaScript 规则已迁移到 YAML 配置
 # 参见 diffsense/config/rules/ 目录
@@ -236,17 +224,7 @@ class RuleEngine:
             self.rules.append(DeprecatedApiAddedRule())
             self.rules.append(SerialVersionUIDChangedRule())
         
-        if GO_RULES_AVAILABLE:
-            self.rules.append(GoGoroutineLeakRule())
-            self.rules.append(GoChannelLeakRule())
-            self.rules.append(GoDeferMisuseRule())
-            self.rules.append(GoUnsafeUsageRule())
-            self.rules.append(GoErrorHandlingRule())
-            self.rules.append(GoNilPointerRule())
-            self.rules.append(GoRaceConditionRule())
-            self.rules.append(GoHTTPSecurityRule())
-
-        # Python/C++/JavaScript 规则已迁移到 YAML 配置
+        # Python/C++/JavaScript/Go 规则已迁移到 YAML 配置
         # 参见 diffsense/config/rules/ 目录
 
         # Cross-language rules (Python, JavaScript, C++)

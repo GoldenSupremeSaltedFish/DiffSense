@@ -1,0 +1,8 @@
+rules:
+  - id: resource.channel_leak
+    language: go
+    severity: high
+    impact: runtime
+    file: "**/*.go"
+    match: 'make\s*\(\s*chan|chan\s+\w+\s*='
+    rationale: "Channel allocation introduced; verify close semantics and ownership to avoid goroutine blocking or leaks."

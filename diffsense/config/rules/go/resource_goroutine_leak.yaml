@@ -1,0 +1,8 @@
+rules:
+  - id: resource.goroutine_leak
+    language: go
+    severity: high
+    impact: runtime
+    file: "**/*.go"
+    match: '\bgo\s+\w+\.?\w*\s*\('
+    rationale: "Goroutine started without clear lifecycle constraints may leak and accumulate runtime pressure."

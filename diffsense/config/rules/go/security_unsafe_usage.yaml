@@ -1,0 +1,8 @@
+rules:
+  - id: security.unsafe_usage
+    language: go
+    severity: high
+    impact: security
+    file: "**/*.go"
+    match: '\bunsafe\.(Pointer|Sizeof|Alignof|Offsetof)\s*\('
+    rationale: "Unsafe package usage bypasses type and memory safety guarantees; review pointer arithmetic and casting carefully."

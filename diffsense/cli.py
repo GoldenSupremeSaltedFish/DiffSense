@@ -430,7 +430,7 @@ def benchmark_cold_hot(
 def benchmark(
     manifest: str = typer.Option("benchmarks/manifest.yaml", "--manifest", "-m", help="Benchmark manifest YAML path"),
     output: str = typer.Option("benchmarks/benchmark_report.json", "--output", "-o", help="Benchmark report JSON output path"),
-    rules: str = typer.Option("config/rules.yaml", "--rules", help="Path to rules: single YAML file or directory of YAML files"),
+    rules: str = typer.Option("config", "--rules", help="Path to rules: single YAML file or directory of YAML files"),
     profile: str = typer.Option(None, "--profile", help="Profile: strict or lightweight"),
     experimental: bool = typer.Option(False, "--experimental", help="Include experimental rules (report-only by default)"),
     experimental_report_only: bool = typer.Option(True, "--experimental-report-only/--experimental-affect-decision", help="Do not affect decision with experimental rules"),

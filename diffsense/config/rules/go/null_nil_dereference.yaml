@@ -1,0 +1,8 @@
+rules:
+  - id: null.nil_dereference
+    language: go
+    severity: high
+    impact: runtime
+    file: "**/*.go"
+    match: '\*\s*\w+|\w+\s*\.\s*\w+\s*\('
+    rationale: "Potential nil dereference pattern introduced; verify pointer and receiver nil checks near call site."

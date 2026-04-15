@@ -1,0 +1,8 @@
+rules:
+  - id: go.security.path_traversal
+    language: go
+    severity: high
+    impact: security
+    file: "**/*.go"
+    match: '(?:os\.Open|os\.ReadFile|ioutil\.ReadFile)\([^)]*\+'
+    rationale: "File path concatenation with external input can lead to path traversal; use filepath.Clean and strict allowlists."

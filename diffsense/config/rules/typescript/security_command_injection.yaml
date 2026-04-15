@@ -1,0 +1,8 @@
+rules:
+  - id: typescript.security.command_injection
+    language: typescript
+    severity: critical
+    impact: security
+    file: "**/*.ts*"
+    match: 'child_process\.(exec|execSync|spawn)\('
+    rationale: "Process execution API introduced in TypeScript; unsanitized input can lead to command injection."
