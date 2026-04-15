@@ -1,0 +1,8 @@
+rules:
+  - id: exception.error_ignored
+    language: go
+    severity: medium
+    impact: maintenance
+    file: "**/*.go"
+    match: '_\s*=\s*\w+\s*\([^)]*\)'
+    rationale: "Error result is discarded in Go code; silent failures can hide operational issues and data corruption."

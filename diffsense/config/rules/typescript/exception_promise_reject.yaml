@@ -1,0 +1,8 @@
+rules:
+  - id: typescript.exception.promise_reject
+    language: typescript
+    severity: medium
+    impact: runtime
+    file: "**/*.ts*"
+    match: 'new\s+Promise\(|Promise\.reject\('
+    rationale: "Promise rejection path introduced; verify rejection is awaited or handled to avoid unhandled rejection."

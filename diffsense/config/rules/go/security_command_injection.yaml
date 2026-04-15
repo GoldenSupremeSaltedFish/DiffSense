@@ -1,0 +1,8 @@
+rules:
+  - id: go.security.command_injection
+    language: go
+    severity: high
+    impact: security
+    file: "**/*.go"
+    match: 'exec\.Command\('
+    rationale: "Command execution introduced in Go code; verify user input is sanitized to avoid command injection."

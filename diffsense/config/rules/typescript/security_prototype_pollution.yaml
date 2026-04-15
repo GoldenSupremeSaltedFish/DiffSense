@@ -1,0 +1,8 @@
+rules:
+  - id: typescript.security.prototype_pollution
+    language: typescript
+    severity: high
+    impact: security
+    file: "**/*.ts*"
+    match: '__proto__|prototype\['
+    rationale: "Prototype mutation path introduced in TypeScript may enable prototype pollution attacks."

@@ -390,7 +390,7 @@ def main():
     parser.add_argument("--mr-iid", type=int, help="GitLab Merge Request IID")
     
     # Config
-    parser.add_argument("--rules", default="config/rules.yaml", help="Path to rules: single YAML file or directory")
+    parser.add_argument("--rules", default="config", help="Path to rules: single YAML file or directory")
     parser.add_argument("--profile", default=None, help="Profile: strict or lightweight")
     parser.add_argument("--baseline", action="store_true", help="Generate baseline file for existing issues")
     parser.add_argument("--since-baseline", action="store_true", help="Only report findings not in baseline")

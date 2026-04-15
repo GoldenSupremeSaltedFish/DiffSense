@@ -71,18 +71,7 @@ from rules.api_compatibility import (
     SerialVersionUIDChangedRule,
 )
 
-from rules.go_rules import (
-    GoGoroutineLeakRule,
-    GoChannelLeakRule,
-    GoDeferMisuseRule,
-    GoUnsafeUsageRule,
-    GoErrorHandlingRule,
-    GoNilPointerRule,
-    GoRaceConditionRule,
-    GoHTTPSecurityRule,
-)
-
-# Python、C++、JavaScript 规则已迁移到 YAML 配置
+# Python、C++、JavaScript、Go 规则已迁移到 YAML 配置
 # 参见 diffsense/config/rules/ 目录
 
 # Cross-language rules (support multiple languages)
@@ -146,22 +135,12 @@ BUILTIN_RULES = [
     AnnotationRemovedRule,
     DeprecatedApiAddedRule,
     SerialVersionUIDChangedRule,
-    
-    # Go Language Rules (8 rules)
-    GoGoroutineLeakRule,
-    GoChannelLeakRule,
-    GoDeferMisuseRule,
-    GoUnsafeUsageRule,
-    GoErrorHandlingRule,
-    GoNilPointerRule,
-    GoRaceConditionRule,
-    GoHTTPSecurityRule,
-    
-    # Python/C++/JavaScript 规则已迁移到 YAML 配置
+
+    # Python/C++/JavaScript/Go 规则已迁移到 YAML 配置
     # 参见 diffsense/config/rules/ 目录
 ]
 
-# Total: 44 built-in rules + cross-language rules
+# Total: 36 built-in rules + cross-language rules
 
 # Cross-language rule support (Python, JavaScript, C++)
 CROSS_LANGUAGE_RULES_LIST = []
@@ -243,17 +222,6 @@ def get_rules_by_category(category: str):
             AnnotationRemovedRule,
             DeprecatedApiAddedRule,
             SerialVersionUIDChangedRule,
-        ],
-        
-        'go': [
-            GoGoroutineLeakRule,
-            GoChannelLeakRule,
-            GoDeferMisuseRule,
-            GoUnsafeUsageRule,
-            GoErrorHandlingRule,
-            GoNilPointerRule,
-            GoRaceConditionRule,
-            GoHTTPSecurityRule,
         ],
     }
     

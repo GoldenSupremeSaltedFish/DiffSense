@@ -1,0 +1,8 @@
+rules:
+  - id: go.runtime.goroutine_in_loop
+    language: go
+    severity: high
+    impact: runtime
+    file: "**/*.go"
+    match: 'for\s*\{[\s\S]{0,200}\bgo\s+\w'
+    rationale: "Goroutine launched inside loop may create unbounded concurrency; add backpressure or worker-pool controls."

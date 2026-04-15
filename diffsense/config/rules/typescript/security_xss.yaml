@@ -1,0 +1,8 @@
+rules:
+  - id: typescript.security.xss
+    language: typescript
+    severity: high
+    impact: security
+    file: "**/*.ts*"
+    match: 'innerHTML|dangerouslySetInnerHTML'
+    rationale: "DOM HTML injection sink introduced in TypeScript; sanitize or encode untrusted input to prevent XSS."

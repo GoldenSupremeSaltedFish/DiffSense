@@ -1,0 +1,8 @@
+rules:
+  - id: resource.defer_misuse
+    language: go
+    severity: medium
+    impact: runtime
+    file: "**/*.go"
+    match: 'for\s*\{[\s\S]{0,200}\bdefer\s+|defer\s+\w+\s*\(\s*\w+\s*[+\-*/]'
+    rationale: "Defer in loop or defer with eager-evaluated expressions may cause resource retention and delayed release."

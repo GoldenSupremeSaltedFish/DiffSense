@@ -1,0 +1,8 @@
+rules:
+  - id: typescript.maintenance.debugger
+    language: typescript
+    severity: low
+    impact: maintenance
+    file: "**/*.ts*"
+    match: '\bdebugger\b'
+    rationale: "Debugger statement left in TypeScript production path can disrupt runtime behavior."

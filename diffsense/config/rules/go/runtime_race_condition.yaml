@@ -1,0 +1,8 @@
+rules:
+  - id: runtime.race_condition
+    language: go
+    severity: high
+    impact: runtime
+    file: "**/*.go"
+    match: '\bgo\s+\w+|\bmap\[|\bslice\b|\bchan\b'
+    rationale: "Concurrent access patterns introduced without explicit synchronization can cause race conditions."

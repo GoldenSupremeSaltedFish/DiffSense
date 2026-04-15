@@ -99,7 +99,7 @@ def _write_json(path: str, data: Any) -> None:
 def main():
     parser = argparse.ArgumentParser(description="DiffSense: Event-driven MR Audit Analyzer")
     parser.add_argument("diff_file", help="Path to the diff file")
-    parser.add_argument("--rules", default="config/rules.yaml", help="Path to rules: single YAML file or directory of YAML files")
+    parser.add_argument("--rules", default="config", help="Path to rules: single YAML file or directory of YAML files")
     parser.add_argument("--format", choices=["json", "markdown"], default="json", help="Output format")
     parser.add_argument("--profile", default=None, help="Profile: strict or lightweight")
     parser.add_argument("--baseline", action="store_true", help="Generate baseline file for existing issues")
