@@ -75,3 +75,6 @@ diffsense/out_report.json
 
 # Agent test files (temporary, date-stamped)
 agenttest/
+
+# Rule test temp output (local diffs / replay cache)
+.tmp_rule_test/

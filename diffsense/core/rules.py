@@ -514,6 +514,18 @@ class RuleEngine:
         changed_files = diff_data.get("files", [])
         new_files = diff_data.get("new_files", [])
         stats = diff_data.get("stats", {"add": 0, "del": 0})
+
+        # Global skip_paths filtering: remove non-code files (docs/logs/config noise) before rule matching.
+        # NOTE: We filter per-file, not per-diff. A single skipped file should not suppress all rules.
+        skip_paths = self.config.get("skip_paths", [])
+        effective_changed_files = []
+        for file_path in changed_files:
+            if any(fnmatch.fnmatch(file_path, pattern) for pattern in skip_paths):
+                continue
+            effective_changed_files.append(file_path)
+
+        if not effective_changed_files:
+            return triggered_rules
         
         # Adaptive Scheduling: If this is a "pure new project/file" diff, skip regression rules
         # Logic: If deletions are very low compared to additions, it's likely new code.
@@ -524,7 +536,7 @@ class RuleEngine:
                   is_mostly_new = True
         
         # Another heuristic: If > 80% of files are new
-        if len(changed_files) > 0 and (len(new_files) / len(changed_files)) > 0.8:
+        if len(effective_changed_files) > 0 and (len(new_files) / len(effective_changed_files)) > 0.8:
             is_mostly_new = True
 
         for rule in self.rules:
@@ -543,20 +555,6 @@ class RuleEngine:
             if is_mostly_new and rule_type == 'regression':
                 # Skip regression rules for new projects/files as they are meaningless
                 continue
-
-            # Skip paths filter: Skip files matching configured skip_paths patterns
-            skip_paths = self.config.get("skip_paths", [])
-            if skip_paths:
-                file_should_skip = False
-                for file_path in changed_files:
-                    for pattern in skip_paths:
-                        if fnmatch.fnmatch(file_path, pattern):
-                            file_should_skip = True
-                            break
-                    if file_should_skip:
-                        break
-                if file_should_skip:
-                    continue
 
             # Incremental Filtering: Only run rule if it matches at least one changed file
             rule_lang = getattr(rule, 'language', '*')
@@ -577,7 +575,7 @@ class RuleEngine:
             if rule_lang == '*' and rule_scope == '**':
                 should_run = True
             else:
-                for file_path in changed_files:
+                for file_path in effective_changed_files:
                     # Get extensions for this language
                     extensions = lang_extensions.get(rule_lang, [f".{rule_lang}"])
 

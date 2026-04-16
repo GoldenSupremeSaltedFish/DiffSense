@@ -1,6 +1,6 @@
 # 全局配置
 config:
-  # 跳过测试文件（支持通配符）
+  # 跳过非业务代码文件（支持通配符）
   skip_paths:
     - "**/test/**"
     - "**/tests/**"
@@ -9,6 +9,15 @@ config:
     - "**/__tests__/**"
     - "**/*_test.py"
     - "**/test_*.py"
+    - "**/docs/**"
+    - "**/*.md"
+    - "**/*.rst"
+    - "**/*.txt"
+    - "**/*.log"
+    - "**/CHANGELOG*"
+    - "**/.github/**"
+    - "**/.gitlab/**"
+    - "**/.vscode/**"
 
 rules:
   - id: runtime.concurrency_risk
