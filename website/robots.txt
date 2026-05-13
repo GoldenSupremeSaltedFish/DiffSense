@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://goldensupremesaltedfish.github.io/DiffSense/sitemap.xml
