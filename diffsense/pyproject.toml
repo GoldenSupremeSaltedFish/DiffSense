@@ -19,13 +19,15 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest"]
+mcp = ["mcp>=1.0.0"]
 
 [project.scripts]
 diffsense = "cli:app"
+diffsense-mcp = "diffsense_mcp.server:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["adapters*", "core*", "governance*", "rules*", "rules.pro*", "config*", "sdk*"]
+include = ["adapters*", "core*", "governance*", "rules*", "rules.pro*", "config*", "sdk*", "diffsense_mcp*"]
 
 [tool.setuptools.package-data]
 config = ["*.yaml"]

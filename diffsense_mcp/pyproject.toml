@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "diffsense-mcp"
+version = "1.0.0"
+description = "DiffSense MCP Server for AI Agent code audit integration"
+readme = "README.md"
+authors = [
+    {name = "DiffSense Team", email = "team@diffsense.dev"}
+]
+license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=1.0.0",
+    "diffsense>=2.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+]
+
+[project.scripts]
+diffsense-mcp = "diffsense_mcp.server:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["diffsense_mcp*"]
