@@ -19,7 +19,7 @@ jobs:
       - name: Install dependencies and run tests
         run: |
           cd diffsense
-          pip install -e ".[dev]"
+          pip install -e ".[dev,mcp]"
           cd ..
           python -m pytest diffsense/tests/ -v
       - name: Integration tests (top-level tests/)
