@@ -4,117 +4,108 @@
 
 ## 功能特性
 
-- **audit_diff**: 直接审计 diff 内容
-- **audit_diff_file**: 审计本地 diff 文件
-- **get_audit_summary**: 获取审计报告的文本摘要
-- **list_audit_rules**: 列出当前加载的审计规则
-- **get_audit_config**: 获取当前审计配置
+- **多语言支持**: 自动检测并适配 Python、JavaScript、Java、Go、C++ 等语言规则
+- **Git 联动**: 支持直接审计 Git 仓库的变更、暂存区
+- **工作区审计**: 对整个项目进行安全扫描
+
+### MCP Tools
+
+| 工具 | 功能 |
+|------|------|
+| `audit_diff` | 审计 diff 内容 |
+| `audit_diff_file` | 审计本地 diff 文件 |
+| `audit_git_changes` | 审计 Git 提交间变更 |
+| `audit_git_staged` | 审计暂存区（commit 前预检） |
+| `audit_workspace` | 审计整个工作区 |
+| `get_audit_summary` | 获取文本摘要 |
+
+### MCP Resources
+
+| 资源 | 功能 |
+|------|------|
+| `diffsense://rules` | 列出审计规则 |
+| `diffsense://config` | 获取审计配置 |
+| `diffsense://languages` | 支持的语言列表 |
 
 ## 安装
 
 ```bash
-# 1. 安装 MCP 依赖
-pip install mcp>=1.0.0
+# 方式 1: 安装 DiffSense（含 MCP 支持）
+pip install diffsense[mcp]
 
-# 或者安装所有依赖
-pip install -r diffsense/requirements-mcp.txt
+# 方式 2: 单独安装
+pip install diffsense-mcp
 ```
 
 ## 配置 Cursor
 
-在 `~/.cursor/mcp.json` 中添加配置：
+在 `~/.cursor/mcp.json` 中添加：
+
+```json
+{
+  "mcpServers": {
+    "diffsense": {
+      "command": "diffsense-mcp"
+    }
+  }
+}
+```
+
+或者使用 Python 模块方式：
 
 ```json
 {
   "mcpServers": {
     "diffsense": {
       "command": "python",
-      "args": [
-        "-m",
-        "diffsense_mcp.server"
-      ],
-      "env": {
-        "PYTHONPATH": "diffsense"
-      },
-      "workingDirectory": "."
+      "args": ["-m", "diffsense_mcp.server"]
     }
   }
 }
 ```
 
-## 使用方式
+## 使用示例
 
-### 通过 AI Agent (Cursor)
-
-在 Cursor 中，你可以直接让 AI 分析代码变更：
+### 审计 Git 变更
 
 ```
-请使用 DiffSense 审计这个 diff：
-diff --git a/src/main.py b/src/main.py
---- a/src/main.py
-+++ b/src/main.py
-@@ -1,3 +1,8 @@
-+import os
-+import sys
-+
- def hello():
--    print("hello")
-+    print("hello world")
-+    return 0
-+
-+if __name__ == "__main__":
-+    sys.exit(hello())
+请审计当前仓库最近一次提交的变更
 ```
 
-### 通过命令行
+### 审计暂存区
+
+```
+请审计我暂存的文件变更
+```
+
+### 审计 diff 内容
+
+```
+请用 DiffSense 审计这个 diff：
+diff --git a/auth.py b/auth.py
+--- a/auth.py
++++ b/auth.py
+@@ -10,6 +10,8 @@ def verify_token(token):
++    query = f"SELECT * FROM users WHERE token = '{token}'"
+     return True
+```
+
+## 发布到 PyPI
 
 ```bash
-# 启动 stdio 模式（默认）
-python -m diffsense_mcp.server
+# 1. 安装发布工具
+pip install build twine
 
-# 启动 HTTP 模式
-python -m diffsense_mcp.server --http
+# 2. 构建
+python -m build
+
+# 3. 上传到 PyPI
+twine upload dist/*
+
+# 或先上传到 TestPyPI 测试
+twine upload --repository testpypi dist/*
 ```
 
-## 输出文件
+## License
 
-审计结果会保存在指定目录：
-
-```
-output_dir/
-├── diffsense-report.json      # 结构化报告
-├── diffsense-comments.json     # 内联评论
-└── diffsense-report.html       # HTML 报告
-```
-
-## 架构说明
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    DiffSense MCP Architecture               │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│   ┌─────────────┐    ┌─────────────────┐    ┌───────────┐  │
-│   │ MCP Client  │───▶│ diffsense_mcp   │───▶│ diffsense │  │
-│   │ (Cursor)   │    │   .server       │    │  .core    │  │
-│   └─────────────┘    └─────────────────┘    └───────────┘  │
-│                                                    │         │
-│                                           ┌────────┴────────┐│
-│                                           │                 ││
-│                                    ┌──────▼──────┐   ┌──────▼──────┐
-│                                    │   Parser    │   │  Rules      │
-│                                    │   AST       │   │  Evaluator  │
-│                                    │   Detector  │   │  Composer   │
-│                                    └─────────────┘   └─────────────┘
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## 与 CI/CD 解耦
-
-MCP 模式的引入实现了：
-
-1. **AI Agent 集成**: AI 可以直接调用审计能力
-2. **CI/CD 解耦**: 审计逻辑与平台交互分离
-3. **灵活部署**: 支持 stdio、HTTP 等多种传输方式
-4. **本地调试**: 便于开发和测试审计规则
+MIT
