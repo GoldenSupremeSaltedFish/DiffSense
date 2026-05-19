@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to publish (e.g., 2.2.0)'
+        description: 'Version to publish (e.g., 2.2.10)'
         required: false
         type: string
   release:
@@ -29,11 +29,14 @@ jobs:
         run: |
           pip install build twine
 
+      - name: Prepare package (include MCP module)
+        run: |
+          cp -r diffsense_mcp diffsense/diffsense_mcp
+
       - name: Build package
         run: |
           cd diffsense
           python -m build
-          cd ..
 
       - name: Check package
         run: |
@@ -45,35 +48,14 @@ jobs:
           name: dist
           path: diffsense/dist/
 
-  publish-testpypi:
-    name: Publish to Test PyPI
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
-    environment:
-      name: testpypi
-      url: https://test.pypi.org/project/diffsense/
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist
-
-      - name: Publish to Test PyPI
-        run: |
-          twine upload --repository testpypi dist/*
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
-
   publish-pypi:
     name: Publish to PyPI
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v')
-    environment:
-      name: pypi
-      url: https://pypi.org/project/diffsense/
+    if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/download-artifact@v4
         with:
