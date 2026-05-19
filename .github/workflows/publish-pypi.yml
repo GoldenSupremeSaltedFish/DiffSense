@@ -62,9 +62,21 @@ jobs:
           name: dist
           path: dist
 
-      - name: Publish to PyPI
+      - name: Verify PyPI token is configured
         run: |
-          twine upload dist/*
+          if [ -z "$PYPI_TOKEN" ]; then
+            echo "::error::Repository secret PYPI_TOKEN is missing or empty."
+            echo "Add it at: Settings → Secrets and variables → Actions → New repository secret"
+            echo "Name must be exactly: PYPI_TOKEN"
+            exit 1
+          fi
+          echo "PyPI token is configured."
         env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_TOKEN }}
+          packages-dir: dist/
+          skip-existing: false
