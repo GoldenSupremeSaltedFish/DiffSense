@@ -4,6 +4,7 @@ CACHE_VERSION = "v2.2.0-rev1"
 
 import os
 import json
+import re
 import time
 from typing import Dict, Any, List, Optional, Tuple
 
@@ -183,8 +184,6 @@ def build_inline_comments(triggered_rules: List[Dict[str, Any]], diff_data: Dict
     Returns:
         内联评论列表，每条包含 path, line, body, rule_id
     """
-    import re
-    
     patches = {p.get("file"): p.get("patch", "") for p in diff_data.get("file_patches", [])}
     comments = []
     

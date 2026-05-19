@@ -14,9 +14,20 @@ from mcp.server.fastmcp import FastMCP
 # 创建 FastMCP 实例
 mcp = FastMCP("DiffSense", json_response=True)
 
-# 默认配置
+# 默认配置（rules 路径在运行时由 resolve_rules_path 解析）
 DEFAULT_RULES_PATH = "config"
 DEFAULT_OUTPUT_DIR = "diffsense-mcp-output"
+
+from diffsense_mcp._imports import (
+    resolve_rules_path,
+    get_analyze_diff,
+    get_build_inline_comments,
+    get_diff_parser,
+    get_local_file_adapter,
+    get_html_renderer,
+    get_rule_engine,
+    get_run_config,
+)
 
 # 语言与文件扩展名映射
 LANG_EXTENSIONS = {
@@ -111,8 +122,10 @@ async def audit_diff(
     Returns:
         结构化审计结果，包含 review_level, details, _metrics, _languages 等字段
     """
-    from diffsense.core import analyze_diff, build_inline_comments
-    from diffsense.adapters.local_adapter import LocalFileAdapter
+    analyze_diff = get_analyze_diff()
+    build_inline_comments = get_build_inline_comments()
+    LocalFileAdapter = get_local_file_adapter()
+    rules_path = resolve_rules_path(rules_path)
 
     # 检测涉及的语言
     languages = _detect_languages_from_diff(diff_content)
@@ -127,7 +140,7 @@ async def audit_diff(
     )
 
     # 构建内联评论
-    from diffsense.core.parser import DiffParser
+    DiffParser = get_diff_parser()
     parser = DiffParser()
     diff_data = parser.parse(diff_content)
     inline_comments = build_inline_comments(result.get("details", []), diff_data)
@@ -139,7 +152,7 @@ async def audit_diff(
 
     # 生成 HTML 报告
     try:
-        from diffsense.core.renderer import HtmlRenderer
+        HtmlRenderer = get_html_renderer()
         html_renderer = HtmlRenderer()
         html_report = html_renderer.render(result)
         adapter.save_html_report(html_report)
@@ -172,8 +185,7 @@ async def audit_diff_file(
     Returns:
         结构化审计结果
     """
-    from diffsense.adapters.local_adapter import LocalFileAdapter
-
+    LocalFileAdapter = get_local_file_adapter()
     adapter = LocalFileAdapter(diff_file_path=diff_file_path)
     diff_content = adapter.fetch_diff()
 
@@ -384,8 +396,9 @@ async def audit_workspace(
     Returns:
         结构化审计结果
     """
-    from diffsense.core import analyze_diff
-    from diffsense.adapters.local_adapter import LocalFileAdapter
+    analyze_diff = get_analyze_diff()
+    LocalFileAdapter = get_local_file_adapter()
+    rules_path = resolve_rules_path(rules_path)
 
     patterns = [p.strip() for p in file_patterns.split(",")]
 
@@ -590,10 +603,10 @@ async def get_audit_summary(
 @mcp.resource("diffsense://rules")
 async def list_audit_rules() -> List[Dict[str, Any]]:
     """列出当前加载的审计规则"""
-    from diffsense.core.rules import RuleEngine
+    RuleEngine = get_rule_engine()
 
     try:
-        engine = RuleEngine(DEFAULT_RULES_PATH)
+        engine = RuleEngine(resolve_rules_path(DEFAULT_RULES_PATH))
         rules = engine.get_all_rules()
 
         return [
@@ -614,8 +627,8 @@ async def list_audit_rules() -> List[Dict[str, Any]]:
 async def get_audit_config() -> Dict[str, Any]:
     """获取当前审计配置"""
     try:
-        from diffsense.core.run_config import get_run_config
-        return get_run_config(os.getcwd())
+        get_run_config_fn = get_run_config()
+        return get_run_config_fn(os.getcwd())
     except Exception:
         return {}
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "diffsense"
-version = "2.2.12"
+version = "2.2.13"
 description = "MR/PR risk audit: semantic diff + rule engine. Run in CI as image or pip."
 license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
@@ -30,7 +30,7 @@ where = ["."]
 include = ["adapters*", "core*", "governance*", "rules*", "rules.pro*", "config*", "sdk*", "diffsense_mcp*"]
 
 [tool.setuptools.package-data]
-config = ["*.yaml"]
+config = ["*.yaml", "rules/**/*.yaml", "absolute/**/*.yaml"]
 
 [tool.setuptools]
 py-modules = ["cli", "run_audit", "main", "banner"]
