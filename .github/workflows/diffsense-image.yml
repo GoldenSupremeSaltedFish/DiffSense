@@ -1,0 +1,71 @@
+name: DiffSense — Build & Publish Image
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONUNBUFFERED: 1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('diffsense/requirements.txt','diffsense/pyproject.toml') }}
+
+      - name: Install deps (dev)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e "diffsense[dev]"
+
+      - name: Run tests
+        run: pytest -q
+
+      - name: Build docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./diffsense
+          file: ./diffsense/Dockerfile.ci
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/diffsense:latest
+            ghcr.io/${{ github.repository_owner }}/diffsense:${{ github.ref_name || github.sha }}
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diffsense-report
+          path: diffsense/diffsense-report.json
+
+  publish-pypi:
+    needs: test-and-build
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Build & publish PyPI
+        env:
+          PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          pip install build twine
+          python -m build ./diffsense
+          python -m twine upload dist/* -u __token__ -p "${PYPI_API_TOKEN}"

@@ -1,0 +1,54 @@
+name: DiffSense — Build & Publish VSCode Extension
+
+on:
+  push:
+    branches:
+      - vscode-extension
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build-vscode:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install frontend deps (website / extension)
+        run: |
+          cd website || exit 0
+          if [ -f package-lock.json ] || [ -f package.json ]; then
+            npm ci
+          fi
+
+      - name: Build website/assets (if any)
+        run: |
+          cd website || exit 0
+          npm run build --if-present
+
+      - name: Package VSIX
+        run: |
+          cd vscode || exit 0
+          npm run package --if-present
+        continue-on-error: true
+
+      - name: Publish to Marketplace (optional)
+        if: secrets.MARKETPLACE_PAT != ''
+        env:
+          VSCE_PAT: ${{ secrets.MARKETPLACE_PAT }}
+        run: |
+          cd vscode || exit 0
+          npx vsce publish --pat "${VSCE_PAT}" || true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: vscode-vsix
+          path: vscode/*.vsix
