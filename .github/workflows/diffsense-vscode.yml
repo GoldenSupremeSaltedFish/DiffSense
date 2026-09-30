@@ -1,54 +1,240 @@
-name: DiffSense — Build & Publish VSCode Extension
+name: DiffSense — VSCode Extension Line
 
 on:
   push:
     branches:
-      - vscode-extension
-  release:
-    types: [published]
+      - main
+      - 'release/**'
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - 'release/**'
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PLUGIN_DIR: ${{ github.workspace }}/vscode-extension/plugin
+  UI_DIR: ${{ github.workspace }}/vscode-extension/ui
+  FRONTEND_DIST: ${{ github.workspace }}/vscode-extension/ui/diffsense-frontend/dist
+  FRONTEND_TARGET: ${{ github.workspace }}/vscode-extension/plugin/ui/diffsense-frontend
+  VITE_OUT_DIR: dist
 
 jobs:
   build-vscode:
+    name: Build VSIX
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      # 插件线仍需构建 Java 分析器（源码位于 vscode-extension/ 下的 Maven 工程）
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build Java Analyzer
+        working-directory: vscode-extension
+        run: mvn -B clean package -DskipTests
+
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
+          cache-dependency-path: |
+            vscode-extension/ui/diffsense-frontend/package-lock.json
+            vscode-extension/plugin/package-lock.json
 
-      - name: Install frontend deps (website / extension)
+      - name: Build Frontend
+        working-directory: vscode-extension/ui/diffsense-frontend
         run: |
-          cd website || exit 0
-          if [ -f package-lock.json ] || [ -f package.json ]; then
-            npm ci
+          echo "Building frontend in $(pwd)"
+          mkdir -p dist
+          npm install
+          npm run build
+          if [ -d "dist" ]; then
+            echo "dist directory exists"
+          else
+            echo "dist directory was not created!"
+            exit 1
           fi
 
-      - name: Build website/assets (if any)
+      - name: Build VSCode Extension
+        working-directory: vscode-extension/plugin
         run: |
-          cd website || exit 0
-          npm run build --if-present
+          echo "Building plugin in $(pwd)"
+          mkdir -p ui/diffsense-frontend
+          npm install
+          npm run build
+
+      - name: Prepare Release Folder
+        working-directory: vscode-extension/plugin
+        run: npm run prepare-release
 
       - name: Package VSIX
-        run: |
-          cd vscode || exit 0
-          npm run package --if-present
-        continue-on-error: true
+        working-directory: vscode-extension/plugin/release
+        run: npx vsce package --no-yarn
 
-      - name: Publish to Marketplace (optional)
-        if: secrets.MARKETPLACE_PAT != ''
-        env:
-          VSCE_PAT: ${{ secrets.MARKETPLACE_PAT }}
+      - name: Get Version
+        id: get_version
+        shell: bash
         run: |
-          cd vscode || exit 0
-          npx vsce publish --pat "${VSCE_PAT}" || true
+          VERSION=$(node -p "require('${PLUGIN_DIR}/package.json').version")
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+          echo "Building version: ${VERSION}"
 
-      - name: Upload artifacts
+      - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: vscode-vsix
-          path: vscode/*.vsix
+          name: DiffSense-${{ env.VERSION }}-Full
+          path: |
+            ${{ env.PLUGIN_DIR }}/release/analyzers/
+            ${{ env.PLUGIN_DIR }}/release/ui/
+            ${{ env.PLUGIN_DIR }}/release/*.vsix
+          retention-days: 14
+
+      # 仅在 tag v* 发布；未配置 ARTIFACTS_TOKEN 时跳过同步并告警，不让流水线失败
+      - name: Sync Artifacts to Sub Repository
+        if: startsWith(github.ref, 'refs/tags/v')
+        working-directory: vscode-extension/plugin
+        env:
+          ARTIFACTS_TOKEN: ${{ secrets.ARTIFACTS_TOKEN }}
+        run: |
+          if [ -z "${ARTIFACTS_TOKEN}" ]; then
+            echo "::warning::ARTIFACTS_TOKEN 未配置，跳过子仓库同步"
+            exit 0
+          fi
+
+          echo "🔄 开始同步产物到子仓库..."
+
+          # 准备产物目录
+          mkdir -p artifacts-staging
+
+          # 复制编译后的 TypeScript 代码
+          if [ -d "dist" ]; then
+            cp -r dist artifacts-staging/
+            echo "✅ TypeScript 编译代码已复制"
+          fi
+
+          # 复制分析器产物
+          if [ -d "analyzers" ]; then
+            cp -r analyzers artifacts-staging/
+            echo "✅ 分析器产物已复制"
+          fi
+
+          # 复制 UI 产物
+          if [ -d "ui" ]; then
+            cp -r ui artifacts-staging/
+            echo "✅ UI 产物已复制"
+          fi
+
+          # 复制 VSIX 文件
+          if [ -d "release" ]; then
+            cp release/*.vsix artifacts-staging/ 2>/dev/null || echo "⚠️ 未找到 VSIX 文件"
+          fi
+
+          # 复制必要的配置文件
+          cp package.json artifacts-staging/
+          cp tsconfig.json artifacts-staging/
+          cp icon.png artifacts-staging/
+          cp LICENSE.txt artifacts-staging/
+          cp README.md artifacts-staging/
+          cp .vscodeignore artifacts-staging/
+
+          echo "✅ 配置文件已复制"
+
+          # 创建运行时配置文件
+          cat > artifacts-staging/runtime-config.json << EOF
+          {
+            "version": "$(node -p "require('./package.json').version")",
+            "buildTime": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "commit": "${{ github.sha }}",
+            "branch": "${{ github.ref_name }}",
+            "isProduction": true,
+            "debugMode": false,
+            "artifactsOnly": true,
+            "buildInfo": {
+              "javaAnalyzer": "$(ls analyzers/*.jar 2>/dev/null | wc -l) JAR files",
+              "nodeAnalyzer": "$(ls analyzers/node-analyzer/*.js 2>/dev/null | wc -l) JS files",
+              "golangAnalyzer": "$(ls analyzers/golang-analyzer/*.js 2>/dev/null | wc -l) JS files",
+              "frontend": "$(ls ui/index.html 2>/dev/null | wc -l) files",
+              "vsix": "$(ls release/*.vsix 2>/dev/null | wc -l) files"
+            }
+          }
+          EOF
+
+          echo "✅ 运行时配置已创建"
+
+          # 显示产物统计
+          echo "📊 产物统计:"
+          find artifacts-staging -type f -name "*.jar" | wc -l | xargs echo "JAR 文件:"
+          find artifacts-staging -type f -name "*.js" | wc -l | xargs echo "JS 文件:"
+          find artifacts-staging -type f -name "*.html" | wc -l | xargs echo "HTML 文件:"
+          find artifacts-staging -type f -name "*.vsix" | wc -l | xargs echo "VSIX 文件:"
+
+          # 推送到 artifacts 仓库
+          echo "🔄 克隆产物仓库..."
+          git clone https://x-access-token:${ARTIFACTS_TOKEN}@github.com/GoldenSupremeSaltedFish/Diffsense-artifacts.git artifacts-repo
+
+          cd artifacts-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          echo "🗑️ 清理现有产物..."
+          rm -rf *
+
+          echo "📦 复制新产物..."
+          cp -r ../artifacts-staging/* .
+
+          # 创建产物仓库的 README
+          cat > README.md << 'EOF'
+          # DiffSense Plugin Artifacts
+
+          这个仓库包含 **DiffSense VSCode 插件的构建产物**，用于分发和调试。
+
+          ## 📁 产物结构
+
+          ```
+          ├── dist/                    # 编译后的 TypeScript 代码
+          ├── ui/                     # 前端 UI 构建产物
+          ├── analyzers/              # 语言分析器（包含依赖）
+          │   ├── *.jar              # Java 分析器
+          │   ├── node-analyzer/     # Node.js 分析器
+          │   └── golang-analyzer/   # Golang 分析器
+          ├── *.vsix                  # VSCode 插件包
+          ├── runtime-config.json     # 构建元数据
+          ├── package.json           # 插件元数据
+          ├── tsconfig.json          # TypeScript 配置
+          └── icon.png              # 插件图标
+          ```
+
+          ## 📊 构建信息
+
+          查看 `runtime-config.json` 获取详细的构建元数据。
+
+          ## 🔄 自动更新
+
+          此仓库由主仓库的 CI/CD 在发布 tag 时自动更新。
+
+          ---
+
+          🔗 **源代码**: [DiffSense](https://github.com/GoldenSupremeSaltedFish/DiffSense)
+          EOF
+
+          # 提交并推送
+          git add .
+          if git diff --staged --quiet; then
+            echo "ℹ️ 无变更需要提交"
+          else
+            echo "📤 提交并推送产物..."
+            git commit -m "🔄 同步产物 v$(node -p "require('../artifacts-staging/package.json').version") - $(date +'%Y-%m-%d %H:%M:%S')"
+            git push origin main
+            echo "✅ 产物同步成功！"
+          fi
