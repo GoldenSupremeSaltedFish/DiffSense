@@ -1,0 +1,44 @@
+{
+  "name": "diffsense-regression-analyzer",
+  "version": "1.0.0",
+  "description": "DiffSense 智能回归分析器 - 功能回滚检测 + 风险评估",
+  "main": "index.js",
+  "bin": {
+    "regression-analyzer": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "analyze": "node index.js analyze",
+    "detect-rollback": "node index.js detect-rollback",
+    "quick": "node index.js quick",
+    "trend": "node index.js trend",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "regression",
+    "analysis",
+    "rollback",
+    "detection",
+    "git",
+    "ast",
+    "diff",
+    "risk",
+    "assessment"
+  ],
+  "author": "DiffSense Team",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^9.4.1",
+    "glob": "^11.0.2",
+    "js-yaml": "^4.1.0",
+    "lodash": "^4.17.21",
+    "simple-git": "^3.19.1"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
