@@ -29,7 +29,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.10'
 
       - name: Cache pip
         uses: actions/cache@v4
@@ -43,7 +43,7 @@ jobs:
           pip install -e "diffsense[dev]"
 
       - name: Run tests
-        run: pytest -q
+        run: python -m pytest diffsense/tests/ -v
 
       - name: Upload report artifact
         if: always()
