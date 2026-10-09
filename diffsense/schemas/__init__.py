@@ -1,0 +1,1 @@
+"""Machine-readable contract schemas for DiffSense reports."""

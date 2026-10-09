@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://diffsense.dev/schemas/audit-report.schema.json",
+  "title": "DiffSense Audit Report",
+  "description": "Machine-readable output contract for diffsense audit/replay. schema_version MUST be validated first; unknown or older versions MUST NOT be parsed greedily. See docs/cli-contract.md for semantics.",
+  "type": "object",
+  "required": ["schema_version", "review_level"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "description": "Version of this JSON contract. Consumers MUST abort on unsupported versions."
+    },
+    "review_level": {
+      "type": "string",
+      "enum": ["normal", "low", "critical", "error"],
+      "description": "Composed risk level. 'critical' is the blocking threshold (see cli-contract.md)."
+    },
+    "reasons": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Human-readable decision reasons."
+    },
+    "files": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Files touched in the diff."
+    },
+    "impacts": {
+      "type": "object",
+      "description": "Impact summary keyed by category or file."
+    },
+    "details": {
+      "type": "array",
+      "description": "Per-finding detail entries. Shape is intentionally open; key fields (rule id, severity, message) are documented in cli-contract.md.",
+      "items": { "type": "object" }
+    },
+    "meta": {
+      "type": "object",
+      "properties": {
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Overall confidence of the composed decision."
+        },
+        "suggested_action": {
+          "type": "string",
+          "enum": ["auto_merge", "block_pr", "manual_review"],
+          "description": "Suggested next action; advisory only, never enforced by the tool."
+        }
+      },
+      "additionalProperties": true
+    },
+    "error": {
+      "type": "string",
+      "description": "Present only on tool-error reports (review_level='error'); human-readable failure detail."
+    }
+  },
+  "additionalProperties": true,
+  "description_note": "additionalProperties is intentionally permissive: private/underscore fields (_metrics, _rule_quality, _quality_warnings, _performance) and future additive fields MUST NOT fail validation. Breaking removals require a schema_version bump per cli-contract.md."
+}

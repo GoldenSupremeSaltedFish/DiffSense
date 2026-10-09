@@ -8,6 +8,8 @@ from pathlib import Path
 
 import typer
 
+from constants import EXIT_ERROR
+
 app = typer.Typer(help="DiffSense: MR/PR risk audit. Use 'diffsense audit' in CI.")
 
 
@@ -67,16 +69,16 @@ def audit(
     if platform == "github":
         if not repo or pr is None:
             typer.echo("Error: --repo and --pr are required for GitHub", err=True)
-            raise typer.Exit(1)
+            raise typer.Exit(EXIT_ERROR)
         adapter = GitHubAdapter(token, repo, pr)
     elif platform == "gitlab":
         if not project_id or mr_iid is None:
             typer.echo("Error: --project-id and --mr-iid are required for GitLab", err=True)
-            raise typer.Exit(1)
+            raise typer.Exit(EXIT_ERROR)
         adapter = GitLabAdapter(gitlab_url, token, project_id, mr_iid)
     else:
         typer.echo(f"Error: platform must be github or gitlab, got {platform}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(EXIT_ERROR)
 
     do_audit(
         adapter,
@@ -225,7 +227,7 @@ def rules_health(
     path = metrics_file or os.environ.get("DIFFSENSE_RULE_METRICS") or os.path.join(os.getcwd(), "rule_metrics.json")
     if not os.path.exists(path):
         typer.echo(f"No rule_metrics.json at {path}. Run audit/replay with quality tracking first.", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(EXIT_ERROR)
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
     rules = data.get("rules") or {}
