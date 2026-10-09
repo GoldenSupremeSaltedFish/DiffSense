@@ -38,19 +38,34 @@ jobs:
         working-directory: diffsense
         run: |
           python - <<'EOF'
-          import json, shutil, subprocess
+          import json, queue, shutil, subprocess, threading
 
           exe = shutil.which("diffsense-mcp")
           assert exe, "diffsense-mcp console script not installed"
           proc = subprocess.Popen(
               [exe], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-              text=True, encoding="utf-8", timeout=60,
+              text=True, encoding="utf-8", bufsize=1,
           )
+
+          stdout_q = queue.Queue()
+
+          def _reader():
+              for line in proc.stdout:
+                  stdout_q.put(line)
+
+          threading.Thread(target=_reader, daemon=True).start()
+
+          def read_line(timeout: float = 10.0) -> str:
+              try:
+                  return stdout_q.get(timeout=timeout)
+              except queue.Empty:
+                  proc.kill()
+                  raise TimeoutError("no stdout response from diffsense-mcp")
 
           def rpc(rid: int, method: str, params: dict) -> dict:
               proc.stdin.write(json.dumps({"jsonrpc": "2.0", "id": rid, "method": method, "params": params}) + "\n")
               proc.stdin.flush()
-              return json.loads(proc.stdout.readline())
+              return json.loads(read_line())
 
           rpc(1, "initialize", {
               "protocolVersion": "2024-11-05",
