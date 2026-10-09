@@ -25,10 +25,11 @@ diffsense = "cli:app"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["adapters*", "core*", "governance*", "rules*", "rules.pro*", "config*", "sdk*"]
+include = ["adapters*", "core*", "governance*", "rules*", "rules.pro*", "config*", "sdk*", "schemas*"]
 
 [tool.setuptools.package-data]
 config = ["*.yaml"]
+schemas = ["*.json"]
 
 [tool.setuptools]
-py-modules = ["cli", "run_audit", "main", "banner"]
+py-modules = ["cli", "run_audit", "main", "banner", "constants"]

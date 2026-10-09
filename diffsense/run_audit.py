@@ -10,6 +10,7 @@ from core.evaluator import ImpactEvaluator
 from core.composer import DecisionComposer
 from core.renderer import MarkdownRenderer, HtmlRenderer
 from banner import print_banner
+from constants import SCHEMA_VERSION, EXIT_RISK, EXIT_ERROR
 from main import _load_baseline, _save_baseline, _baseline_items, _baseline_set, _baseline_key, _build_inline_comments, _write_json
 
 
@@ -38,13 +39,14 @@ def run_audit(adapter, rules_path, profile=None, pro_rules_path=None, baseline=F
         traceback.print_exc()
         # Save error to report
         error_report = {
+            "schema_version": SCHEMA_VERSION,
             "error": str(e),
             "review_level": "error",
             "details": [],
             "_metrics": {"fetch_error": str(e)}
         }
         _write_json(report_json, error_report)
-        return
+        sys.exit(EXIT_ERROR)
     
     print(f"\n{'='*60}")
     print("📊 DIFF FETCH SUMMARY")
@@ -256,10 +258,9 @@ def run_audit(adapter, rules_path, profile=None, pro_rules_path=None, baseline=F
     # So we need to construct a dict that matches this structure.
     # composer.compose returns decision dict.
     
-    render_input = {
-        "review_level": result_decision.get("review_level", "unknown"),
-        "details": impacts # Assuming impacts is a list of impact details
-    }
+    render_input = {"schema_version": SCHEMA_VERSION}
+    render_input["review_level"] = result_decision.get("review_level", "unknown")
+    render_input["details"] = impacts  # impacts is a list of impact details
     
     renderer = MarkdownRenderer()
     report = renderer.render(render_input)
@@ -369,7 +370,7 @@ def run_audit(adapter, rules_path, profile=None, pro_rules_path=None, baseline=F
         else:
             print("🚨 Risk elevated. Waiting for Approval OR Reaction (👍) on the report comment.")
             print("CI Failed to ensure awareness.")
-            sys.exit(1)
+            sys.exit(EXIT_RISK)
             
     for w in render_input["_quality_warnings"]:
         print(f"⚠️ Low quality rule: {w.get('rule_id')} precision {w.get('precision'):.2f} (hits {w.get('hits')})")
@@ -440,13 +441,13 @@ def main():
     if args.platform == "github":
         if not args.repo or not args.pr:
             print("Error: --repo and --pr are required for GitHub")
-            sys.exit(1)
+            sys.exit(EXIT_ERROR)
         adapter = GitHubAdapter(args.token, args.repo, args.pr)
         
     elif args.platform == "gitlab":
         if not args.project_id or not args.mr_iid:
             print("Error: --project-id and --mr-iid are required for GitLab")
-            sys.exit(1)
+            sys.exit(EXIT_ERROR)
         adapter = GitLabAdapter(args.gitlab_url, args.token, args.project_id, args.mr_iid)
         
     # Run
@@ -475,4 +476,10 @@ def main():
     )
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception as e:
+        print(f"Error: {e}")
+        sys.exit(EXIT_ERROR)

@@ -11,6 +11,7 @@ from core.evaluator import ImpactEvaluator
 from core.composer import DecisionComposer
 from core.renderer import MarkdownRenderer, HtmlRenderer
 from core.ast_detector import ASTDetector
+from constants import SCHEMA_VERSION, EXIT_OK, EXIT_RISK, EXIT_ERROR, exit_code_for_review_level
 
 def _baseline_key(rule: Dict[str, Any]) -> str:
     return f"{rule.get('id', '')}::{rule.get('matched_file', '')}"
@@ -152,7 +153,7 @@ def main():
             diff_content = f.read()
     except FileNotFoundError:
         print(f"Error: File {args.diff_file} not found.")
-        sys.exit(1)
+        sys.exit(EXIT_ERROR)
         
     # 2. Parse Diff
     diff_parser = DiffParser()
@@ -214,7 +215,10 @@ def main():
     # 5. Compose Decision
     composer = DecisionComposer()
     # Now takes triggered_rules and list of files
-    result = composer.compose(triggered_rules, diff_data.get('files', []))
+    composed = composer.compose(triggered_rules, diff_data.get('files', []))
+    # Machine-readable contract: schema_version MUST be the first field.
+    result = {"schema_version": SCHEMA_VERSION}
+    result.update(composed)
     
     # Add Rule Performance & Cache Metrics (copy so we don't mutate engine.metrics)
     result['_metrics'] = dict(rule_engine.get_metrics())
@@ -314,5 +318,14 @@ def main():
         renderer = MarkdownRenderer()
         print(renderer.render(result))
 
+    # Machine-readable exit code: 0 = pass, 1 = blocked findings, 2 = tool error.
+    sys.exit(exit_code_for_review_level(result.get("review_level", "normal")))
+
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception as e:
+        print(f"Error: {e}")
+        sys.exit(EXIT_ERROR)
