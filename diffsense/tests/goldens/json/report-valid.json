@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "review_level": "normal",
+  "reasons": [],
+  "files": [
+    "config.yaml"
+  ],
+  "impacts": {},
+  "details": [],
+  "meta": {
+    "confidence": 1.0,
+    "suggested_action": "auto_merge"
+  }
+}

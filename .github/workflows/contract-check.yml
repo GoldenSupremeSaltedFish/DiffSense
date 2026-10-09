@@ -1,0 +1,84 @@
+name: contract-check
+
+# Phase 5 (spec §7): lightweight contract gate. Runs on every PR and push to
+# main. Installs the package with the MCP extra, validates the checked-in
+# goldens against the normative schemas, and smoke-tests the diffsense-mcp
+# console script (4 read-only tools registered). It intentionally does NOT
+# build images or publish artifacts — the two-product pipelines stay in
+# diffsense-image.yml / diffsense-vscode.yml (quality gate D6).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  contract-check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install package with dev and MCP extras
+        working-directory: diffsense
+        run: pip install -e ".[dev,mcp]"
+
+      - name: Contract & golden tests
+        working-directory: diffsense
+        run: python -m pytest tests/test_cli_contract.py tests/test_goldens_contract.py tests/test_sarif_output.py tests/test_mcp_server.py -q
+
+      - name: MCP console script smoke (4 tools)
+        working-directory: diffsense
+        run: |
+          python - <<'EOF'
+          import json, queue, shutil, subprocess, threading
+
+          exe = shutil.which("diffsense-mcp")
+          assert exe, "diffsense-mcp console script not installed"
+          proc = subprocess.Popen(
+              [exe], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+              text=True, encoding="utf-8", bufsize=1,
+          )
+
+          stdout_q = queue.Queue()
+
+          def _reader():
+              for line in proc.stdout:
+                  stdout_q.put(line)
+
+          threading.Thread(target=_reader, daemon=True).start()
+
+          def read_line(timeout: float = 10.0) -> str:
+              try:
+                  return stdout_q.get(timeout=timeout)
+              except queue.Empty:
+                  proc.kill()
+                  raise TimeoutError("no stdout response from diffsense-mcp")
+
+          def rpc(rid: int, method: str, params: dict) -> dict:
+              proc.stdin.write(json.dumps({"jsonrpc": "2.0", "id": rid, "method": method, "params": params}) + "\n")
+              proc.stdin.flush()
+              return json.loads(read_line())
+
+          rpc(1, "initialize", {
+              "protocolVersion": "2024-11-05",
+              "capabilities": {},
+              "clientInfo": {"name": "contract-check-smoke", "version": "0"},
+          })
+          proc.stdin.write(json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}}) + "\n")
+          proc.stdin.flush()
+
+          listed = rpc(2, "tools/list", {})
+          names = {t["name"] for t in listed["result"]["tools"]}
+          expected = {"audit_diff", "audit_replay", "list_rules", "explain_rule"}
+          assert names == expected, f"expected {expected}, got {names}"
+          print("MCP smoke OK:", ", ".join(sorted(names)))
+          proc.kill()
+          EOF
