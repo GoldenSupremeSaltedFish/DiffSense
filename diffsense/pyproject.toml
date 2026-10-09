@@ -32,4 +32,4 @@ config = ["*.yaml"]
 schemas = ["*.json"]
 
 [tool.setuptools]
-py-modules = ["cli", "run_audit", "main", "banner", "constants"]
+py-modules = ["cli", "run_audit", "main", "banner", "constants", "sarif"]

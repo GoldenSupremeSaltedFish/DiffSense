@@ -12,6 +12,7 @@ from core.composer import DecisionComposer
 from core.renderer import MarkdownRenderer, HtmlRenderer
 from core.ast_detector import ASTDetector
 from constants import SCHEMA_VERSION, EXIT_OK, EXIT_RISK, EXIT_ERROR, exit_code_for_review_level
+from sarif import build_sarif_report
 
 def _baseline_key(rule: Dict[str, Any]) -> str:
     return f"{rule.get('id', '')}::{rule.get('matched_file', '')}"
@@ -101,7 +102,7 @@ def main():
     parser = argparse.ArgumentParser(description="DiffSense: Event-driven MR Audit Analyzer")
     parser.add_argument("diff_file", help="Path to the diff file")
     parser.add_argument("--rules", default="config", help="Path to rules: single YAML file or directory of YAML files")
-    parser.add_argument("--format", choices=["json", "markdown"], default="json", help="Output format")
+    parser.add_argument("--format", choices=["json", "markdown", "sarif"], default="json", help="Output format: json | markdown | sarif")
     parser.add_argument("--profile", default=None, help="Profile: strict or lightweight")
     parser.add_argument("--baseline", action="store_true", help="Generate baseline file for existing issues")
     parser.add_argument("--since-baseline", action="store_true", help="Only report findings not in baseline")
@@ -317,6 +318,8 @@ def main():
     elif args.format == "markdown":
         renderer = MarkdownRenderer()
         print(renderer.render(result))
+    elif args.format == "sarif":
+        print(json.dumps(build_sarif_report(result), indent=2))
 
     # Machine-readable exit code: 0 = pass, 1 = blocked findings, 2 = tool error.
     sys.exit(exit_code_for_review_level(result.get("review_level", "normal")))

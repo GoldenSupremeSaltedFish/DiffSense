@@ -68,3 +68,21 @@ The report is a single JSON object printed once. The first key MUST be `schema_v
 - `diffsense replay <diff-file> [--report-json <path>]` and the underlying `main.py` accept a local unified diff file path as the positional argument. A nonexistent file is a tool error (`2`).
 - `diffsense audit --platform github|gitlab ...` requires the platform-specific identity arguments (repo/pr or project-id/mr-iid, and a token). Missing them is a tool error (`2`).
 - Rules loading, baseline reading and quality-metrics files remain internal behavior; their absence MUST be handled as non-fatal warnings where today's CLI already tolerates them.
+
+## 5. SARIF Output
+
+`diffsense audit --format sarif` (and `diffsense replay --format sarif`, `main.py --format sarif`) MUST emit a single SARIF 2.1.0 log object on stdout.
+
+- The log object MUST set `version` to `"2.1.0"` and SHOULD set `$schema` to `https://json.schemastore.org/sarif-2.1.0.json`.
+- The log contains exactly one run. `run.tool.driver` carries `name: "DiffSense"` and a `rules` array whose `shortDescription.text` mirrors the finding message.
+- Every finding in the JSON report `details` becomes one result:
+  - `ruleId` MUST be `diffsense/<rule_id>` (prefixed with a literal `diffsense/`).
+  - `level` MUST map from severity as: `critical`/`high` → `error`; `medium` → `warning`; `low` → `note`. Unrecognized severities MUST resolve to `note`.
+  - `message.text` carries the finding rationale (or the rule id when absent).
+  - `locations[].physicalLocation.artifactLocation.uri` carries the affected file when known; the entry MAY omit `locations` otherwise.
+  - `properties` retains `ruleId`, `severity`, `impact`, `precision` for the agent.
+- In addition, the run MUST include one result with `ruleId` `diffsense/review_level` representing the overall verdict:
+  - `level` is `error` when the composed `review_level` is `critical`, `warning` for `elevated`, and `note` for `normal`/`low`.
+  - `properties.review_level` holds the composed level; `properties.blocked` is `true` only when `review_level` is `critical` (the same condition as exit code `1`); `properties.confidence` mirrors `meta.confidence` when present.
+- SARIF output MUST NOT change exit codes: the same `0`/`1`/`2` semantics from §2 apply regardless of the chosen format.
+- Private telemetry keys (`_metrics`, `_rule_quality`, `_quality_warnings`, ...) MUST NOT be projected into SARIF; SARIF carries only the stable public surface described above.

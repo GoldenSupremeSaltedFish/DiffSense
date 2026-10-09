@@ -14,7 +14,7 @@ from constants import SCHEMA_VERSION, EXIT_RISK, EXIT_ERROR
 from main import _load_baseline, _save_baseline, _baseline_items, _baseline_set, _baseline_key, _build_inline_comments, _write_json
 
 
-def run_audit(adapter, rules_path, profile=None, pro_rules_path=None, baseline=False, since_baseline=False, baseline_file=".diffsense-baseline.json", report_json="diffsense-report.json", report_html="diffsense-report.html", comments_json="diffsense-comments.json", quality_auto_tune=False, quality_disable_threshold=0.3, quality_downgrade_threshold=0.5, quality_min_samples=30, experimental=False, experimental_report_only=True):
+def run_audit(adapter, rules_path, profile=None, pro_rules_path=None, baseline=False, since_baseline=False, baseline_file=".diffsense-baseline.json", report_json="diffsense-report.json", report_html="diffsense-report.html", comments_json="diffsense-comments.json", quality_auto_tune=False, quality_disable_threshold=0.3, quality_downgrade_threshold=0.5, quality_min_samples=30, experimental=False, experimental_report_only=True, format="json"):
     print_banner()
     
     # Print platform and configuration info
@@ -276,6 +276,15 @@ def run_audit(adapter, rules_path, profile=None, pro_rules_path=None, baseline=F
         f.write(html_report)
     inline_comments = _build_inline_comments(impacts, diff_data)
     _write_json(comments_json, inline_comments)
+
+    # Machine-readable stdout: json keeps the historical behavior (no JSON echo on
+    # stdout); markdown echoes the rendered report; sarif prints the SARIF 2.1.0 log.
+    if format == "sarif":
+        import json as _json
+        from sarif import build_sarif_report
+        print(_json.dumps(build_sarif_report(render_input), indent=2))
+    elif format == "markdown":
+        print(report)
     
     # Print comprehensive summary to stderr for CI logs
     import sys
@@ -406,6 +415,7 @@ def main():
     parser.add_argument("--experimental", action="store_true", help="Include experimental rules (report-only by default)")
     parser.add_argument("--experimental-report-only", dest="experimental_report_only", action="store_true", default=True, help="Do not affect decision with experimental rules")
     parser.add_argument("--experimental-affect-decision", dest="experimental_report_only", action="store_false", help="Allow experimental rules to affect decision")
+    parser.add_argument("--format", default="json", choices=["json", "markdown", "sarif"], help="Output format: json | markdown | sarif")
 
     args = parser.parse_args()
 
@@ -473,6 +483,7 @@ def main():
         quality_min_samples=args.quality_min_samples,
         experimental=args.experimental,
         experimental_report_only=args.experimental_report_only,
+        format=args.format,
     )
 
 if __name__ == "__main__":

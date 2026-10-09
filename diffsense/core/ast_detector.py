@@ -1,5 +1,6 @@
 import re
 import os
+import sys
 import time
 import hashlib
 import pickle
@@ -152,10 +153,10 @@ class ASTDetector:
             ext = os.path.splitext(filename)[1].lower() if '.' in filename else ''
             
             if ext not in supported_extensions:
-                print(f"DEBUG: Skipping unsupported file: {filename}")
+                print(f"DEBUG: Skipping unsupported file: {filename}", file=sys.stderr)
                 continue
             
-            print(f"DEBUG: Analyzing Java file: {filename}")
+            print(f"DEBUG: Analyzing Java file: {filename}", file=sys.stderr)
             file_changes = self._detect_changes_in_patch(filename, patch_content, mode=analysis_mode)
             changes.extend(file_changes)
             
