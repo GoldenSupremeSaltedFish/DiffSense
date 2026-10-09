@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest"]
+dev = ["pytest", "jsonschema>=4.0"]
 
 [project.scripts]
 diffsense = "cli:app"
