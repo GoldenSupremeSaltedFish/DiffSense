@@ -27,6 +27,7 @@ jobs:
           cache: pip
 
       - name: Install package with MCP extra
+        working-directory: diffsense
         run: pip install -e ".[mcp]"
 
       - name: Contract & golden tests
