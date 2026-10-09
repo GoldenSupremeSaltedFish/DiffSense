@@ -26,9 +26,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
 
-      - name: Install package with MCP extra
+      - name: Install package with dev and MCP extras
         working-directory: diffsense
-        run: pip install -e ".[mcp]"
+        run: pip install -e ".[dev,mcp]"
 
       - name: Contract & golden tests
         working-directory: diffsense
