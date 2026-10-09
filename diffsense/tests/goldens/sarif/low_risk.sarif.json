@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "DiffSense",
+          "informationUri": "https://github.com/GoldenSupremeSaltedFish/DiffSense",
+          "rules": [
+            {
+              "id": "diffsense/review_level",
+              "shortDescription": {
+                "text": "Overall review level: normal"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "diffsense/review_level",
+          "level": "note",
+          "message": {
+            "text": "Overall review level: normal"
+          },
+          "properties": {
+            "review_level": "normal",
+            "confidence": 1.0,
+            "blocked": false
+          }
+        }
+      ],
+      "properties": {
+        "review_level": "normal",
+        "confidence": 1.0,
+        "blocked": false
+      }
+    }
+  ]
+}
