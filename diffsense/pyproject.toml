@@ -18,10 +18,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "jsonschema>=4.0"]
+dev = ["pytest", "jsonschema>=4.0", "mcp>=2.0"]
+mcp = ["mcp>=2.0"]
 
 [project.scripts]
 diffsense = "cli:app"
+diffsense-mcp = "mcp_server:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -32,4 +34,4 @@ config = ["*.yaml"]
 schemas = ["*.json"]
 
 [tool.setuptools]
-py-modules = ["cli", "run_audit", "main", "banner", "constants", "sarif"]
+py-modules = ["cli", "run_audit", "main", "banner", "constants", "sarif", "mcp_server"]

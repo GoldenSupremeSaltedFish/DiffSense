@@ -86,3 +86,41 @@ The report is a single JSON object printed once. The first key MUST be `schema_v
   - `properties.review_level` holds the composed level; `properties.blocked` is `true` only when `review_level` is `critical` (the same condition as exit code `1`); `properties.confidence` mirrors `meta.confidence` when present.
 - SARIF output MUST NOT change exit codes: the same `0`/`1`/`2` semantics from §2 apply regardless of the chosen format.
 - Private telemetry keys (`_metrics`, `_rule_quality`, `_quality_warnings`, ...) MUST NOT be projected into SARIF; SARIF carries only the stable public surface described above.
+
+## 6. MCP Server
+
+DiffSense ships a read-only MCP server over stdio, installed via the `mcp` extra
+(`pip install "diffsense[mcp]"`) and started with the `diffsense-mcp` entry point.
+The server is built on the official MCP SDK and exposes the same audit engine as
+the CLI (§1–§5) — it MUST NOT re-implement analysis logic.
+
+### 6.1 Tools
+
+`tools/list` MUST expose exactly these four tools (all read-only):
+
+| Tool | Description | Output |
+|------|-------------|--------|
+| `audit_diff` | Runs the audit pipeline on an inline diff string | JSON report as in §3 |
+| `audit_replay` | Runs the audit pipeline on a local unified diff file path | JSON report as in §3 |
+| `list_rules` | Lists loaded rule metadata (built-in + YAML + pro) | JSON array of `{id, severity, impact, status, is_blocking, rule_type}` |
+| `explain_rule` | Describes a single rule by `rule_id` | JSON object with the rule's metadata and `rationale`, or `{"error": ...}` |
+
+Rules / profile arguments are optional on every tool; an empty value selects the
+built-in defaults, mirroring CLI defaults. Absent or invalid paths are returned
+as JSON errors — the server MUST NOT crash on bad input.
+
+### 6.2 Contract guarantees
+
+- The server is strictly read-only: it never writes report artifacts, baseline
+  files, quality caches, or any repository state. (CLI-side file outputs are
+  deliberately disabled on the MCP path.)
+- `audit_diff` / `audit_replay` output MUST satisfy §3: a single JSON object whose
+  first key is `schema_version`, with `review_level` (`normal` / `low` /
+  `critical` / `error`) and optional `error` detail on failures.
+- Exit codes from §2 do not apply to MCP tool calls; the composed
+  `review_level` is returned in-band inside the report JSON instead.
+- The MCP server communicates over stdio using newline-delimited JSON-RPC
+  (official MCP SDK transport). All audit reports MUST be returned as tool
+  result text; the server MUST NOT print the report or any logs to stdout.
+- Feedback capture (`record_feedback`) is intentionally absent in this release;
+  it will follow in a later agent-surface batch and MUST NOT be added ad hoc.
