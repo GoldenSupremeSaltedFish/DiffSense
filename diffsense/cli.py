@@ -45,6 +45,7 @@ def audit(
     quality_min_samples: int = typer.Option(30, "--quality-min-samples", help="Minimum samples before quality warnings"),
     experimental: bool = typer.Option(False, "--experimental", help="Include experimental rules (report-only by default)"),
     experimental_report_only: bool = typer.Option(True, "--experimental-report-only/--experimental-affect-decision", help="Do not affect decision with experimental rules"),
+    format: str = typer.Option("json", "--format", "-f", help="Output: json | markdown | sarif"),
 ) -> None:
     """Run MR/PR risk audit (GitLab or GitHub). Use in CI with image: ghcr.io/xxx/diffsense:1.0."""
     from adapters.github_adapter import GitHubAdapter
@@ -96,6 +97,7 @@ def audit(
         quality_min_samples=quality_min_samples,
         experimental=experimental,
         experimental_report_only=experimental_report_only,
+        format=format,
     )
 
 
@@ -103,7 +105,7 @@ def audit(
 def replay(
     diff_file: str = typer.Argument(..., help="Path to .diff file"),
     rules: str = typer.Option(None, "--rules", help="Path to rules: single YAML file or directory of YAML files"),
-    format: str = typer.Option("json", "--format", "-f", help="Output: json | markdown"),
+    format: str = typer.Option("json", "--format", "-f", help="Output: json | markdown | sarif"),
     profile: str = typer.Option(None, "--profile", help="Profile: strict or lightweight"),
     baseline: bool = typer.Option(False, "--baseline", help="Generate baseline file for existing issues"),
     since_baseline: bool = typer.Option(False, "--since-baseline", help="Only report findings not in baseline"),
