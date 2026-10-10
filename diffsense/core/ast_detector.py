@@ -37,6 +37,38 @@ class ASTDetector:
             "createStatement", "prepareStatement"
         }
 
+        # SQL concat taint classification (batch D: numeric concat is warning, user input stays critical)
+        # Method calls that resolve to a numeric value -> safe-ish (no injection surface)
+        self.numeric_wrapper_calls = {
+            "parseLong", "parseInt", "parseShort", "parseByte",
+            "parseDouble", "parseFloat",
+            "longValue", "longValueExact", "intValue", "intValueExact",
+            "shortValue", "shortValueExact", "byteValue", "byteValueExact",
+            "doubleValue", "floatValue",
+            "valueOf", "getLong", "getInteger",
+            "toLong", "toInt", "longBitsToDouble", "doubleToLongBits",
+            "intBitsToFloat", "floatToIntBits",
+        }
+        # Boxed numeric types (declared variable types that cannot carry SQL text)
+        self.numeric_boxed_types = {
+            "Long", "Integer", "Short", "Byte", "Double", "Float",
+            "BigDecimal", "BigInteger", "AtomicLong", "AtomicInteger",
+        }
+        # Primitive numeric types
+        self.numeric_primitive_types = {
+            "long", "int", "short", "byte", "double", "float",
+        }
+        # User-controlled input sources (HTTP request, console, env, file read...)
+        self.user_input_methods = {
+            "getParameter", "getParameterValues", "getParameterMap",
+            "getHeader", "getHeaderNames", "getAttribute", "getCookies",
+            "getInputStream", "getReader", "getRemoteUser",
+            "getUserPrincipal", "getAuthType", "getSession",
+            "readLine", "read", "nextLine", "next", "nextToken",
+            "getenv", "getProperty", "getProperties", "commandLine",
+            "args",
+        }
+
         # Insecure crypto algorithms
         self.weak_crypto = {
             "DES", "RC4", "MD5", "SHA1", "MessageDigest",
@@ -297,6 +329,8 @@ class ASTDetector:
         # SQL injection risk
         if change.symbol == "sql_concat":
             if change.meta.get("risk") == "sql_injection":
+                if change.meta.get("taint") == "numeric":
+                    return "security.sql_injection_numeric"
                 return "security.sql_injection"
 
         # Weak encryption
@@ -502,11 +536,17 @@ class ASTDetector:
                 # Check context - is this in an SQL statement?
                 context = self._get_sql_context(tokens, i)
                 if context:
+                    taint = self._classify_sql_concat_taint(tokens, i, code_snippet)
+                    meta = {"risk": "sql_injection"}
+                    if taint == "numeric":
+                        meta["taint"] = "numeric"
+                    elif taint == "user_input":
+                        meta["taint"] = "user_input"
                     changes.append(Change(
                         kind=ChangeKind.CALL_ADDED if is_added else ChangeKind.CALL_REMOVED,
                         file=filename,
                         symbol="sql_concat",
-                        meta={"risk": "sql_injection"},
+                        meta=meta,
                         line_no=tokens[i].position.line
                     ))
 
@@ -821,6 +861,104 @@ class ASTDetector:
                 if self._is_inside_loop(path):
                     changes.append(Change(kind=kind, file=filename, symbol="remove", meta={"in_loop": True}, line_no=line_no))
 
+
+    # ==================== SQL concat taint classification (batch D) ====================
+
+    def _variable_types(self, code_snippet: str) -> Dict[str, str]:
+        """
+        Lightweight declaration scan: maps variable names to declared types so
+        SQL concat operands can be classified (numeric vs string).
+        """
+        types: Dict[str, str] = {}
+        decl_pattern = re.compile(
+            r'\b(?:final\s+)?(Long|Integer|Short|Byte|Double|Float|BigDecimal|BigInteger|AtomicLong|AtomicInteger|long|int|short|byte|double|float|String|CharSequence|Object)\s+([A-Za-z_$][\w$]*)\b'
+        )
+        for m in decl_pattern.finditer(code_snippet):
+            types.setdefault(m.group(2), m.group(1))
+        param_pattern = re.compile(
+            r'\(\s*(?:final\s+)?(Long|Integer|Short|Byte|Double|Float|BigDecimal|BigInteger|AtomicLong|AtomicInteger|long|int|short|byte|double|float|String|CharSequence|Object)\s+([A-Za-z_$][\w$]*)\b'
+        )
+        for m in param_pattern.finditer(code_snippet):
+            types.setdefault(m.group(2), m.group(1))
+        return types
+
+    def _method_name_at(self, tokens, pos: int, direction: int) -> Optional[str]:
+        """Extract the invoked method name for an operand starting at token pos.
+        Handles `parseLong(...)`, `Long.parseLong(...)`, `request.getParameter(...)`.
+        Returns None when the token is a plain variable, not a call."""
+        if pos < 0 or pos >= len(tokens):
+            return None
+        value = tokens[pos].value
+        # Qualified call: Long . parseLong ( ... ; request . getParameter ( ...
+        if 0 <= pos + direction < len(tokens) and tokens[pos + direction].value == ".":
+            name_pos = pos + 2 * direction
+            if 0 <= name_pos < len(tokens):
+                return tokens[name_pos].value
+        # Direct call: parseLong ( ... -> next token along direction is '('
+        call_next = pos + direction
+        if 0 <= call_next < len(tokens) and tokens[call_next].value == "(":
+            return value if value.isidentifier() else None
+        return None
+
+    def _operand_taint(self, tokens, pos: int, direction: int, var_types: Dict[str, str]) -> str:
+        """Classify a single concat operand at token index pos.
+        Returns 'numeric' | 'literal' | 'user_input' | 'unknown'."""
+        if pos < 0 or pos >= len(tokens):
+            return "unknown"
+        value = tokens[pos].value
+        if value in ("null", "true", "false"):
+            return "literal"
+        # Numeric literal: 123, 123L, 0x1F, 1.5d ...
+        if value and (value[0].isdigit() or (value.startswith((".", "-", "+")) and len(value) > 1 and value[1].isdigit())):
+            return "numeric"
+        # String literals are the SQL fragment itself -> not injected text
+        if value.startswith(('"', "'")):
+            return "literal"
+        if not value.isidentifier():
+            return "unknown"
+        if value in ("args", "argv"):
+            return "user_input"
+        method = self._method_name_at(tokens, pos, direction)
+        if method:
+            if method in self.user_input_methods:
+                return "user_input"
+            if method in self.numeric_wrapper_calls:
+                return "numeric"
+            # getters (getId(), getUserId()) cannot be proven numeric -> conservative
+            if method.startswith("get") or method.startswith("is"):
+                return "user_input"
+            return "unknown"
+        # Plain variable -> consult declaration map
+        decl_type = var_types.get(value)
+        if decl_type:
+            if decl_type in self.numeric_boxed_types or decl_type in self.numeric_primitive_types:
+                return "numeric"
+            # String / CharSequence / Object can carry SQL text -> user input surface
+            return "user_input"
+        return "unknown"
+
+    def _classify_sql_concat_taint(self, tokens, i: int, code_snippet: str) -> str:
+        """
+        Classify the SQL concat at token index i:
+          - 'user_input': at least one operand is user-controlled text / string -> CRITICAL
+          - 'numeric'   : every classified operand is numeric or literal       -> warning
+          - 'unknown'   : cannot prove safety -> CRITICAL (conservative)
+        """
+        var_types = self._variable_types(code_snippet)
+        token_val = tokens[i].value
+        if token_val in ("concat", "append"):
+            arg_pos = i + 2 if (i + 1 < len(tokens) and tokens[i + 1].value == "(") else i + 1
+            left = self._operand_taint(tokens, i - 1, -1, var_types)
+            right = self._operand_taint(tokens, arg_pos, 1, var_types)
+        else:
+            left = self._operand_taint(tokens, i - 1, -1, var_types)
+            right = self._operand_taint(tokens, i + 1, 1, var_types)
+        categories = {c for c in (left, right) if c}
+        if "user_input" in categories:
+            return "user_input"
+        if categories and categories <= {"literal", "numeric"}:
+            return "numeric"
+        return "unknown"
 
     def _get_sql_context(self, tokens, pos: int) -> Optional[str]:
         """
