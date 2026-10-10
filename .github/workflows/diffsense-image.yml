@@ -125,4 +125,4 @@ jobs:
         run: |
           pip install build twine
           python -m build ./diffsense
-          python -m twine upload dist/* -u __token__ -p "${PYPI_API_TOKEN}"
+          python -m twine upload ./diffsense/dist/* -u __token__ -p "${PYPI_API_TOKEN}"
