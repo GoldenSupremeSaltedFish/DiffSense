@@ -393,3 +393,24 @@ rules:
     severity: medium
     rationale: "Hardcoded secret was removed. Verify this is intentional and not a security regression."
     tags: ["security", "secret"]
+
+  # SQL scripts / DM DDL (batch C): destructive schema changes
+  - id: data.sql_destructive_ddl
+    signal: "sql_destructive_ddl"
+    action: "added"
+    file: "**"
+    impact: data
+    severity: critical
+    rationale: "Destructive DDL added (DROP/TRUNCATE/ALTER DROP COLUMN). Verify this schema change is intentional and irreversible."
+    tags: ["data", "sql", "ddl"]
+    is_blocking: true
+
+  # SQL scripts / DM DDL (batch C): unconditional full-table mutations
+  - id: data.sql_unconditional_mutation
+    signal: "sql_unconditional_mutation"
+    action: "added"
+    file: "**"
+    impact: data
+    severity: warning
+    rationale: "DELETE or UPDATE without WHERE clause added. Full-table mutation may be unintended; confirm scope."
+    tags: ["data", "sql", "mutation"]
