@@ -13,6 +13,7 @@ from . import get_cache_max_age_seconds
 from .signal_model import Signal
 from .change import Change, ChangeKind
 from .knowledge import is_thread_safe, is_lock_type
+from .attribution import SUPPORTED_EXTENSIONS
 
 class ASTDetector:
     def __init__(self):
@@ -149,10 +150,9 @@ class ASTDetector:
             patch_content = entry.get('patch', '')
 
             # Supported languages: Java, Python, C++, JavaScript
-            supported_extensions = {'.java', '.py', '.cpp', '.cc', '.cxx', '.c', '.h', '.hpp', '.js', '.jsx', '.ts', '.tsx'}
             ext = os.path.splitext(filename)[1].lower() if '.' in filename else ''
-            
-            if ext not in supported_extensions:
+
+            if ext not in SUPPORTED_EXTENSIONS:
                 print(f"DEBUG: Skipping unsupported file: {filename}", file=sys.stderr)
                 continue
             

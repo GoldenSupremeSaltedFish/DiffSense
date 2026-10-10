@@ -77,13 +77,11 @@ def _build_inline_comments(triggered_rules: List[Dict[str, Any]], diff_data: Dic
     for r in triggered_rules:
         path = r.get("matched_file", "")
         patch_text = patches.get(path, "")
-        if not patch_text and diff_data.get("file_patches"):
-            for p in diff_data.get("file_patches", []):
-                if p.get("file"):
-                    path = p.get("file")
-                    patch_text = p.get("patch", "")
-                    break
-        position, line = _first_added_position(patch_text) if patch_text else (1, 1)
+        # 归因修复：找不到真实 hunk 时跳过内联评论，
+        # 严禁把评论错误地贴到 diff 中的第一个文件。
+        if not patch_text:
+            continue
+        position, line = _first_added_position(patch_text)
         body = f"{r.get('severity', '').upper()} {r.get('id', '')}: {r.get('rationale', '')}"
         comments.append({
             "path": path,
@@ -97,6 +95,15 @@ def _build_inline_comments(triggered_rules: List[Dict[str, Any]], diff_data: Dic
 def _write_json(path: str, data: Any) -> None:
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def _tool_error_report(message: str) -> str:
+    """Machine-readable tool-error report (CLI contract §3.1: review_level 'error')."""
+    return json.dumps(
+        {"schema_version": SCHEMA_VERSION, "review_level": "error", "error": message},
+        indent=2,
+        ensure_ascii=False,
+    )
 
 def analyze_diff(
     diff_content: str,
@@ -335,7 +342,13 @@ def main():
         with open(args.diff_file, 'r', encoding='utf-8') as f:
             diff_content = f.read()
     except FileNotFoundError:
-        print(f"Error: File {args.diff_file} not found.")
+        print(_tool_error_report(f"Diff file not found: {args.diff_file}"))
+        sys.exit(EXIT_ERROR)
+    except UnicodeDecodeError as e:
+        print(_tool_error_report(
+            f"Failed to decode diff file {args.diff_file}: not valid UTF-8 "
+            f"(possible UTF-16/UTF-16LE/BOM encoding): {e}"
+        ))
         sys.exit(EXIT_ERROR)
 
     # 2-6. Run the shared analysis pipeline (parse -> AST -> rules -> decision -> report)
@@ -376,5 +389,5 @@ if __name__ == "__main__":
     except SystemExit:
         raise
     except Exception as e:
-        print(f"Error: {e}")
+        print(_tool_error_report(f"Unexpected error: {e}"))
         sys.exit(EXIT_ERROR)
