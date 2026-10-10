@@ -14,6 +14,7 @@ from .signal_model import Signal
 from .change import Change, ChangeKind
 from .knowledge import is_thread_safe, is_lock_type
 from .attribution import SUPPORTED_EXTENSIONS
+from .mybatis_detector import MyBatisXMLDetector, is_mybatis_xml
 
 class ASTDetector:
     def __init__(self):
@@ -181,6 +182,12 @@ class ASTDetector:
             filename = entry.get('file', 'unknown')
             patch_content = entry.get('patch', '')
 
+            # MyBatis XML Mapper: analyze SQL statements with the XML detector
+            if is_mybatis_xml(filename):
+                xml_changes = MyBatisXMLDetector().detect_changes(filename, patch_content)
+                changes.extend(xml_changes)
+                continue
+
             # Supported languages: Java, Python, C++, JavaScript
             ext = os.path.splitext(filename)[1].lower() if '.' in filename else ''
 
@@ -340,6 +347,10 @@ class ASTDetector:
         # Command injection
         if change.symbol == "command_execution":
             return "security.command_injection"
+
+        # MyBatis Mapper XML: ${...} interpolation added in patch
+        if change.symbol == "mybatis_interpolation":
+            return "security.mybatis_string_interpolation"
         # === End Security Signals ===
 
         if change.kind == ChangeKind.CALL_ADDED:
