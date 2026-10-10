@@ -119,6 +119,7 @@ def replay(
     quality_min_samples: int = typer.Option(30, "--quality-min-samples", help="Minimum samples before quality warnings"),
     experimental: bool = typer.Option(False, "--experimental", help="Include experimental rules (report-only by default)"),
     experimental_report_only: bool = typer.Option(True, "--experimental-report-only/--experimental-affect-decision", help="Do not affect decision with experimental rules"),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress report output on stdout (report still written to --report-json)"),
 ) -> None:
     """Run audit on a local diff file (for replay/offline)."""
     rules_path = rules
@@ -151,7 +152,15 @@ def replay(
         args.append("--experimental-affect-decision")
     sys.argv = args
     from main import main as replay_main
-    replay_main()
+    if quiet:
+        import io
+        _quiet_stdout = sys.stdout
+        sys.stdout = io.StringIO()
+    try:
+        replay_main()
+    finally:
+        if quiet:
+            sys.stdout = _quiet_stdout
 
 
 rules_app = typer.Typer(help="Manage rules. Use 'rules report' for rule quality from replay JSON; use 'rules health' for persisted rule_metrics.json.")

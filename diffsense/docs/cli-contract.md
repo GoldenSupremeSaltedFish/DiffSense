@@ -26,7 +26,7 @@ The following are explicitly **out of scope** and MUST NOT be relied upon by con
 |------|---------|--------------------|
 | `0` | Pass — no blocked findings | Empty diff; `review_level` is `normal` or `low`; or `critical` findings that a human explicitly approved / acknowledged (`run_audit` only). |
 | `1` | Risk — findings reached the blocking threshold and were not human-approved | Composed `review_level` is `critical`; the report comment carries no approval (`approve` mark) and no `👍` reaction. |
-| `2` | Tool error — the audit did not complete | Bad arguments (missing `--repo`/`--pr`/`--project-id`/`--mr-iid`, unknown `--platform`); diff fetch failure; local diff file not found; any unexpected internal exception. |
+| `2` | Tool error — the audit did not complete | Bad arguments (missing `--repo`/`--pr`/`--project-id`/`--mr-iid`, unknown `--platform`); diff fetch failure; local diff file not found or not valid UTF-8 (e.g. UTF-16/BOM); any unexpected internal exception. |
 
 Constraints:
 
@@ -65,9 +65,17 @@ The report is a single JSON object printed once. The first key MUST be `schema_v
 
 ## 4. Invocation Notes
 
-- `diffsense replay <diff-file> [--report-json <path>]` and the underlying `main.py` accept a local unified diff file path as the positional argument. A nonexistent file is a tool error (`2`).
+- `diffsense replay <diff-file> [--report-json <path>]` and the underlying `main.py` accept a local unified diff file path as the positional argument. A nonexistent file, or a file that cannot be decoded as UTF-8 (e.g. UTF-16/UTF-16LE with BOM), is a tool error (`2`).
 - `diffsense audit --platform github|gitlab ...` requires the platform-specific identity arguments (repo/pr or project-id/mr-iid, and a token). Missing them is a tool error (`2`).
 - Rules loading, baseline reading and quality-metrics files remain internal behavior; their absence MUST be handled as non-fatal warnings where today's CLI already tolerates them.
+
+### 4.1 stdout / stderr streams
+
+The stream contract MUST NOT be broken by adding human output to stdout:
+
+- `stdout` is reserved for machine-readable output only. When a report is produced (JSON or SARIF), it is the **only** content written to stdout. With `--quiet` on `diffsense replay`, stdout stays empty (the report is still written to `--report-json` when given).
+- `stderr` carries human-facing diagnostics: progress messages, rule-quality / performance summaries, warnings. Consumers MUST NOT parse stderr.
+- Tool-error reports (§3.1, `review_level: "error"`) are emitted on stdout and followed by exit code `2`.
 
 ## 5. SARIF Output
 

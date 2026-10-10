@@ -2,6 +2,7 @@ import re
 from typing import Dict, Any, List, Optional
 from sdk.rule import BaseRule
 from sdk.signal import Signal
+from core.attribution import anchor_file
 
 
 class PublicMethodRemovedRule(BaseRule):
@@ -40,12 +41,11 @@ class PublicMethodRemovedRule(BaseRule):
 
     def evaluate(self, diff_data: Dict[str, Any], signals: List[Signal]) -> Optional[Dict[str, Any]]:
         raw_diff = diff_data.get('raw_diff', "")
-        files = diff_data.get('files', [])
 
         if self._removed_method.search(raw_diff):
             # 如果没有添加@Deprecated 作为过渡，则报告
             if not self._added_deprecated.search(raw_diff):
-                return {"file": files[0] if files else "unknown"}
+                return {"file": anchor_file(diff_data, [self._removed_method])}
 
         return None
 
@@ -78,29 +78,28 @@ class MethodSignatureChangedRule(BaseRule):
 
     def evaluate(self, diff_data: Dict[str, Any], signals: List[Signal]) -> Optional[Dict[str, Any]]:
         raw_diff = diff_data.get('raw_diff', "")
-        files = diff_data.get('files', [])
 
         # 只检测真正的签名变化：同一方法名，参数数量或类型不同
         # 使用更严格的检测：必须有完整的参数列表变化
         import re as re_module
 
-        # 查找同时有删除和添加的同一方法
-        removed_methods = re_module.findall(
+        removed_pattern = re_module.compile(
             r'^-\s*(?:public|protected)\s+(?:static\s+)?(?:\w+(?:<[^>]+>)?\s+)+(\w+)\s*\(([^)]*)\)',
-            raw_diff,
+            re_module.MULTILINE
+        )
+        added_pattern = re_module.compile(
+            r'^\+\s*(?:public|protected)\s+(?:static\s+)?(?:\w+(?:<[^>]+>)?\s+)+(\w+)\s*\(([^)]*)\)',
             re_module.MULTILINE
         )
 
-        added_methods = re_module.findall(
-            r'^\+\s*(?:public|protected)\s+(?:static\s+)?(?:\w+(?:<[^>]+>)?\s+)+(\w+)\s*\(([^)]*)\)',
-            raw_diff,
-            re.MULTILINE
-        )
+        # 查找同时有删除和添加的同一方法
+        removed_methods = removed_pattern.findall(raw_diff)
+        added_methods = added_pattern.findall(raw_diff)
 
         for rem_name, rem_params in removed_methods:
             for add_name, add_params in added_methods:
                 if rem_name == add_name and rem_params != add_params:
-                    return {"file": files[0] if files else "unknown", "method": rem_name}
+                    return {"file": anchor_file(diff_data, [removed_pattern, added_pattern]), "method": rem_name}
 
         return None
 
@@ -149,8 +148,7 @@ class FieldRemovedRule(BaseRule):
         raw_diff = diff_data.get('raw_diff', "")
 
         if self._removed_field.search(raw_diff):
-            files = diff_data.get('files', [])
-            return {"file": files[0] if files else "unknown"}
+            return {"file": anchor_file(diff_data, [self._removed_field])}
 
         return None
 
@@ -188,8 +186,7 @@ class ConstructorRemovedRule(BaseRule):
         raw_diff = diff_data.get('raw_diff', "")
         
         if self._removed_ctor.search(raw_diff):
-            files = diff_data.get('files', [])
-            return {"file": files[0] if files else "unknown"}
+            return {"file": anchor_file(diff_data, [self._removed_ctor])}
         
         return None
 
@@ -231,7 +228,6 @@ class InterfaceChangedRule(BaseRule):
 
     def evaluate(self, diff_data: Dict[str, Any], signals: List[Signal]) -> Optional[Dict[str, Any]]:
         raw_diff = diff_data.get('raw_diff', "")
-        files = diff_data.get('files', [])
 
         # 关键：只检测接口文件
         is_interface_file = False
@@ -246,7 +242,7 @@ class InterfaceChangedRule(BaseRule):
 
         # 只在接口文件中检测方法变更
         if self._method_decl.search(raw_diff):
-            return {"file": files[0] if files else "unknown", "change": "interface_method"}
+            return {"file": anchor_file(diff_data, [self._method_decl]), "change": "interface_method"}
 
         return None
 
@@ -288,8 +284,7 @@ class AnnotationRemovedRule(BaseRule):
         raw_diff = diff_data.get('raw_diff', "")
         
         if self._removed_annotation.search(raw_diff):
-            files = diff_data.get('files', [])
-            return {"file": files[0] if files else "unknown"}
+            return {"file": anchor_file(diff_data, [self._removed_annotation])}
         
         return None
 
@@ -327,8 +322,7 @@ class DeprecatedApiAddedRule(BaseRule):
         raw_diff = diff_data.get('raw_diff', "")
         
         if self._added_deprecated.search(raw_diff):
-            files = diff_data.get('files', [])
-            return {"file": files[0] if files else "unknown"}
+            return {"file": anchor_file(diff_data, [self._added_deprecated])}
         
         return None
 
@@ -337,8 +331,12 @@ class SerialVersionUIDChangedRule(BaseRule):
     """检测 SerialVersionUID 变更（破坏序列化兼容性）"""
     
     def __init__(self):
-        self._serial_change = re.compile(
-            r'^[-+].*serialVersionUID\s*=',
+        self._serial_removed = re.compile(
+            r'^-\s*(?:private\s+)?(?:static\s+)?(?:final\s+)?(?:long\s+)?serialVersionUID\s*=',
+            re.MULTILINE
+        )
+        self._serial_added = re.compile(
+            r'^\+\s*(?:private\s+)?(?:static\s+)?(?:final\s+)?(?:long\s+)?serialVersionUID\s*=',
             re.MULTILINE
         )
         
@@ -364,9 +362,10 @@ class SerialVersionUIDChangedRule(BaseRule):
 
     def evaluate(self, diff_data: Dict[str, Any], signals: List[Signal]) -> Optional[Dict[str, Any]]:
         raw_diff = diff_data.get('raw_diff', "")
-        
-        if self._serial_change.search(raw_diff):
-            files = diff_data.get('files', [])
-            return {"file": files[0] if files else "unknown"}
-        
+
+        # 只在新旧两侧同时出现 serialVersionUID 时视为“变更”；
+        # 首次引入（仅新增）不构成序列化兼容性破坏。
+        if self._serial_removed.search(raw_diff) and self._serial_added.search(raw_diff):
+            return {"file": anchor_file(diff_data, [self._serial_removed, self._serial_added])}
+
         return None
