@@ -339,6 +339,18 @@ rules:
     is_blocking: true
     scan_mode: incremental
 
+  # P0: SQL Injection - numeric concatenation (low risk surface)
+  - id: security.sql_injection_numeric
+    signal: "security.sql_injection_numeric"
+    action: "added"
+    file: "**"
+    impact: security
+    severity: warning
+    rationale: "WARNING: Numeric value concatenated into SQL string. Injection surface is limited (numeric types cannot carry SQL text), but parameterized queries are still recommended."
+    tags: ["security", "sql", "injection", "numeric"]
+    is_blocking: false
+    scan_mode: incremental
+
   # P1: Weak Cryptography
   - id: security.weak_crypto
     signal: "security.weak_crypto"
