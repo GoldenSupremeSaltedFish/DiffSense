@@ -15,6 +15,7 @@ SUPPORTED_EXTENSIONS = frozenset({
     ".java", ".py", ".cpp", ".cc", ".cxx", ".c", ".h", ".hpp",
     ".js", ".jsx", ".ts", ".tsx",
     ".xml",  # MyBatis Mapper XML (batch B): analyzed by MyBatisXMLDetector
+    ".sql",  # SQL scripts / DM DDL (batch C): analyzed by SQLDetector
 })
 
 _Patterns = Union[re.Pattern, Iterable[re.Pattern], None]

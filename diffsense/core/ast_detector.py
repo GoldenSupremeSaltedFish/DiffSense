@@ -15,6 +15,7 @@ from .change import Change, ChangeKind
 from .knowledge import is_thread_safe, is_lock_type
 from .attribution import SUPPORTED_EXTENSIONS
 from .mybatis_detector import MyBatisXMLDetector, is_mybatis_xml
+from .sql_detector import SQLDetector, is_sql_script
 
 class ASTDetector:
     def __init__(self):
@@ -186,6 +187,12 @@ class ASTDetector:
             if is_mybatis_xml(filename):
                 xml_changes = MyBatisXMLDetector().detect_changes(filename, patch_content)
                 changes.extend(xml_changes)
+                continue
+
+            # SQL scripts (DM/达梦 DDL, migration scripts): analyze risky statements
+            if is_sql_script(filename):
+                sql_changes = SQLDetector().detect_changes(filename, patch_content)
+                changes.extend(sql_changes)
                 continue
 
             # Supported languages: Java, Python, C++, JavaScript
