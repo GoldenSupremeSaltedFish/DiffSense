@@ -14,6 +14,7 @@ from typing import Any, Dict, Iterable, List, Optional, Union
 SUPPORTED_EXTENSIONS = frozenset({
     ".java", ".py", ".cpp", ".cc", ".cxx", ".c", ".h", ".hpp",
     ".js", ".jsx", ".ts", ".tsx",
+    ".xml",  # MyBatis Mapper XML (batch B): analyzed by MyBatisXMLDetector
 })
 
 _Patterns = Union[re.Pattern, Iterable[re.Pattern], None]

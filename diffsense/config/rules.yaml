@@ -351,6 +351,18 @@ rules:
     is_blocking: false
     scan_mode: incremental
 
+  # P0: MyBatis Mapper XML - ${...} string interpolation
+  - id: security.mybatis_string_interpolation
+    signal: "security.mybatis_string_interpolation"
+    action: "added"
+    file: "**"
+    impact: security
+    severity: warning
+    rationale: "WARNING: MyBatis ${...} string interpolation added in Mapper SQL. Value is inlined without precompilation; if it carries user-controlled data it is an SQL injection vector. Prefer #{...} prepared parameters."
+    tags: ["security", "sql", "injection", "mybatis"]
+    is_blocking: false
+    scan_mode: incremental
+
   # P1: Weak Cryptography
   - id: security.weak_crypto
     signal: "security.weak_crypto"
