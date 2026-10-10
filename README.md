@@ -81,4 +81,4 @@ See [diffsense/CONTRIBUTING.md](diffsense/CONTRIBUTING.md) for details.
 - **Issues**: [Report a bug](https://github.com/GoldenSupremeSaltedFish/DiffSense/issues)
 - **Marketplace**: [DiffSense](https://marketplace.visualstudio.com/items?itemName=humphreyLi.diffsense)
 
-**English** | [中文版](./cn_readme.md)
+**English** | [中文版（存档）](./docs/archive/cn_readme.md)
