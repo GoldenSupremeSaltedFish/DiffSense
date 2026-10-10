@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.goldensupremesaltedfish/diffsense",
+  "title": "DiffSense",
+  "description": "MR/PR risk audit MCP server: semantic diff + rule engine, strict read-only. Run as image or pip.",
+  "repository": {
+    "url": "https://github.com/GoldenSupremeSaltedFish/DiffSense",
+    "source": "github"
+  },
+  "version": "2.3.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "diffsense",
+      "version": "2.3.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

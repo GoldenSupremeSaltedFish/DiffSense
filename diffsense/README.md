@@ -1,5 +1,7 @@
 # DiffSense CLI
 
+mcp-name: io.github.goldensupremesaltedfish/diffsense
+
 **定位**：PR 阶段的变更风险守门人（Change Risk Gate），针对当前 diff 判断是否引入回归风险。设计目标：少告警、高精度、低延迟、结果可解释。
 
 ---
