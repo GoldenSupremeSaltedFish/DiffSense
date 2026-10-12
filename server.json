@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.goldensupremesaltedfish/diffsense",
+  "name": "io.github.GoldenSupremeSaltedFish/diffsense",
   "title": "DiffSense",
   "description": "MR/PR risk audit MCP server: semantic diff + rule engine, strict read-only. Run as image or pip.",
   "repository": {
