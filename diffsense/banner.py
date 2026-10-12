@@ -9,7 +9,7 @@ def _get_version() -> str:
         from importlib.metadata import version
         return version("diffsense")
     except Exception:
-        return "2.3.0"
+        return "2.3.1"
 
 
 def _get_build_info() -> dict:
