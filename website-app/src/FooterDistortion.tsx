@@ -70,10 +70,10 @@ const FooterDistortion = ({
       const w = mount.clientWidth;
       const h = mount.clientHeight;
       renderer.setSize(w, h);
-      camera.left = 0;
-      camera.right = w;
-      camera.top = 0;
-      camera.bottom = h;
+      camera.left = -w / 2;
+      camera.right = w / 2;
+      camera.top = h / 2;
+      camera.bottom = -h / 2;
       camera.updateProjectionMatrix();
       mesh.scale.set(w, h, 1);
     };
@@ -120,7 +120,9 @@ const FooterDistortion = ({
       mount.appendChild(renderer.domElement);
 
       scene = new THREE.Scene();
-      camera = new THREE.OrthographicCamera(0, 1, 1, 0, -1000, 1000);
+      // 对称正交视野（中心在原点），与 PlaneGeometry(1,1)（中心同为原点）对齐：
+      // 若视野取 [0,w]x[0,h]，mesh 将只与视野重叠四分之一，文字会被推出画布（偏左贴边）
+      camera = new THREE.OrthographicCamera(-0.5, 0.5, 0.5, -0.5, -1000, 1000);
       camera.position.z = 2;
 
       // 网格顶点位移数据：RG 通道每纹素 2 个 float，初始随机 ±125（碎片状起步）
