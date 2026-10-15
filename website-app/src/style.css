@@ -617,8 +617,8 @@ nav a:hover {
 .distortion-canvas {
   position: relative;
   width: 100%;
-  /* 跟随纹理原始比例(3039x793)，避免 PlaneGeometry 满铺采样时文字被水平拉伸 */
-  aspect-ratio: 3039 / 793;
+  /* 跟随纹理原始比例(3000x1100)，避免满铺采样时文字被拉伸；加高页脚区块 */
+  aspect-ratio: 3000 / 1100;
   display: block;
 }
 
@@ -630,7 +630,7 @@ nav a:hover {
 
 .distortion-fallback {
   width: 100%;
-  aspect-ratio: 3039 / 793;
+  aspect-ratio: 3000 / 1100;
   background: var(--accent);
 }
 
