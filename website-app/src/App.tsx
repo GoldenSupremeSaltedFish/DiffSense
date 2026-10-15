@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, lazy, Suspense, useState } from "react";
 
 const QUICKSTART_DOC =
   "https://github.com/GoldenSupremeSaltedFish/DiffSense/blob/main/diffsense/docs/quickstart.md";
@@ -33,13 +33,78 @@ const WORKFLOW_SNIPPET = [
   '        run: diffsense audit --platform github --token "$GITHUB_TOKEN" --repo "${{ github.repository }}" --pr "${{ github.event.pull_request.number }}"',
 ].join("\n");
 
+/** Footer 碎片动画异步加载，three.js 独立 chunk，不阻塞首屏 */
+const FooterDistortion = lazy(() => import("./FooterDistortion"));
+
 const featureCards = [
-  ["⚡", "增量分析", "只分析代码变更部分，比全量扫描快 10-100 倍，适配 CI/CD 流水线。"],
-  ["🧠", "AST 语义分析", "基于抽象语法树的深度语义分析，准确率高于正则匹配，显著降低误报。"],
-  ["🛡️", "信号驱动架构", "模块化信号检测系统，支持规则扩展，适配不同业务与语言场景。"],
-  ["🎯", "精准风险定位", "精确到行号的风险提示，支持内联注释和自动修复建议。"],
-  ["🔄", "CI/CD 无缝集成", "支持 GitHub Actions 与 GitLab CI，可快速接入现有研发流程。"],
-  ["📈", "智能质量调优", "自动学习规则质量并持续优化检测策略，保持高质量输出。"],
+  {
+    title: "增量分析",
+    desc: "只分析变更集，相较全量扫描提升 10-100 倍，适配 CI/CD 流水线。",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M7 15l-2-3 2-3" />
+        <path d="M21 12h-4" />
+        <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2z" />
+      </svg>
+    ),
+  },
+  {
+    title: "AST 语义分析",
+    desc: "基于抽象语法树的变更语义分析，准确率优于正则匹配，显著降低误报。",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M8 6l-2-3 2-3" />
+        <path d="M16 6l2-3-2-3" />
+        <path d="M21 12h-4" />
+        <path d="M8 8a2 2 0 0 0-2 2v2" />
+        <path d="M16 8a2 2 0 0 1 2 2v2" />
+        <path d="M7 22l3-8M17 22l-3-8" />
+      </svg>
+    ),
+  },
+  {
+    title: "信号驱动架构",
+    desc: "模块化信号检测系统，支持规则扩展，适配不同业务与语言场景。",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 3l2.1 6.2L20 9.5l-4.4 3.9 1.3 6.1L12 16.8 7.1 19.5l1.3-6.1L4 9.5l5.9-.3z" />
+      </svg>
+    ),
+  },
+  {
+    title: "精准风险定位",
+    desc: "精确到行号的风险提示，支持内联注释和自动修复建议。",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" />
+        <path d="M21 21l-4.35-4.35" />
+        <path d="M8 11h6M11 8v6" />
+      </svg>
+    ),
+  },
+  {
+    title: "CI/CD 无缝集成",
+    desc: "支持 GitHub Actions 与 GitLab CI，可快速接入现有研发流程。",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M21 12a9 9 0 0 1-9 9" />
+        <path d="M3 12a9 9 0 0 1 9-9" />
+        <path d="M12 21a9 9 0 0 0 9-9" />
+        <path d="M12 3a9 9 0 0 0-9 9" />
+        <path d="M12 3v18" />
+      </svg>
+    ),
+  },
+  {
+    title: "规则质量调优",
+    desc: "按历史命中持续校准规则，检测策略可迭代优化。",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M3 17l5-5 4 4 7-7" />
+        <path d="M15 9h6v6" />
+      </svg>
+    ),
+  },
 ] as const;
 
 const pipelineSteps = [
@@ -69,7 +134,7 @@ const App = () => {
             <span>DiffSense</span>
           </div>
           <nav>
-            <a href="#features">功能特性</a>
+            <a href="#features">核心能力</a>
             <a href="#architecture">技术架构</a>
             <a href="#risks">风险检测</a>
             <a href="#get-started">快速开始</a>
@@ -80,13 +145,13 @@ const App = () => {
       <section className="hero">
         <div className="container">
           <h1>
-            PR 提交，秒级出风险结论
+            MR/PR 回归风险，秒级出结论
             <br />
-            <span className="hero-kicker">增量语义分析，CI 更快、误报更少</span>
+            <span className="hero-kicker">增量 AST 语义分析，CI 更快、误报更少</span>
           </h1>
           <p>
-            DiffSense 面向研发节奏紧、人手有限的中小团队：只做增量 AST 语义分析，秒级给出
-            PR/MR 风险反馈；对关键变更模式高度敏感、少漏报，同时不把 CI 拖成全仓长任务。
+            面向 CI 的 MR/PR 回归风险审计。只做增量 AST 语义分析，秒级给出风险反馈；对关键变更模式高度敏感、
+            少漏报，同时不把 CI 拖成全仓长任务。
           </p>
           <div className="cta-buttons">
             <a href="#get-started" className="cta-button">
@@ -107,15 +172,15 @@ const App = () => {
       <section id="features" className="section">
         <div className="container">
           <div className="section-title">
-            <h2>为什么选择 DiffSense？</h2>
-            <p>专为敏捷开发设计的风险分析方案</p>
+            <h2>核心能力</h2>
+            <p>面向 CI 的 MR/PR 回归风险审计</p>
           </div>
           <div className="features-grid">
-            {featureCards.map(([icon, title, desc]) => (
-              <article key={title} className="feature-card">
-                <div className="feature-icon">{icon}</div>
-                <h3>{title}</h3>
-                <p>{desc}</p>
+            {featureCards.map((card) => (
+              <article key={card.title} className="feature-card">
+                <div className="feature-icon">{card.icon}</div>
+                <h3>{card.title}</h3>
+                <p>{card.desc}</p>
               </article>
             ))}
           </div>
@@ -126,7 +191,7 @@ const App = () => {
         <div className="container">
           <div className="section-title">
             <h2>技术架构</h2>
-            <p>基于信号驱动的现代化分析引擎</p>
+            <p>Change → Signal → Rule → Report 的流水线</p>
           </div>
           <div className="architecture-diagram">
             <div className="pipeline-flowchart" aria-label="DiffSense 分析流程（按顺序执行）">
@@ -177,8 +242,8 @@ const App = () => {
       <section id="risks" className="section">
         <div className="container">
           <div className="section-title">
-            <h2>全面的风险检测能力</h2>
-            <p>覆盖并发、性能、资源等多个维度</p>
+            <h2>风险检测能力</h2>
+            <p>内置常见回归风险规则，命中即报告</p>
           </div>
           <div className="risk-categories">
             <article className="risk-card">
@@ -263,6 +328,16 @@ const App = () => {
               。
             </p>
           </div>
+        </div>
+      </section>
+
+      <section className="footer-distortion" aria-label="DiffSense">
+        <Suspense fallback={<div className="distortion-fallback" />}>
+          <FooterDistortion />
+        </Suspense>
+        <div className="footer-distortion-meta">
+          <span>DiffSense</span>
+          <span>面向 CI 的 MR/PR 回归风险审计</span>
         </div>
       </section>
     </>
