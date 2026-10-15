@@ -1,4 +1,4 @@
-import { Fragment, lazy, Suspense, useState } from "react";
+import { Fragment, lazy, Suspense, useEffect, useState } from "react";
 
 const QUICKSTART_DOC =
   "https://github.com/GoldenSupremeSaltedFish/DiffSense/blob/main/diffsense/docs/quickstart.md";
@@ -117,6 +117,25 @@ const pipelineSteps = [
 
 const App = () => {
   const [copied, setCopied] = useState(false);
+  const [activeSection, setActiveSection] = useState("");
+
+  /* scroll-spy：滚动时高亮当前区块对应的导航项 */
+  useEffect(() => {
+    const sectionIds = ["features", "architecture", "risks", "get-started"];
+    const handleScroll = () => {
+      let current = "";
+      for (const id of sectionIds) {
+        const el = document.getElementById(id);
+        if (el && el.getBoundingClientRect().top <= 96) {
+          current = id;
+        }
+      }
+      setActiveSection(current);
+    };
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const copyWorkflow = () => {
     void navigator.clipboard.writeText(WORKFLOW_SNIPPET).then(() => {
@@ -134,21 +153,32 @@ const App = () => {
             <span>DiffSense</span>
           </div>
           <nav>
-            <a href="#features">核心能力</a>
-            <a href="#architecture">技术架构</a>
-            <a href="#risks">风险检测</a>
-            <a href="#get-started">快速开始</a>
+            <a href="#features" className={activeSection === "features" ? "active" : undefined}>
+              核心能力
+            </a>
+            <a
+              href="#architecture"
+              className={activeSection === "architecture" ? "active" : undefined}
+            >
+              技术架构
+            </a>
+            <a href="#risks" className={activeSection === "risks" ? "active" : undefined}>
+              风险检测
+            </a>
+            <a
+              href="#get-started"
+              className={activeSection === "get-started" ? "active" : undefined}
+            >
+              快速开始
+            </a>
           </nav>
         </div>
       </header>
 
       <section className="hero">
         <div className="container">
-          <h1>
-            MR/PR 回归风险，秒级出结论
-            <br />
-            <span className="hero-kicker">增量 AST 语义分析，CI 更快、误报更少</span>
-          </h1>
+          <div className="hero-kicker">增量 AST 语义分析 · CI 更快、误报更少</div>
+          <h1>MR/PR 回归风险，秒级出结论</h1>
           <p>
             面向 CI 的 MR/PR 回归风险审计。只做增量 AST 语义分析，秒级给出风险反馈；对关键变更模式高度敏感、
             少漏报，同时不把 CI 拖成全仓长任务。
@@ -336,8 +366,7 @@ const App = () => {
           <FooterDistortion />
         </Suspense>
         <div className="footer-distortion-meta">
-          <span>DiffSense</span>
-          <span>面向 CI 的 MR/PR 回归风险审计</span>
+          <span>GitHub 开源 · GoldenSupremeSaltedFish/DiffSense</span>
         </div>
       </section>
     </>
