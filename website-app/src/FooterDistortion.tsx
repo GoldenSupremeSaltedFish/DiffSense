@@ -63,8 +63,6 @@ const FooterDistortion = ({
     let mesh: THREE.Mesh | null = null;
     let rafId = 0;
     let disposed = false;
-    let time = 0;
-
     const mountRect = () => mount.getBoundingClientRect();
 
     const resize = () => {
@@ -94,6 +92,16 @@ const FooterDistortion = ({
       velocity.y = ny - mouse.y;
       mouse.x = nx;
       mouse.y = ny;
+    };
+
+    const onPointerEnter = (e: MouseEvent) => {
+      // 进入 canvas 时同步坐标并清零速度，避免首次移动把 (0,0)→当前位置当作巨大位移
+      const rect = mountRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      mouse.x = (e.clientX - rect.left) / rect.width;
+      mouse.y = 1 - (e.clientY - rect.top) / rect.height;
+      velocity.x = 0;
+      velocity.y = 0;
     };
 
     const onPointerLeave = () => {
@@ -148,6 +156,7 @@ const FooterDistortion = ({
       // pointermove 与 mousemove 双监听，兼容部分环境（如自动化测试）只派发 mousemove 的情况
       mount.addEventListener("pointermove", onPointerMove);
       mount.addEventListener("mousemove", onPointerMove);
+      mount.addEventListener("pointerenter", onPointerEnter);
       mount.addEventListener("pointerleave", onPointerLeave);
       window.addEventListener("resize", resize);
 
@@ -162,19 +171,10 @@ const FooterDistortion = ({
       const tick = () => {
         if (disposed || !material || !data || !dataTexture || !renderer || !scene || !camera) return;
         rafId = requestAnimationFrame(tick);
-        time += 0.016;
-        // 常态波浪流动：时间驱动的多频叠加波，保证非交互时画面持续演化
-        const t = time;
-        for (let n = 0; n < grid; n++) {
-          for (let m = 0; m < grid; m++) {
-            const idx = (m + n * grid) * 2;
-            const waveR =
-              Math.sin(t * 1.6 + m * 0.55 + n * 0.38) +
-              Math.cos(t * 1.1 + n * 0.62 - m * 0.31);
-            const waveG = Math.cos(t * 1.3 + m * 0.47 - n * 0.51);
-            data[idx] = data[idx] * relaxation + waveR * 2.4;
-            data[idx + 1] = data[idx + 1] * relaxation + waveG * 2.4;
-          }
+        // 位移逐帧衰减：静止时收敛为完整清晰的 diffsense 文字
+        for (let i = 0; i < grid * grid; i++) {
+          data[i * 2] *= relaxation;
+          data[i * 2 + 1] *= relaxation;
         }
         // 鼠标速度冲击作用半径内的顶点
         const mx = grid * mouse.x;
@@ -194,6 +194,9 @@ const FooterDistortion = ({
         }
         dataTexture.needsUpdate = true;
         renderer.render(scene, camera);
+        // 冲击每帧消费一次，鼠标停住后不再持续施力
+        velocity.x = 0;
+        velocity.y = 0;
       };
       rafId = requestAnimationFrame(tick);
     };
@@ -206,6 +209,7 @@ const FooterDistortion = ({
       cancelAnimationFrame(rafId);
       mount.removeEventListener("pointermove", onPointerMove);
       mount.removeEventListener("mousemove", onPointerMove);
+      mount.removeEventListener("pointerenter", onPointerEnter);
       mount.removeEventListener("pointerleave", onPointerLeave);
       window.removeEventListener("resize", resize);
       material?.dispose();
