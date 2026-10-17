@@ -9,7 +9,7 @@ import textureUrl from "./assets/footer-texture.png";
  * - DataTexture(RG/Float)：每帧在 CPU 端更新网格顶点位移（常态波浪 + 衰减 + 鼠标冲击）
  * - ShaderMaterial：片段着色按位移偏移采样文字纹理，产生碎片扭曲观感
  * - 外层占位容器维持文档流高度，内层 position:fixed; bottom:0 吸附视口底部
- * - prefers-reduced-motion 时降级为静态纹理
+ * - prefers-reduced-motion 时在纹理就绪回调中渲染一帧清晰静帧；WebGL 初始化失败 / 上下文丢失时降级为静态纹理 <img>
  */
 interface FooterDistortionProps {
   grid?: number;
@@ -63,7 +63,30 @@ const FooterDistortion = ({
     let mesh: THREE.Mesh | null = null;
     let rafId = 0;
     let disposed = false;
+    let fallbackShown = false;
     const mountRect = () => mount.getBoundingClientRect();
+
+    const onContextLost = (e: Event) => {
+      // WebGL 上下文丢失：阻止默认行为，停止动画并降级为静态纹理图
+      e.preventDefault();
+      showStaticFallback();
+    };
+
+    const showStaticFallback = () => {
+      if (fallbackShown || disposed) return;
+      fallbackShown = true;
+      cancelAnimationFrame(rafId);
+      const img = document.createElement("img");
+      img.src = textureUrl;
+      img.alt = "DiffSense";
+      img.className = "distortion-fallback-img";
+      img.draggable = false;
+      if (renderer && renderer.domElement.parentNode === mount) {
+        renderer.domElement.removeEventListener("webglcontextlost", onContextLost);
+        mount.removeChild(renderer.domElement);
+      }
+      mount.appendChild(img);
+    };
 
     const resize = () => {
       if (!renderer || !camera || !mesh) return;
@@ -110,6 +133,7 @@ const FooterDistortion = ({
     };
 
     const init = () => {
+      try {
       renderer = new THREE.WebGLRenderer({
         antialias: true,
         alpha: true,
@@ -118,6 +142,7 @@ const FooterDistortion = ({
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setClearColor(0x000000, 0);
       mount.appendChild(renderer.domElement);
+      renderer.domElement.addEventListener("webglcontextlost", onContextLost);
 
       scene = new THREE.Scene();
       // 对称正交视野（中心在原点），与 PlaneGeometry(1,1)（中心同为原点）对齐：
@@ -143,7 +168,16 @@ const FooterDistortion = ({
       material = new THREE.ShaderMaterial({
         side: THREE.DoubleSide,
         uniforms: {
-          uTexture: { value: new THREE.TextureLoader().load(textureUrl) },
+          uTexture: {
+            value: new THREE.TextureLoader().load(textureUrl, () => {
+              // 纹理就绪后再渲染静帧：清零位移并重绘一帧完整清晰的文字
+              // （仅 reduced-motion 需要；动画分支由 rAF 循环逐帧重绘，纹理加载完成后自然清晰）
+              if (!prefersReduced || disposed || !renderer || !scene || !camera) return;
+              if (data) data.fill(0);
+              if (dataTexture) dataTexture.needsUpdate = true;
+              renderer.render(scene, camera);
+            }),
+          },
           uDataTexture: { value: dataTexture },
         },
         vertexShader: VERTEX_SHADER,
@@ -163,15 +197,13 @@ const FooterDistortion = ({
       window.addEventListener("resize", resize);
 
       if (prefersReduced) {
-        // 无障碍降级：清零位移后渲染一帧完整清晰的静态文字
-        if (data) data.fill(0);
-        if (dataTexture) dataTexture.needsUpdate = true;
-        renderer.render(scene, camera);
+        // 无障碍降级：静帧渲染已移至纹理加载完成回调（onLoad）——
+        // uTexture 为 TextureLoader 异步加载，此处立即渲染会采到全透明帧（页脚显示永久纯绿块）且 return 后不再重绘
         return;
       }
 
       const tick = () => {
-        if (disposed || !material || !data || !dataTexture || !renderer || !scene || !camera) return;
+        if (disposed || fallbackShown || !material || !data || !dataTexture || !renderer || !scene || !camera) return;
         rafId = requestAnimationFrame(tick);
         // 位移逐帧衰减：静止时收敛为完整清晰的 diffsense 文字
         for (let i = 0; i < grid * grid; i++) {
@@ -201,6 +233,10 @@ const FooterDistortion = ({
         velocity.y = 0;
       };
       rafId = requestAnimationFrame(tick);
+      } catch (err) {
+        console.error("[FooterDistortion] init failed, fallback to static texture:", err);
+        showStaticFallback();
+      }
     };
 
     // 纹理本地导入，直接初始化
@@ -214,6 +250,7 @@ const FooterDistortion = ({
       mount.removeEventListener("pointerenter", onPointerEnter);
       mount.removeEventListener("pointerleave", onPointerLeave);
       window.removeEventListener("resize", resize);
+      renderer?.domElement.removeEventListener("webglcontextlost", onContextLost);
       material?.dispose();
       dataTexture?.dispose();
       mesh?.geometry.dispose();

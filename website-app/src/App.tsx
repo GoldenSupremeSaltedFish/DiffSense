@@ -1,4 +1,13 @@
-import { Fragment, lazy, Suspense, useEffect, useState } from "react";
+import {
+  Component,
+  Fragment,
+  lazy,
+  Suspense,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
+import textureUrl from "./assets/footer-texture.png";
 
 const QUICKSTART_DOC =
   "https://github.com/GoldenSupremeSaltedFish/DiffSense/blob/main/diffsense/docs/quickstart.md";
@@ -35,6 +44,32 @@ const WORKFLOW_SNIPPET = [
 
 /** Footer 碎片动画异步加载，three.js 独立 chunk，不阻塞首屏 */
 const FooterDistortion = lazy(() => import("./FooterDistortion"));
+
+/** Footer 动画兜底：渲染异常时降级为静态纹理图，避免单组件故障卸载整页 */
+class FooterDistortionBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <img
+          src={textureUrl}
+          alt="DiffSense"
+          className="distortion-fallback-img"
+          draggable={false}
+        />
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const featureCards = [
   {
@@ -362,9 +397,11 @@ const App = () => {
       </section>
 
       <section className="footer-distortion" aria-label="DiffSense">
-        <Suspense fallback={<div className="distortion-fallback" />}>
-          <FooterDistortion />
-        </Suspense>
+        <FooterDistortionBoundary>
+          <Suspense fallback={<div className="distortion-fallback" />}>
+            <FooterDistortion />
+          </Suspense>
+        </FooterDistortionBoundary>
         <div className="footer-distortion-meta">
           <span>GitHub 开源 · GoldenSupremeSaltedFish/DiffSense</span>
         </div>
