@@ -9,7 +9,8 @@ import textureUrl from "./assets/footer-texture.png";
  * - DataTexture(RG/Float)：每帧在 CPU 端更新网格顶点位移（常态波浪 + 衰减 + 鼠标冲击）
  * - ShaderMaterial：片段着色按位移偏移采样文字纹理，产生碎片扭曲观感
  * - 外层占位容器维持文档流高度，内层 position:fixed; bottom:0 吸附视口底部
- * - prefers-reduced-motion 时在纹理就绪回调中渲染一帧清晰静帧；WebGL 初始化失败 / 上下文丢失时降级为静态纹理 <img>
+ * - 动画为纯交互驱动（静止即收敛为清晰静帧、无自动动画），所有环境统一走 rAF 循环，不按 prefers-reduced-motion 分流；
+ *   WebGL 初始化失败 / 上下文丢失时降级为静态纹理 <img>
  */
 interface FooterDistortionProps {
   grid?: number;
@@ -49,10 +50,6 @@ const FooterDistortion = ({
   useEffect(() => {
     const mount = mountRef.current;
     if (!mount) return;
-
-    const prefersReduced =
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     let renderer: THREE.WebGLRenderer | null = null;
     let camera: THREE.OrthographicCamera | null = null;
@@ -168,16 +165,7 @@ const FooterDistortion = ({
       material = new THREE.ShaderMaterial({
         side: THREE.DoubleSide,
         uniforms: {
-          uTexture: {
-            value: new THREE.TextureLoader().load(textureUrl, () => {
-              // 纹理就绪后再渲染静帧：清零位移并重绘一帧完整清晰的文字
-              // （仅 reduced-motion 需要；动画分支由 rAF 循环逐帧重绘，纹理加载完成后自然清晰）
-              if (!prefersReduced || disposed || !renderer || !scene || !camera) return;
-              if (data) data.fill(0);
-              if (dataTexture) dataTexture.needsUpdate = true;
-              renderer.render(scene, camera);
-            }),
-          },
+          uTexture: { value: new THREE.TextureLoader().load(textureUrl) },
           uDataTexture: { value: dataTexture },
         },
         vertexShader: VERTEX_SHADER,
@@ -195,12 +183,6 @@ const FooterDistortion = ({
       mount.addEventListener("pointerenter", onPointerEnter);
       mount.addEventListener("pointerleave", onPointerLeave);
       window.addEventListener("resize", resize);
-
-      if (prefersReduced) {
-        // 无障碍降级：静帧渲染已移至纹理加载完成回调（onLoad）——
-        // uTexture 为 TextureLoader 异步加载，此处立即渲染会采到全透明帧（页脚显示永久纯绿块）且 return 后不再重绘
-        return;
-      }
 
       const tick = () => {
         if (disposed || fallbackShown || !material || !data || !dataTexture || !renderer || !scene || !camera) return;
