@@ -4,5 +4,5 @@ rules:
     severity: high
     impact: runtime
     file: "**/*.go"
-    match: '\*\s*\w+|\w+\s*\.\s*\w+\s*\('
-    rationale: "Potential nil dereference pattern introduced; verify pointer and receiver nil checks near call site."
+    match: '\(\s*\*\s*\w+\s*\)|\*\s*\w+\s*\.'
+    rationale: "Explicit pointer dereference pattern introduced; verify pointer nil checks near the dereference site. Defensive additions such as nil guards and logging calls (logger.Warn) are not flagged."

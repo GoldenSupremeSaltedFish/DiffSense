@@ -1,0 +1,8 @@
+rules:
+  - id: typescript.security.sensitive_storage
+    language: typescript
+    severity: medium
+    impact: security
+    file: "**/*.ts*"
+    match: 'localStorage|sessionStorage|document\.cookie\s*='
+    rationale: "Sensitive data (token/cookie) written to browser storage or cookie in TypeScript; prefer HttpOnly cookies or encrypted storage to avoid XSS-readable secrets."

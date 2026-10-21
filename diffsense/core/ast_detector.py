@@ -14,6 +14,18 @@ from .signal_model import Signal
 from .change import Change, ChangeKind
 from .knowledge import is_thread_safe, is_lock_type
 from .attribution import SUPPORTED_EXTENSIONS
+
+# #63: report the actual language per file extension instead of a hardcoded "Java"
+_LANG_LABELS = {
+    "py": "Python", "java": "Java", "js": "JavaScript", "mjs": "JavaScript",
+    "cjs": "JavaScript", "ts": "TypeScript", "tsx": "TypeScript", "go": "Go",
+    "cpp": "C++", "cc": "C++", "cxx": "C++", "hpp": "C++", "hh": "C++", "h": "C++",
+}
+
+
+def _lang_label(ext: str) -> str:
+    ext = (ext or "").lstrip(".")
+    return _LANG_LABELS.get(ext, ext.upper() if ext else "unknown")
 from .mybatis_detector import MyBatisXMLDetector, is_mybatis_xml
 from .sql_detector import SQLDetector, is_sql_script
 
@@ -199,10 +211,12 @@ class ASTDetector:
             ext = os.path.splitext(filename)[1].lower() if '.' in filename else ''
 
             if ext not in SUPPORTED_EXTENSIONS:
-                print(f"DEBUG: Skipping unsupported file: {filename}", file=sys.stderr)
+                if not os.environ.get("DIFFSENSE_QUIET"):
+                    print(f"DEBUG: Skipping unsupported file: {filename}", file=sys.stderr)
                 continue
             
-            print(f"DEBUG: Analyzing Java file: {filename}", file=sys.stderr)
+            if not os.environ.get("DIFFSENSE_QUIET"):
+                print(f"DEBUG: Analyzing {_lang_label(ext)} file: {filename}", file=sys.stderr)
             file_changes = self._detect_changes_in_patch(filename, patch_content, mode=analysis_mode)
             changes.extend(file_changes)
             

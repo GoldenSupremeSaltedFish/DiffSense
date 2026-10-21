@@ -61,13 +61,44 @@ class DiffParser:
                 os.remove(tmp_path)
             pass
 
+    _STRUCTURAL_NOISE_PREFIXES = (
+        "diff --git", "index ", "--- ", "+++ ", "old mode", "new mode",
+        "new file mode", "deleted file mode", "similarity index",
+        "dissimilarity index", "rename from", "rename to", "copy from",
+        "copy to", "Binary files", "GIT binary patch", "Literal", "Delta",
+    )
+
+    def _validate_diff_structure(self, diff_content: str) -> None:
+        """#77: a payload that looks like git diff output but has no hunk headers (@@)
+        would previously be silently analyzed as plain text. Raise a clear error instead.
+        Binary-only sections (Binary files differ / GIT binary patch) are legitimate and skipped."""
+        if not diff_content or "diff --git" not in diff_content or "@@" in diff_content:
+            return
+        for section in re.split(r"(?=diff --git )", diff_content):
+            if "diff --git" not in section:
+                continue
+            if "Binary files" in section or "GIT binary patch" in section:
+                continue
+            body = [l for l in section.splitlines()
+                    if l.strip() and not l.startswith(self._STRUCTURAL_NOISE_PREFIXES)]
+            if body:
+                raise ValueError(
+                    "Malformed diff: file section has content lines but no hunk header "
+                    "('@@'). Diff appears truncated or hand-edited. First line of offending "
+                    "section: %r" % section.splitlines()[0][:80]
+                )
+
     def parse(self, diff_content: str) -> Dict[str, Any]:
         """
         Parses a unified diff string and returns a structured object.
         """
         import time
         start_time = time.time()
-        
+
+        # #77: validate BEFORE the cache lookup — a malformed payload must neither
+        # reuse a cached result nor have its (bad) result cached.
+        self._validate_diff_structure(diff_content)
+
         files = []
         new_files = []
         stats = {"add": 0, "del": 0}

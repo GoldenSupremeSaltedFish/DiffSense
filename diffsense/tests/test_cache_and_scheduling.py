@@ -84,7 +84,7 @@ class TestCacheAndScheduling(unittest.TestCase):
     def test_atomic_write_logic(self):
         """验证原子写逻辑：检查是否使用了临时文件并成功替换"""
         parser = DiffParser()
-        diff_content = "diff --git a/test.py b/test.py\n+new line"
+        diff_content = "diff --git a/test.py b/test.py\n@@ -1,1 +1,2 @@\n+new line"
         
         # 拦截 os.replace 来确认它被调用了
         with patch("os.replace") as mock_replace:
@@ -120,7 +120,7 @@ class TestCacheAndScheduling(unittest.TestCase):
     def test_cache_metrics_tracking(self):
         """验证缓存可观测性指标统计"""
         parser = DiffParser()
-        diff_content = "diff --git a/a.txt b/a.txt\n+hello"
+        diff_content = "diff --git a/a.txt b/a.txt\n@@ -1,1 +1,2 @@\n+hello"
         
         # 第一次解析：Miss
         parser.parse(diff_content)
