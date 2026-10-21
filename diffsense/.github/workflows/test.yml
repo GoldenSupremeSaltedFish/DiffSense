@@ -46,7 +46,7 @@ jobs:
         run: |
           pip install -e ".[dev]" 2>/dev/null || pip install -e . && pip install pytest
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-      - name: Benchmark cold/hot (DoD: cold <10s, hot <3s)
+      - name: "Benchmark cold/hot (DoD: cold <10s, hot <3s)"
         run: |
           diffsense benchmark-cold-hot tests/fixtures/ast_cases/p0_concurrency.diff --output benchmark-cold-hot-result.json --fail-if-over || true
       - name: Upload benchmark result

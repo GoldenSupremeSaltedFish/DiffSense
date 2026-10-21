@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull_requests: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -35,7 +35,7 @@ jobs:
           path: ~/.diffsense
           key: diffsense-${{ runner.os }}-${{ hashFiles('.github/workflows/diffsense.yml') }}
       - name: Install DiffSense
-        run: pip install "git+https://github.com/GoldenSupremeSaltedFish/DiffSense.git@release/2.2.0#subdirectory=diffsense"
+        run: pip install "git+https://github.com/GoldenSupremeSaltedFish/DiffSense.git@v2.3.1#subdirectory=diffsense"
       - name: Run DiffSense
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -57,7 +57,7 @@ jobs:
 
 1. **安装**（任选其一）  
    - 从 GitHub 安装：  
-     `pip install "git+https://github.com/GoldenSupremeSaltedFish/DiffSense.git@release/2.2.0#subdirectory=diffsense"`  
+     `pip install "git+https://github.com/GoldenSupremeSaltedFish/DiffSense.git@v2.3.1#subdirectory=diffsense"`  
    - 或克隆仓库后安装：  
      `cd diffsense && pip install -e .`
 
@@ -75,5 +75,6 @@ jobs:
 | 主题 | 说明 |
 |------|------|
 | **CI 行为** | 仅分析本次 diff，不进行全量扫描；不自动阻断流水线；低 precision 规则自动降级；不自动拒绝 PR，仅输出建议。详见 [默认行为与产品承诺](recommended-config.md#二默认行为与产品承诺)。 |
+| **退出码** | `diffsense replay` / `diffsense audit` 的进程退出码语义：**0** = 通过（无阻断级发现）；**1** = 存在 critical 级发现（机器可读的阻断语义，如需在 CI 中容忍请使用 `continue-on-error` 或 `|| true`）；**2** = 工具错误。DiffSense 自身不调用平台 API 阻断 PR，是否因退出码 1 中断流水线由 CI 配置决定。 |
 | **误报处理** | 通过 [忽略配置](ignoring.md) 或行内注释 `// diffsense-ignore: rule_id` 排除误报。 |
 | **自定义规则** | 默认使用内置规则集；编写自定义规则请参阅 [rule-quickstart](rule-quickstart.md)。 |

@@ -22,6 +22,18 @@ def _match_file_pattern(filename: str, pattern: str) -> bool:
     
     return fnmatch.fnmatch(filename, pattern)
 
+def _changed_lines_only(patch_text: str) -> str:
+    """#64/#71/#77: keep only +/- (changed) lines from a unified diff, dropping
+    context lines and ---/+++ file headers, so rules never match unchanged context."""
+    kept = []
+    for line in patch_text.splitlines():
+        if line.startswith("+++") or line.startswith("---"):
+            continue
+        if line.startswith("+") or line.startswith("-"):
+            kept.append(line[1:])
+    return "\n".join(kept)
+
+
 class YamlRule(Rule):
     """
     Adapter to treat legacy YAML rules as first-class Plugins.
@@ -184,6 +196,10 @@ class YamlRule(Rule):
                 file_patches = diff_data.get('file_patches', [])
                 for fp in file_patches:
                     raw_diff += fp.get('patch', '')
+
+            # #64/#71/#77: restrict content matching to +/- (changed) lines only, so
+            # unchanged context lines and file headers never trigger rules by accident.
+            raw_diff = _changed_lines_only(raw_diff)
             
             if not self._compiled_match:
                 return None

@@ -254,6 +254,11 @@ def analyze_diff(
     }
 
     # 6. Output report summary to stderr for CI visibility
+    # #76: honor DIFFSENSE_QUIET=1 (set by `diffsense replay -q`) to keep stderr clean
+    _prev_stderr = sys.stderr
+    if os.environ.get("DIFFSENSE_QUIET", "").strip().lower() in ("1", "true", "yes"):
+        import io as _io
+        sys.stderr = _io.StringIO()
     sys.stderr.write("\n" + "="*40 + "\n")
     sys.stderr.write("🚀 DiffSense Performance Report\n")
     sys.stderr.write("="*40 + "\n")
@@ -302,6 +307,7 @@ def analyze_diff(
             sys.stderr.write(f"  - {r.get('severity', '').upper()} {r.get('id', '')}: {r.get('matched_file', '')}\n")
 
     sys.stderr.write("="*40 + "\n\n")
+    sys.stderr = _prev_stderr
     rule_engine.persist_rule_quality()
 
     if write_files:
@@ -352,7 +358,9 @@ def main():
         sys.exit(EXIT_ERROR)
 
     # 2-6. Run the shared analysis pipeline (parse -> AST -> rules -> decision -> report)
-    result = analyze_diff(
+    # #77: surface malformed-diff parse errors clearly and exit with EXIT_ERROR
+    try:
+        result = analyze_diff(
         diff_content,
         args.rules,
         profile=args.profile,
@@ -370,6 +378,12 @@ def main():
         experimental_report_only=args.experimental_report_only,
         format=args.format,
     )
+    except ValueError as e:
+        # #77: emit to the process' real stdout — under `replay -q` sys.stdout is
+        # redirected to a buffer, but the tool-error report is a machine-readable
+        # contract that must still be emitted.
+        print(_tool_error_report(str(e)), file=sys.__stdout__)
+        sys.exit(EXIT_ERROR)
 
     # 7. Output Result
     if args.format == "json":

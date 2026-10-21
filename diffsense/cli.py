@@ -22,6 +22,36 @@ def _default_rules_path() -> str:
         return str(Path(__file__).resolve().parent / "config")
 
 
+def _print_version_and_exit() -> None:
+    """#74: make `diffsense --version` print the package version."""
+    try:
+        from importlib.metadata import version as _pkg_version
+        typer.echo(_pkg_version("diffsense"))
+        raise typer.Exit()
+    except typer.Exit:
+        raise
+    except Exception:
+        pass
+    import re
+    try:
+        m = re.search(r'^version\s*=\s*"([^"]+)"', (Path(__file__).resolve().parent / "pyproject.toml").read_text(encoding="utf-8"), re.M)
+        typer.echo(m.group(1) if m else "unknown")
+    except Exception:
+        typer.echo("unknown")
+    raise typer.Exit()
+
+
+@app.callback()
+def _root(
+    version: bool = typer.Option(
+        False, "--version", help="Show DiffSense version and exit.",
+        callback=lambda ctx, param, value: (_print_version_and_exit() if value else value),
+        is_eager=True,
+    ),
+) -> None:
+    """DiffSense: MR/PR risk audit. Use 'diffsense audit' in CI."""
+
+
 @app.command()
 def audit(
     platform: str = typer.Option(..., "--platform", "-p", help="CI platform: github | gitlab"),
@@ -119,9 +149,14 @@ def replay(
     quality_min_samples: int = typer.Option(30, "--quality-min-samples", help="Minimum samples before quality warnings"),
     experimental: bool = typer.Option(False, "--experimental", help="Include experimental rules (report-only by default)"),
     experimental_report_only: bool = typer.Option(True, "--experimental-report-only/--experimental-affect-decision", help="Do not affect decision with experimental rules"),
-    quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress report output on stdout (report still written to --report-json)"),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress report output on stdout/stderr (report still written to --report-json)"),
 ) -> None:
-    """Run audit on a local diff file (for replay/offline)."""
+    """Run audit on a local diff file (for replay/offline).
+
+    Exit codes: 0 = pass (no blocking findings); 1 = critical findings present
+    (machine-readable blocking semantics; see docs/quickstart.md '退出码' row for
+    how to tolerate in CI); 2 = tool error.
+    """
     rules_path = rules
     if not rules_path or not os.path.exists(rules_path):
         rules_path = _default_rules_path()
@@ -156,11 +191,14 @@ def replay(
         import io
         _quiet_stdout = sys.stdout
         sys.stdout = io.StringIO()
+        # #76: keep stderr clean too (DEBUG lines / banner) — gated in main.py & ast_detector
+        os.environ["DIFFSENSE_QUIET"] = "1"
     try:
         replay_main()
     finally:
         if quiet:
             sys.stdout = _quiet_stdout
+            os.environ.pop("DIFFSENSE_QUIET", None)
 
 
 rules_app = typer.Typer(help="Manage rules. Use 'rules report' for rule quality from replay JSON; use 'rules health' for persisted rule_metrics.json.")
