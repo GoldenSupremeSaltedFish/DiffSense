@@ -24,6 +24,7 @@ import os
 from typing import Any, Dict, List, Optional
 
 from mcp.server.mcpserver import MCPServer
+from mcp.server.stdio import stdio_server
 from mcp_types import ToolAnnotations
 
 from cli import _default_rules_path
@@ -35,8 +36,31 @@ def _build_annotations() -> ToolAnnotations:
     return ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=False)
 
 
+class _DiffSenseMCPServer(MCPServer):
+    """MCPServer that stops advertising empty ``resources``/``prompts`` capabilities (#129).
+
+    The SDK registers resources/prompts handlers unconditionally, so the
+    initialize response always advertises both capabilities even though this
+    server defines none - clients waste a round-trip discovering empty lists.
+    The stdio entry overrides the advertised capabilities accordingly. If
+    resources or prompts are ever added to this server, remove this override.
+    """
+
+    async def run_stdio_async(self) -> None:  # noqa: D102 - see class docstring
+        async with stdio_server() as (read_stream, write_stream):
+            options = self._lowlevel_server.create_initialization_options()
+            try:  # defensive against SDK layout changes: never fail the handshake here
+                capabilities = options.capabilities
+                if capabilities is not None:
+                    capabilities.prompts = None
+                    capabilities.resources = None
+            except Exception:
+                pass
+            await self._lowlevel_server.run(read_stream, write_stream, options)
+
+
 # #126: advertise the package version so MCP clients can identify the server build.
-mcp = MCPServer("diffsense", version=_tool_version())
+mcp = _DiffSenseMCPServer("diffsense", version=_tool_version())
 
 
 # #153/#154: audit_replay only accepts diff files with these extensions.
