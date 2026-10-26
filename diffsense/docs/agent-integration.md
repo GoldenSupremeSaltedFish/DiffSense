@@ -88,6 +88,19 @@ pip install "diffsense[mcp]"
 diffsense-mcp              # listens on stdio
 ```
 
+### Troubleshooting: `diffsense-mcp` exits silently (#83)
+
+The server prints a one-line banner to stderr on startup
+(`diffsense-mcp <version> starting ...`) and a full traceback to stderr on any
+fatal error. If the process exits with **no stderr output at all**, the
+console-script launcher itself is broken (pip entry-point exe pointing at a
+missing/moved interpreter) - no Python code has run yet. Recover with:
+
+```bash
+python -m mcp_server                                   # bypass the exe entirely
+pip install -e . --force-reinstall --no-deps           # regenerate entry-point exes
+```
+
 ### Tools (exactly 4)
 
 | Tool | Arguments | Returns |

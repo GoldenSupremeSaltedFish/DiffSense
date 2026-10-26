@@ -88,6 +88,51 @@ def test_stdio_server_exposes_exact_four_readonly_tools() -> None:
         proc.kill()
 
 
+def test_malformed_jsonrpc_line_gets_parse_error() -> None:
+    # #128: a line that is not valid JSON must get a JSON-RPC 2.0 parse error
+    # response (-32700, id=null) on the wire instead of being dropped silently.
+    proc, q = _start_server()
+    try:
+        proc.stdin.write("not valid json at all\n")
+        proc.stdin.flush()
+        resp = json.loads(q.get(timeout=20))
+        assert "error" in resp, resp
+        assert resp["id"] is None
+        assert resp["error"]["code"] == -32700
+    finally:
+        proc.kill()
+
+
+def test_valid_traffic_still_works_after_parse_error() -> None:
+    # #128: the parse-error responder must not wedge the stdio stream; normal
+    # initialize + tools/list after a malformed line still succeed.
+    proc, q = _start_server()
+    try:
+        proc.stdin.write("garbage\n")
+        proc.stdin.flush()
+        first = json.loads(q.get(timeout=20))
+        assert first.get("error", {}).get("code") == -32700, first  # drain the parse error first
+        init = _rpc(
+            proc,
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {"name": "diffsense-test", "version": "0"},
+                },
+            },
+            q,
+        )
+        assert "result" in init, init
+        listed = _rpc(proc, {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}, q)
+        assert {t["name"] for t in listed["result"]["tools"]} == EXPECTED_TOOLS
+    finally:
+        proc.kill()
+
+
 def test_audit_diff_returns_contract_report() -> None:
     import mcp_server
 

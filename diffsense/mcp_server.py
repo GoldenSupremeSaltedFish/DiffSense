@@ -56,7 +56,51 @@ class _DiffSenseMCPServer(MCPServer):
                     capabilities.resources = None
             except Exception:
                 pass
-            await self._lowlevel_server.run(read_stream, write_stream, options)
+            # #128: the SDK's stdio reader funnels unparseable stdin lines into the
+            # read stream as raw Exception objects, which the low-level server drops
+            # silently - a malformed JSON-RPC line got zero feedback. Intercept
+            # those and answer the JSON-RPC 2.0 parse error (-32700, id=null) on
+            # the wire instead. Defensive import: fall back to the stock wiring if
+            # the SDK layout ever changes.
+            try:
+                from anyio import ClosedResourceError, create_task_group
+                from mcp.shared._context_streams import create_context_streams
+                from mcp.shared.message import SessionMessage
+                import mcp_types
+            except Exception:
+                await self._lowlevel_server.run(read_stream, write_stream, options)
+                return
+
+            bridged_writer, bridged_reader = create_context_streams[SessionMessage | Exception](0)
+
+            async def _parse_error_responder() -> None:
+                try:
+                    async with bridged_writer:
+                        async for item in read_stream:
+                            if isinstance(item, Exception):
+                                error = mcp_types.jsonrpc_message_adapter.validate_python(
+                                    {
+                                        "jsonrpc": "2.0",
+                                        "id": None,
+                                        "error": {
+                                            "code": -32700,
+                                            "message": (
+                                                "Parse error: line is not valid JSON-RPC 2.0 "
+                                                "(#128); re-send as a single-line JSON object."
+                                            ),
+                                        },
+                                    },
+                                    by_name=False,
+                                )
+                                await write_stream.send(SessionMessage(error))
+                            else:
+                                await bridged_writer.send(item)
+                except ClosedResourceError:  # pragma: no cover
+                    pass
+
+            async with create_task_group() as tg:
+                tg.start_soon(_parse_error_responder)
+                await self._lowlevel_server.run(bridged_reader, write_stream, options)
 
 
 # #126: advertise the package version so MCP clients can identify the server build.
@@ -303,8 +347,28 @@ def explain_rule(rule_id: str, rules: str = "", profile: str = "") -> str:
 
 
 def main() -> None:
-    """Entry point for the ``diffsense-mcp`` console script (stdio transport)."""
-    mcp.run(transport="stdio")
+    """Entry point for the ``diffsense-mcp`` console script (stdio transport).
+
+    #83: emit a one-line startup banner and full tracebacks to stderr so a
+    console script that dies (broken pip launcher, missing interpreter, import
+    error) is diagnosable instead of exiting silently with no output.
+    """
+    import sys as _sys
+    import traceback as _traceback
+
+    print(
+        f"diffsense-mcp {_tool_version()} starting (pid={os.getpid()}, stdio transport) (#83)",
+        file=_sys.stderr,
+        flush=True,
+    )
+    try:
+        mcp.run(transport="stdio")
+    except Exception:
+        _traceback.print_exc(file=_sys.stderr)
+        _sys.stderr.flush()
+        raise
+    finally:
+        print("diffsense-mcp stopped (#83)", file=_sys.stderr, flush=True)
 
 
 if __name__ == "__main__":
