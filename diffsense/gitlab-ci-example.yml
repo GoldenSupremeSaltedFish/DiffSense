@@ -9,9 +9,16 @@
 #
 # entrypoint（CN）：必填，否则 Runner 传入的 script 会被当作 diffsense 子命令导致报错。
 # entrypoint (EN): Required; otherwise the runner passes script as diffsense subcommand and the job fails.
+#
+# 产物说明（CN）：job 会保存 JSON/SARIF 报告；GitLab 16.7+ 支持将 SARIF 作为
+# sast report 导入 Secure 面板（reports.sast），旧版本可从 job artifacts 页面下载。
+# Artifacts (EN): JSON/SARIF reports are saved as job artifacts; on GitLab 16.7+
+# the SARIF file is ingested via reports.sast, older versions can download it
+# from the job artifacts page.
 diffsense_check:
   stage: diffsense
-  image: ghcr.io/goldensupremesaltedfish/diffsense:1.0.0
+  # #131: pin to the current release tag instead of the stale 1.0.0 image.
+  image: ghcr.io/goldensupremesaltedfish/diffsense:2.3.1
   entrypoint: [""]
   cache:
     key: diffsense-cache
@@ -19,8 +26,21 @@ diffsense_check:
       - .diffsense-cache
   variables:
     DIFFSENSE_CACHE_DIR: "${CI_PROJECT_DIR}/.diffsense-cache"
+    # merge-base for the three-dot diff below needs history; keep >= 100.
+    GIT_DEPTH: "100"
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
   script:
-    - diffsense audit --platform gitlab --token "$DIFFSENSE_TOKEN" --project-id "$CI_PROJECT_ID" --mr-iid "$CI_MERGE_REQUEST_IID" --gitlab-url "${GITLAB_URL:-$CI_SERVER_URL}"
-  allow_failure: false
+    # #132: DiffSense never blocks pipelines by contract -- findings are posted
+    # as MR feedback, so the job must tolerate non-zero exits.
+    - diffsense audit --platform gitlab --token "$DIFFSENSE_TOKEN" --project-id "$CI_PROJECT_ID" --mr-iid "$CI_MERGE_REQUEST_IID" --gitlab-url "${GITLAB_URL:-$CI_SERVER_URL}" || true
+    # #140: generate a SARIF report for the MR diff and upload it as artifacts.
+    - git diff "origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}...${CI_COMMIT_SHA}" > mr.diff
+    - diffsense replay mr.diff --format sarif > diffsense-report.sarif
+  allow_failure: true
+  artifacts:
+    when: always
+    paths:
+      - diffsense-report.sarif
+    reports:
+      sast: diffsense-report.sarif
