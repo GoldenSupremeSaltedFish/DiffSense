@@ -8,30 +8,55 @@
 # 官方推荐配置（Official Recommended Config）
 profile: lightweight
 auto_tune: true
-ci_fail_level: elevated
-cache: true
-scheduler: true
 ```
 
 - **profile: lightweight** — 只跑 severity 为 critical 的规则，执行快、噪音少，规则执行比例通常 < 30%。
 - **auto_tune: true** — 启用规则质量自适应：precision 过低的规则会自动降级或跳过，减少误报干扰。
-- **ci_fail_level: elevated** — CI 在「elevated」及以上（含 critical）时失败，需人工确认或审批后通过。
-- **cache: true** — 启用 diff/AST 缓存，热启动通常 < 3s。
-- **scheduler: true** — 按变更文件语言与 scope 调度规则，只跑相关规则，不跑全量。
+
+> **已废弃配置键（#93）**：早期版本推荐配置中的 `ci_fail_level`、`cache`、`scheduler` 三个键**已不再被 DiffSense 消费**（DiffSense 不自动阻断 CI，缓存与规则调度为内置行为，不受配置控制）。配置文件中残留这些键时，工具会输出 WARNING 提示并忽略，可直接删除。
 
 若同时使用忽略规则，可与 `ignore` 写在同一文件：
 
 ```yaml
 profile: lightweight
 auto_tune: true
-ci_fail_level: elevated
-cache: true
-scheduler: true
 
 ignore:
   - rule: some.rule.id
     files: ["**/test/**"]
 ```
+
+### 规则质量阈值微调（可选，#98）
+
+`auto_tune` 依赖规则质量统计（precision）。默认阈值适用于大多数仓库；如需调整，可在 `.diffsense.yaml` 中配置：
+
+```yaml
+rule_quality:
+  degrade_threshold: 0.5   # precision < 0.5 的规则被降级（degraded）
+  disable_threshold: 0.3   # precision < 0.3 且 auto_tune: true 时该规则被跳过
+  min_samples: 30          # 样本数不足 30 的规则不参与质量动作（数据不足不误杀）
+```
+
+三个键均为可选，缺省时使用内置默认值（0.5 / 0.3 / 30）。CLI 参数 `--quality-disable-threshold` / `--quality-downgrade-threshold` / `--quality-min-samples` 的优先级高于配置文件；二者均未提供时使用内置默认。
+
+### PRO 超级规则路径（可选，#98）
+
+PRO 超级规则（pro-rules，含 CVE 精确匹配等）默认从与 diffsense 包同级的 `pro-rules/` 目录解析，也可通过环境变量 `DIFFSENSE_PRO_RULES` 指定。若希望用仓库配置固定路径，可写：
+
+```yaml
+pro_rules_path: /path/to/pro-rules   # 目录需真实存在，否则回退默认解析
+```
+
+优先级：环境变量 `DIFFSENSE_PRO_RULES` > `.diffsense.yaml` 的 `pro_rules_path` > 默认目录。
+
+### 配置校验（#95）
+
+以下非法值会被**警告并忽略**（回退内置默认），而不是静默生效或深处报错：
+
+- `profile` 不是 `lightweight` / `standard` / `strict` 之一；
+- `auto_tune` 不是布尔值（如带引号的 `"false"`——YAML 中字符串 `"false"` 不会自动转布尔，请写裸值 `false`）；
+- `rule_quality` 不是映射，或其阈值子键不是数字；
+- `dependency_versions` 不是映射。
 
 ### CVE 精确匹配：配置依赖版本（可选）
 

@@ -136,17 +136,34 @@ class TestCacheAndScheduling(unittest.TestCase):
     def test_rule_quality_disable(self):
         metrics_path = os.path.join(self.test_dir, "rule_metrics.json")
         os.environ["DIFFSENSE_RULE_METRICS"] = metrics_path
-        rule = MatchRule("quality_rule")
-        engine = RuleEngine("config/rules.yaml", config={"rule_quality": {"auto_tune": True, "min_samples": 1}})
-        engine.rules = [rule]
-        engine.ignore_manager.ignores = [{"rule": "quality_rule", "files": ["*"]}]
-        diff_data = {"files": ["a.py"]}
-        engine.evaluate(diff_data, [])
-        engine.persist_rule_quality()
+        # #114: ignored findings are no longer recorded as false positives, so the
+        # auto-disable path is driven by real precision data in the metrics file.
+        data = {"rules": {"quality_rule": {"hits": 10, "confirmed": 0, "false_positive": 10, "precision": 0.0}}}
+        with open(metrics_path, "w", encoding="utf-8") as f:
+            json.dump(data, f)
         engine2 = RuleEngine("config/rules.yaml", config={"rule_quality": {"auto_tune": True, "min_samples": 1}})
         engine2.rules = [MatchRule("quality_rule")]
+        diff_data = {"files": ["a.py"]}
         engine2.evaluate(diff_data, [])
         self.assertFalse(engine2.rules[0].evaluated)
+
+    def test_ignore_is_not_false_positive_and_is_summarised(self):
+        """#114/#113: an intentionally ignored finding must NOT pollute precision
+        stats, and must be collected in engine.ignored_findings for the report's
+        suppression summary."""
+        metrics_path = os.path.join(self.test_dir, "rule_metrics_ignored.json")
+        os.environ["DIFFSENSE_RULE_METRICS"] = metrics_path
+        engine = RuleEngine("config/rules.yaml")
+        engine.rules = [MatchRule("ignored_rule")]
+        engine.ignore_manager.ignores = [{"rule": "ignored_rule", "files": ["*"]}]
+        diff_data = {"files": ["a.py"]}
+        triggered = engine.evaluate(diff_data, [])
+        self.assertEqual(triggered, [])
+        self.assertEqual(len(engine.ignored_findings), 1)
+        self.assertEqual(engine.ignored_findings[0]["rule_id"], "ignored_rule")
+        self.assertEqual(engine.ignored_findings[0]["file"], "a.py")
+        quality_status, _, _ = engine.quality_manager.status("ignored_rule")
+        self.assertNotEqual(quality_status, "disabled")
 
     def test_rule_quality_degrade(self):
         metrics_path = os.path.join(self.test_dir, "rule_metrics.json")

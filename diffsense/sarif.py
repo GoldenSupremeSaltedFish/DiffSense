@@ -27,6 +27,10 @@ SEVERITY_TO_LEVEL: Dict[str, str] = {
     "high": "error",
     "medium": "warning",
     "low": "note",
+    # #84: complete the mapping so no severity silently falls back to "note".
+    "info": "note",
+    "warning": "warning",
+    "elevated": "warning",
 }
 DEFAULT_LEVEL = "note"
 
@@ -90,11 +94,14 @@ def findings_to_results(details: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         uri = _detail_uri(detail)
         location: Dict[str, Any] = {}
         if uri:
-            location = {
-                "physicalLocation": {
-                    "artifactLocation": {"uri": uri},
-                }
+            physical: Dict[str, Any] = {
+                "artifactLocation": {"uri": uri},
             }
+            # #87: expose the attributed line as region.startLine when available.
+            line = detail.get("line")
+            if isinstance(line, int) and line > 0:
+                physical["region"] = {"startLine": line}
+            location = {"physicalLocation": physical}
         results.append({
             "ruleId": f"diffsense/{_detail_rule_id(detail)}",
             "level": severity_to_level(_detail_severity(detail)),
@@ -126,16 +133,42 @@ def review_level_result(result: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _tool_version() -> str:
+    """#130: resolve the DiffSense package version for tool.driver.version."""
+    try:
+        from importlib.metadata import version as _pkg_version
+        return _pkg_version("diffsense")
+    except Exception:
+        pass
+    try:
+        import re as _re
+        from pathlib import Path as _Path
+        text = (_Path(__file__).resolve().parent / "pyproject.toml").read_text(encoding="utf-8")
+        m = _re.search(r'^version\s*=\s*"([^"]+)"', text, _re.MULTILINE)
+        if m:
+            return m.group(1)
+    except Exception:
+        pass
+    return "0.0.0"
+
+
 def _rule_descriptors(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    rules: Dict[str, str] = {}
+    """#116/#138: emit full rule descriptors (id, short/full description,
+    helpUri and default level) instead of bare id + shortDescription."""
+    rules: Dict[str, Dict[str, Any]] = {}
     for r in results:
         rule_id = r["ruleId"]
         message = r.get("message", {}).get("text", rule_id)
-        rules.setdefault(rule_id, message)
-    return [
-        {"id": rule_id, "shortDescription": {"text": message}}
-        for rule_id, message in sorted(rules.items())
-    ]
+        if rule_id in rules:
+            continue
+        rules[rule_id] = {
+            "id": rule_id,
+            "shortDescription": {"text": message},
+            "fullDescription": {"text": message},
+            "helpUri": "https://github.com/GoldenSupremeSaltedFish/DiffSense/blob/main/README.md",
+            "defaultConfiguration": {"level": r.get("level", DEFAULT_LEVEL)},
+        }
+    return [rules[rule_id] for rule_id in sorted(rules)]
 
 
 def build_sarif_report(result: Dict[str, Any]) -> Dict[str, Any]:
@@ -149,6 +182,7 @@ def build_sarif_report(result: Dict[str, Any]) -> Dict[str, Any]:
             "tool": {
                 "driver": {
                     "name": "DiffSense",
+                    "version": _tool_version(),  # #130: driver.version was missing
                     "informationUri": "https://github.com/GoldenSupremeSaltedFish/DiffSense",
                     "rules": _rule_descriptors(findings + reviews),
                 }

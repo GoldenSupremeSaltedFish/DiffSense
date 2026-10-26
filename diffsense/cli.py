@@ -70,9 +70,9 @@ def audit(
     report_html: str = typer.Option("diffsense-report.html", "--report-html", help="Report HTML output path"),
     comments_json: str = typer.Option("diffsense-comments.json", "--comments-json", help="Inline comments JSON output path"),
     quality_auto_tune: bool = typer.Option(False, "--quality-auto-tune", help="[DEPRECATED] Enable quality auto tune (now only affects reporting)"),
-    quality_disable_threshold: float = typer.Option(0.3, "--quality-disable-threshold", help="Disable threshold for reporting"),
-    quality_downgrade_threshold: float = typer.Option(0.5, "--quality-downgrade-threshold", help="Downgrade threshold for reporting"),
-    quality_min_samples: int = typer.Option(30, "--quality-min-samples", help="Minimum samples before quality warnings"),
+    quality_disable_threshold: float = typer.Option(None, "--quality-disable-threshold", help="Disable threshold (default: 0.3 or rule_quality.disable_threshold from .diffsense.yaml)"),
+    quality_downgrade_threshold: float = typer.Option(None, "--quality-downgrade-threshold", help="Downgrade threshold (default: 0.5 or rule_quality.degrade_threshold from .diffsense.yaml)"),
+    quality_min_samples: int = typer.Option(None, "--quality-min-samples", help="Minimum samples before quality warnings (default: 30 or rule_quality.min_samples from .diffsense.yaml)"),
     experimental: bool = typer.Option(False, "--experimental", help="Include experimental rules (report-only by default)"),
     experimental_report_only: bool = typer.Option(True, "--experimental-report-only/--experimental-affect-decision", help="Do not affect decision with experimental rules"),
     format: str = typer.Option("json", "--format", "-f", help="Output: json | markdown | sarif"),
@@ -133,9 +133,9 @@ def audit(
 
 @app.command()
 def replay(
-    diff_file: str = typer.Argument(..., help="Path to .diff file"),
+    diff_file: str = typer.Argument(..., help="Path to .diff file. Use '-' to read the diff from stdin (#136), e.g. `git diff | diffsense replay -`"),
     rules: str = typer.Option(None, "--rules", help="Path to rules: single YAML file or directory of YAML files"),
-    format: str = typer.Option("json", "--format", "-f", help="Output: json | markdown | sarif"),
+    format: str = typer.Option("json", "--format", "-f", help="Output: json | markdown | sarif | junit (#134) | codequality (#135)"),
     profile: str = typer.Option(None, "--profile", help="Profile: strict or lightweight"),
     baseline: bool = typer.Option(False, "--baseline", help="Generate baseline file for existing issues"),
     since_baseline: bool = typer.Option(False, "--since-baseline", help="Only report findings not in baseline"),
@@ -144,9 +144,9 @@ def replay(
     report_html: str = typer.Option("diffsense-report.html", "--report-html", help="Report HTML output path"),
     comments_json: str = typer.Option("diffsense-comments.json", "--comments-json", help="Inline comments JSON output path"),
     quality_auto_tune: bool = typer.Option(False, "--quality-auto-tune", help="[DEPRECATED] Enable quality auto tune (now only affects reporting)"),
-    quality_disable_threshold: float = typer.Option(0.3, "--quality-disable-threshold", help="Disable threshold for reporting"),
-    quality_downgrade_threshold: float = typer.Option(0.5, "--quality-downgrade-threshold", help="Downgrade threshold for reporting"),
-    quality_min_samples: int = typer.Option(30, "--quality-min-samples", help="Minimum samples before quality warnings"),
+    quality_disable_threshold: float = typer.Option(None, "--quality-disable-threshold", help="Disable threshold (default: 0.3 or rule_quality.disable_threshold from .diffsense.yaml)"),
+    quality_downgrade_threshold: float = typer.Option(None, "--quality-downgrade-threshold", help="Downgrade threshold (default: 0.5 or rule_quality.degrade_threshold from .diffsense.yaml)"),
+    quality_min_samples: int = typer.Option(None, "--quality-min-samples", help="Minimum samples before quality warnings (default: 30 or rule_quality.min_samples from .diffsense.yaml)"),
     experimental: bool = typer.Option(False, "--experimental", help="Include experimental rules (report-only by default)"),
     experimental_report_only: bool = typer.Option(True, "--experimental-report-only/--experimental-affect-decision", help="Do not affect decision with experimental rules"),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress report output on stdout/stderr (report still written to --report-json)"),
@@ -172,7 +172,15 @@ def replay(
     except Exception:
         pass
 
-    args = ["diffsense", diff_file, "--rules", rules_path, "--format", format, "--baseline-file", baseline_file, "--report-json", report_json, "--report-html", report_html, "--comments-json", comments_json, "--quality-disable-threshold", str(quality_disable_threshold), "--quality-downgrade-threshold", str(quality_downgrade_threshold), "--quality-min-samples", str(quality_min_samples)]
+    args = ["diffsense", diff_file, "--rules", rules_path, "--format", format, "--baseline-file", baseline_file, "--report-json", report_json, "--report-html", report_html, "--comments-json", comments_json]
+    # #96: only forward quality thresholds that were explicitly provided; leave
+    # the None sentinel so main.py can apply .diffsense.yaml rule_quality values.
+    if quality_disable_threshold is not None:
+        args.extend(["--quality-disable-threshold", str(quality_disable_threshold)])
+    if quality_downgrade_threshold is not None:
+        args.extend(["--quality-downgrade-threshold", str(quality_downgrade_threshold)])
+    if quality_min_samples is not None:
+        args.extend(["--quality-min-samples", str(quality_min_samples)])
     if profile:
         args.extend(["--profile", profile])
     if baseline:
@@ -360,7 +368,9 @@ def replay_coverage(
                 data = json.load(f)
             total += 1
             level = str(data.get("review_level", "normal")).lower()
-            if level in ["elevated", "critical"]:
+            # #105: any non-normal level means findings were produced. The old check
+            # only counted "elevated"/"critical", silently dropping "low" reviews.
+            if level != "normal":
                 triggered += 1
         except Exception:
             continue

@@ -23,9 +23,9 @@ Plugin模块设计为可以完全独立于主项目进行自主调试的模块�
    - `npm run watch` - 监听模式编译
    - `npm run prepare-package` - 准备打包资源
 
-4. **资源自包含**
+4. **资源自包含**（需先执行一次打包准备）
    - `analyzers/`目录包含所有分析器
-   - `dist/`目录包含前端资源
+   - `dist/`目录**默认仅含 TypeScript 编译产物**；前端资源与 database worker 需先运行 `npm run prepare-package` 复制到 `dist/` 后才完整
    - JAR文件已复制到本地
 
 ### ⚠️ 需要改进的方面
@@ -33,6 +33,7 @@ Plugin模块设计为可以完全独立于主项目进行自主调试的模块�
 1. **依赖外部资源**
    - `prepare-package.js`脚本依赖外部路径
    - 前端资源需要从外部复制
+   - `dist/`在前端资源复制前不含界面资源，直接 F5 调试时 Webview 可能为空白
 
 ## 完全独立调试步骤
 

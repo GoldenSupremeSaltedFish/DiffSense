@@ -9,8 +9,11 @@ def _match_file_pattern(filename: str, pattern: str) -> bool:
     if pattern == '**' or pattern == '*':
         return True
     
-    # Handle **/*.py style patterns (ends with extension)
-    if pattern.startswith('**/') and '*' not in pattern[3:]:
+    # Handle **/*.py style patterns (ends with extension).
+    # #117: `**/*.py` must also match root-level files, so only strip the `**/`
+    # prefix when the remainder has no slash; fnmatch's `*` then crosses path
+    # separators and matches any depth (including the repository root).
+    if pattern.startswith('**/') and '/' not in pattern[3:]:
         # Convert **/*.py to *.py
         pattern = pattern[3:]
     
@@ -50,7 +53,12 @@ class YamlRule(Rule):
                 flags |= re.IGNORECASE
             try:
                 self._compiled_match = re.compile(content_regex, flags)
-            except re.error:
+            except re.error as exc:
+                # #118: an invalid regex must not fail silently -- warn so the
+                # rule author knows this rule can never trigger.
+                import sys
+                rid = rule_dict.get('id', 'unknown')
+                print(f"WARNING: rule '{rid}': invalid regex {content_regex!r}: {exc}", file=sys.stderr)
                 self._compiled_match = None
 
     @property
