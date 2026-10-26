@@ -35,6 +35,14 @@ Notable changes and breaking changes per release. The upgrade guide for
 - **`--version` (#74)**: `diffsense --version` now prints the package
   version instead of the usage text.
 
+### Deprecated (#109)
+
+- `--quality-auto-tune` (CLI): deprecated since 2.3.0, removal planned
+  for 2.4.0. No functional replacement — quality tuning no longer gates
+  rule execution and only affects reporting. Migration: remove the
+  flag from your CI commands; the config-side `auto_tune` key is
+  deprecated for the same reason.
+
 ### Added
 
 - SARIF 2.1.0 output now includes `tool.driver.version` (#130),
