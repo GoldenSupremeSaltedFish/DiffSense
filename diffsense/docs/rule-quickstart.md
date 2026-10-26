@@ -91,3 +91,20 @@ class MyRule(Rule):
 - [rule-plugins.md](rule-plugins.md)：entry point 契约、返回 `List[Rule]` 或路径、包命名。
 - [ast_signal_contract.md](ast_signal_contract.md)：可用的 signal ID 与约定。
 - 示例包：`examples/diffsense-rules-example/`（[README](../examples/diffsense-rules-example/README.md)）。
+
+---
+
+## 5. 规则 ID 前缀规范（#89）
+
+规则 ID 采用 `<scope>.<category>[.<name>]` 点分层级。`list_rules` / `rules list`
+按 top-level 前缀分组，过滤语言专属规则时需注意两类 scope：
+
+| 前缀 | 含义 | 示例 |
+|---|---|---|
+| `<lang>.` | 语言专属规则（`python.` / `javascript.` / `typescript.` / `go.` / `cpp.` / `java.`） | `python.security.hardcoded_secret`、`go.security.path_traversal` |
+| `prorule.<lang>.` | **PRO（超级规则）集**：随正式版分发的绝对型高质量规则（`rule_type=absolute`，severity=`high`），覆盖 resource_leak / null_safety / exception_swallowed 等类别 | `prorule.python.resource_leak`、`prorule.javascript.null_safety`、`prorule.cpp.exception_swallowed` |
+| `generic security 规则`（无语言前缀） | 跨语言兜底规则 | `security.hardcoded_secret` |
+
+> **按语言过滤时的注意点**：`prorule.python.*` 不以 `python.` 开头，
+> 仅搜 `python.*` 会漏掉这批 PRO 规则。需要完整覆盖某语言时，
+> 请同时匹配 `python.*` 与 `prorule.python.*`（#89）。

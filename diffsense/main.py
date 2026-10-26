@@ -433,7 +433,7 @@ def main():
         help="Path to the diff file. Use '-' to read the unified diff from stdin (#136), "
              "e.g. `git diff | diffsense replay -`.",
     )
-    parser.add_argument("--rules", default="config", help="Path to rules: single YAML file or directory of YAML files")
+    parser.add_argument("--rules", default="config", help="Path to rules: single YAML file or directory of YAML files. NOTE: since 2.3.0 the default loads the whole config/rules directory (178 rules, #108), up from a single 36-rule file in 2.2.x; pass the old file explicitly to keep the previous rule set")
     parser.add_argument(
         "--format",
         choices=["json", "markdown", "sarif", "junit", "codequality"],

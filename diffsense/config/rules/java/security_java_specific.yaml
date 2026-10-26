@@ -1,0 +1,56 @@
+rules:
+  - id: java.security.jndi_injection
+    language: java
+    severity: critical
+    impact: security
+    file: "**/*.java"
+    match: 'InitialContext\(\)\.lookup\s*\(|Context\.lookup\s*\([^)]*(?:\+|String\.format|concat)'
+    rationale: "JNDI lookup built from user-controlled input enables remote class loading (Log4Shell-style RCE); use a strict naming allowlist and never interpolate user input into lookup names."
+
+  - id: java.security.deserialization
+    language: java
+    severity: high
+    impact: security
+    file: "**/*.java"
+    match: 'ObjectInputStream\(|readObject\s*\(|XMLDecoder\(|Yaml\(\)\.load\s*\('
+    rationale: "Native Java deserialization of untrusted data is a well-known RCE vector; prefer JSON with schema validation or add strict deserialization filters."
+
+  - id: java.security.spel_injection
+    language: java
+    severity: high
+    impact: security
+    file: "**/*.java"
+    match: 'SpelExpressionParser\(\)\.parseExpression\s*\([^)]*(?:\+|concat|String\.format)'
+    rationale: "SpEL expressions assembled from user input allow arbitrary method invocation (Spring Expression injection); pass user data via evaluation context variables instead of concatenation."
+
+  - id: java.security.sql_injection
+    language: java
+    severity: high
+    impact: security
+    file: "**/*.java"
+    match: '(?:Statement|PreparedStatement)\s*.*execute(?:Query|Update)\s*\([^)]*(?:\+|String\.format|concat)'
+    rationale: "SQL statements assembled by string concatenation allow SQL injection; use parameterized queries via PreparedStatement placeholders."
+
+  - id: java.security.runtime_injection
+    language: java
+    severity: high
+    impact: security
+    file: "**/*.java"
+    match: 'Runtime\.getRuntime\(\)\.exec\s*\([^)]*(?:\+|String\.format|concat)|new\s+ProcessBuilder\s*\([^)]*(?:\+|concat)'
+    rationale: "OS commands assembled from user input allow command injection; validate against an allowlist and avoid shell interpolation."
+
+  - id: java.security.ssrf
+    language: java
+    severity: high
+    impact: security
+    file: "**/*.java"
+    match: 'new\s+(?:URL|HttpURLConnection)\s*\([^)]*(?:\+|String\.format|concat)|openConnection\s*\(\s*\)\s*;?\s*//?\s*user'
+    rationale: "HTTP connections built from user-controlled URLs enable SSRF; restrict egress to an allowlisted host list."
+
+  - id: java.security.hardcoded_secret
+    language: java
+    severity: critical
+    impact: security
+    file: "**/*.java"
+    match: '(?:password|passwd|secret|apikey|api_key|access_token)\s*=\s*"[^"]{6,}"'
+    rationale: "Hardcoded credentials in source leak secrets to anyone with repo access; read them from environment or a secret manager."

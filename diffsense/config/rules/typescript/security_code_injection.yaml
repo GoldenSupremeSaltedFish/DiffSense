@@ -1,0 +1,8 @@
+rules:
+  - id: typescript.security.code_injection
+    language: typescript
+    severity: high
+    impact: security
+    file: "**/*.ts*"
+    match: '(?:eval|new\s+Function)\s*\([^)]*(?:\+|\$\{|concat|template)'
+    rationale: "Dynamic code evaluation assembled from user input (eval / new Function with interpolation) is arbitrary code execution; replace with explicit branching or a vetted expression evaluator."
