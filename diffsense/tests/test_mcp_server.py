@@ -95,7 +95,7 @@ def test_audit_diff_returns_contract_report() -> None:
     out = json.loads(mcp_server.audit_diff(raw))
     assert "error" not in out, out
     assert list(out.keys())[0] == "schema_version"
-    assert out["schema_version"] == "1.0"
+    assert out["schema_version"] == "1.1"  # #104: bumped with review_level rename
     assert out["review_level"] == "critical"
 
 
@@ -104,7 +104,7 @@ def test_audit_replay_reads_diff_path() -> None:
 
     out = json.loads(mcp_server.audit_replay(str(LOW_RISK_DIFF)))
     assert "error" not in out, out
-    assert out["schema_version"] == "1.0"
+    assert out["schema_version"] == "1.1"  # #104: bumped with review_level rename
     assert out["review_level"] in ("normal", "low")
 
 

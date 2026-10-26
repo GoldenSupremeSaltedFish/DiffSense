@@ -127,9 +127,16 @@ def _list_rules_core(rules: Optional[str], profile: Optional[str]) -> List[Dict[
     engine = RuleEngine(path, profile=profile, pro_rules_path=pro_path)
     rows = []
     for r in engine.rules:
+        lang = _attr(r, "language")
+        # #91: expose name/language/platform. DiffSense has no separate
+        # "platform" dimension; the target language IS the platform (e.g. go,
+        # java, typescript). "*" means language-agnostic.
         rows.append(
             {
                 "id": _attr(r, "id"),
+                "name": _attr(r, "title"),
+                "language": lang,
+                "platform": "" if lang in ("", "*") else lang,
                 "severity": _attr(r, "severity"),
                 "impact": _attr(r, "impact"),
                 "status": _attr(r, "status"),
@@ -220,7 +227,8 @@ def list_rules(rules: str = "", profile: str = "") -> str:
         profile: Optional profile filter (strict | lightweight). Empty = default profile.
 
     Returns:
-        JSON array of rules: id, severity, impact, status, is_blocking, rule_type.
+        JSON array of rules: id, name, language, platform, severity, impact,
+        status, is_blocking, rule_type (#91).
 
     Raises:
         ValueError: #127 when ``rules`` points to a non-existent path (tool error, #124).

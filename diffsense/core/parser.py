@@ -68,6 +68,22 @@ class DiffParser:
 
     def _save_cache(self, cache_key: str, data: Dict[str, Any]) -> None:
         os.makedirs(self.cache_dir, exist_ok=True)
+        # #103: sweep stale .tmp orphans left behind by crashed writers. Only
+        # remove .tmp files older than 1h so a concurrently running writer
+        # (same cache dir) is never interrupted mid-write.
+        try:
+            now = time.time()
+            for name in os.listdir(self.cache_dir):
+                if not name.endswith(".tmp"):
+                    continue
+                tmp_full = os.path.join(self.cache_dir, name)
+                try:
+                    if now - os.path.getmtime(tmp_full) > 3600:
+                        os.remove(tmp_full)
+                except OSError:
+                    pass
+        except OSError:
+            pass
         path = self._cache_path(cache_key)
         tmp_path = f"{path}.{os.getpid()}.tmp"
         try:

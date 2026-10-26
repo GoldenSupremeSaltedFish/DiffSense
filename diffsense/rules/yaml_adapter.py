@@ -46,6 +46,7 @@ class YamlRule(Rule):
         self._rule_dict = rule_dict
         self._file_pattern = self._rule_dict.get('file')
         self._compiled_match = None
+        self._validate_schema()
         content_regex = self._rule_dict.get('match')
         if content_regex:
             flags = re.MULTILINE
@@ -60,6 +61,33 @@ class YamlRule(Rule):
                 rid = rule_dict.get('id', 'unknown')
                 print(f"WARNING: rule '{rid}': invalid regex {content_regex!r}: {exc}", file=sys.stderr)
                 self._compiled_match = None
+
+    _VALID_SEVERITIES = ('critical', 'high', 'medium', 'low', 'info')
+
+    def _validate_schema(self) -> None:
+        """#118: schema sanity checks -- malformed rules are still loaded (with
+        safe defaults) but loudly warned about on stderr, so rule authors see
+        why a rule never triggers instead of failing silently."""
+        import sys
+        rid = str(self._rule_dict.get('id') or '')
+        label = f"rule '{rid}'" if rid else "yaml rule without 'id'"
+        if not rid:
+            print(f"WARNING: {label} (loaded as 'unknown') (#118)", file=sys.stderr)
+        sev = self._rule_dict.get('severity')
+        if sev is not None and str(sev).lower() not in self._VALID_SEVERITIES:
+            print(
+                f"WARNING: {label}: unknown severity {sev!r} "
+                f"(expected {'/'.join(self._VALID_SEVERITIES)}); falling back to 'low' (#118)",
+                file=sys.stderr,
+            )
+        for key in ('match', 'file'):
+            val = self._rule_dict.get(key)
+            if val is not None and not isinstance(val, str):
+                print(
+                    f"WARNING: {label}: '{key}' must be a string, got {type(val).__name__}; "
+                    f"the constraint will be ignored (#118)",
+                    file=sys.stderr,
+                )
 
     @property
     def id(self) -> str:
@@ -76,6 +104,18 @@ class YamlRule(Rule):
     @property
     def rationale(self) -> str:
         return self._rule_dict.get('rationale', '')
+
+    @property
+    def remediation(self) -> str:
+        """#115: optional YAML field 'remediation' with fix guidance."""
+        v = self._rule_dict.get('remediation')
+        return str(v) if v else ''
+
+    @property
+    def help_uri(self) -> str:
+        """#115: optional YAML fields 'help_uri' / 'help' linking to docs."""
+        v = self._rule_dict.get('help_uri') or self._rule_dict.get('help')
+        return str(v) if v else ''
 
     @property
     def title(self) -> str:

@@ -5,7 +5,7 @@ pre-1.0 breaking change to the JSON report shape.
 """
 
 # JSON report schema version. Consumers MUST validate this field first.
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"  # 1.1: review_level "elevated" -> "low" rename shipped in 2.3 (#104)
 
 # Fixed exit codes for audit/flows surfaced to agents (see docs/cli-contract.md).
 EXIT_OK = 0      # pass: no blocked findings, or human acknowledged the risk

@@ -46,6 +46,12 @@ class DecisionComposer:
                 "impact": impact_dim,
                 "is_blocking": bool(is_blocking),  # #119: surface blocking semantics in the report
             }
+            # #115: richer rationale context -- actionable fix guidance and a
+            # doc link when the rule defines them (never emitted empty).
+            if rule.get("remediation"):
+                detail["remediation"] = rule["remediation"]
+            if rule.get("help_uri"):
+                detail["help_uri"] = rule["help_uri"]
             if precision is not None:
                 detail["precision"] = precision
             if quality_status is not None:

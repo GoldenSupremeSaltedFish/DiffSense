@@ -215,11 +215,70 @@ rules_app = typer.Typer(help="Manage rules. Use 'rules report' for rule quality 
 def rules_list(
     rules_path: str = typer.Option(None, "--rules", help="Path to rules: single YAML file or directory of YAML files"),
     profile: str = typer.Option(None, "--profile", help="Profile: strict or lightweight (list only rules active in that profile)"),
+    as_json: bool = typer.Option(False, "--json", help="Emit full rule metadata as JSON (id, name, language, platform, severity, impact, status, is_blocking, rule_type)"),
 ) -> None:
-    """List loaded rule IDs (built-in + YAML)."""
+    """List loaded rule IDs (built-in + YAML). Use --json for full metadata (#143)."""
     from core.rules import RuleEngine
 
     path = rules_path
+    if path and not os.path.exists(path):
+        # #146: an explicit --rules path that does not exist used to fall back
+        # to the built-in defaults silently, hiding typos and wrong mounts.
+        typer.secho(
+            f"WARNING: --rules path does not exist: {path}; falling back to built-in defaults (issue #146)",
+            fg=typer.colors.RED,
+            err=True,
+        )
+    if not path or not os.path.exists(path):
+        path = _default_rules_path()
+    pro_path = None
+    try:
+        from core.run_config import get_pro_rules_path
+        pro_path = get_pro_rules_path(os.getcwd())
+    except Exception:
+        pass
+    engine = RuleEngine(path, profile=profile, pro_rules_path=pro_path)
+    if as_json:
+        import json
+        rows = []
+        for r in engine.rules:
+            lang = getattr(r, "language", "") or ""
+            rows.append(
+                {
+                    "id": r.id,
+                    "name": getattr(r, "title", "") or r.id,
+                    "language": lang,
+                    "platform": "" if lang in ("", "*") else lang,
+                    "severity": getattr(r, "severity", ""),
+                    "impact": getattr(r, "impact", ""),
+                    "status": getattr(r, "status", ""),
+                    "is_blocking": getattr(r, "is_blocking", False),
+                    "rule_type": getattr(r, "rule_type", ""),
+                }
+            )
+        typer.echo(json.dumps(rows, ensure_ascii=False, indent=2))
+        return
+    for r in engine.rules:
+        typer.echo(r.id)
+
+
+@rules_app.command("explain")
+def rules_explain(
+    rule_id: str = typer.Argument(..., help="Rule id to explain, e.g. runtime.concurrency.lock_removed"),
+    rules_path: str = typer.Option(None, "--rules", help="Path to rules: single YAML file or directory of YAML files"),
+    profile: str = typer.Option(None, "--profile", help="Profile: strict or lightweight"),
+) -> None:
+    """Explain a single rule: id, title, severity, impact, type, is_blocking, rationale (#120)."""
+    import json
+    from core.rules import RuleEngine
+
+    path = rules_path
+    if path and not os.path.exists(path):
+        typer.secho(
+            f"WARNING: --rules path does not exist: {path}; falling back to built-in defaults (issue #146)",
+            fg=typer.colors.RED,
+            err=True,
+        )
     if not path or not os.path.exists(path):
         path = _default_rules_path()
     pro_path = None
@@ -230,7 +289,30 @@ def rules_list(
         pass
     engine = RuleEngine(path, profile=profile, pro_rules_path=pro_path)
     for r in engine.rules:
-        typer.echo(r.id)
+        if r.id == rule_id:
+            lang = getattr(r, "language", "") or ""
+            typer.echo(
+                json.dumps(
+                    {
+                        "id": r.id,
+                        "name": getattr(r, "title", "") or r.id,
+                        "language": lang,
+                        "platform": "" if lang in ("", "*") else lang,
+                        "severity": getattr(r, "severity", ""),
+                        "impact": getattr(r, "impact", ""),
+                        "status": getattr(r, "status", ""),
+                        "is_blocking": getattr(r, "is_blocking", False),
+                        "rule_type": getattr(r, "rule_type", ""),
+                        "category": getattr(r, "category", ""),
+                        "rationale": getattr(r, "rationale", ""),
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+            return
+    typer.secho(f"ERROR: rule not found: {rule_id}", fg=typer.colors.RED, err=True)
+    raise typer.Exit(code=2)
 
 @rules_app.command("packs")
 def rules_packs() -> None:

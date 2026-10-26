@@ -84,6 +84,15 @@ def get_run_config(repo_root: str = ".") -> Dict[str, Any]:
     Missing keys are absent (caller uses own defaults).
     """
     out: Dict[str, Any] = {}
+    # #107: the pre-2.2 config file was silently ignored after the rename to
+    # .diffsense.yaml; warn so users know their settings are not being applied.
+    for _legacy in ("diffsense.config.json", ".diffsense.config.json"):
+        legacy_path = os.path.join(repo_root, _legacy)
+        if os.path.isfile(legacy_path):
+            _warn(
+                f"Found legacy config file '{_legacy}' which is no longer read since 2.2. "
+                f"Migrate its settings to .diffsense.yaml (issue #107)."
+            )
     for fname in (".diffsense.yaml", "diffsense-ignore.yaml"):
         path = os.path.join(repo_root, fname)
         data = _load_yaml(path)

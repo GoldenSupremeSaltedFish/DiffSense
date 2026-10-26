@@ -718,6 +718,10 @@ class RuleEngine:
                     "severity": severity,
                     "impact": rule.impact,
                     "rationale": rule.rationale,
+                    # #115: pass through actionable fix guidance / doc link when
+                    # the rule provides them, so reports can guide triage.
+                    "remediation": getattr(rule, 'remediation', ''),
+                    "help_uri": getattr(rule, 'help_uri', ''),
                     "matched_file": match_details.get('file', 'unknown'),
                     "precision": quality_entry.get("precision", precision),
                     "quality_status": quality_status,
