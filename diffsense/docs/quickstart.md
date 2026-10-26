@@ -144,3 +144,26 @@ diffsense_check:
 | **退出码** | `diffsense replay` / `diffsense audit` 的进程退出码语义：**0** = 通过（无阻断级发现）；**1** = 存在 critical 级发现（机器可读的阻断语义，如需在 CI 中容忍请使用 `continue-on-error` 或 `|| true`）；**2** = 工具错误。DiffSense 自身不调用平台 API 阻断 PR，是否因退出码 1 中断流水线由 CI 配置决定。 |
 | **误报处理** | 通过 [忽略配置](ignoring.md) 或行内注释 `// diffsense-ignore: rule_id` 排除误报。 |
 | **自定义规则** | 默认使用内置规则集；编写自定义规则请参阅 [rule-quickstart](rule-quickstart.md)。 |
+
+## 批量 / 并发扫描的性能说明
+
+`diffsense replay` 每次调用都会启动一个独立 Python 进程（进程启动 + 规则加载约 0.3 s/次）。
+**并发启动多个 replay 子进程不会带来加速**：实测 8 个并发任务的 wall time 是串行的 1.79 倍
+（进程启动竞争 + 磁盘 I/O 竞争叠加，见 issue #141）。
+
+批量扫描多个 diff 时推荐在**单进程内复用规则引擎**：
+
+```python
+# 批量：单进程内循环调用，规则只加载一次
+from main import analyze_diff
+from pathlib import Path
+
+for p in Path("diffs").glob("*.diff"):
+    report = analyze_diff(p.read_text(encoding="utf-8"), None, write_files=False)
+    print(p.name, "->", report.get("summary", report.get("statistics", {})))
+```
+
+或对逐条流水线输出使用 stdin 模式（`git diff | diffsense replay -`），同样只付一次进程启动成本。
+
+内存方面：单次 CLI 调用模式进程退出即回收，多次迭代存在约 +8%/10 次的轻微缓存增长，
+远低于 20% 泄漏阈值，批量单进程调用数万次以内无需干预。

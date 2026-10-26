@@ -36,6 +36,8 @@ rules:
     file: "**"
     impact: runtime
     severity: critical
+    # #90: critical findings must be blocking (regression rules default to False)
+    is_blocking: true
     rationale: "CRITICAL: Removal of synchronized block/keyword detected! This is a major stability risk."
 
   - id: runtime.concurrency_lock_risk
@@ -52,6 +54,8 @@ rules:
     file: "**"
     impact: runtime
     severity: critical
+    # #90: critical findings must be blocking (regression rules default to False)
+    is_blocking: true
     rationale: "CRITICAL: Removal of lock/concurrency protection detected! This may lead to race conditions."
 
   - id: runtime.concurrency_volatile_risk
@@ -68,6 +72,8 @@ rules:
     file: "**"
     impact: runtime
     severity: critical
+    # #90: critical findings must be blocking (regression rules default to False)
+    is_blocking: true
     rationale: "CRITICAL: Removal of volatile keyword detected! This may cause visibility issues across threads."
 
   - id: runtime.concurrency_map_removed_risk
@@ -221,6 +227,8 @@ rules:
     file: "**"
     impact: runtime
     severity: critical
+    # #90: critical findings must be blocking (regression rules default to False)
+    is_blocking: true
     rationale: "CRITICAL: Removal of Lock/Synchronized detected! This is a P0 stability risk (TOP1 accident cause)."
 
   - id: runtime.concurrency.volatile_removed
@@ -229,6 +237,8 @@ rules:
     file: "**"
     impact: runtime
     severity: critical
+    # #90: critical findings must be blocking (regression rules default to False)
+    is_blocking: true
     rationale: "CRITICAL: Removal of volatile keyword detected! This causes visibility issues."
 
   - id: runtime.concurrency.final_removed
@@ -237,6 +247,8 @@ rules:
     file: "**"
     impact: runtime
     severity: critical
+    # #90: critical findings must be blocking (regression rules default to False)
+    is_blocking: true
     rationale: "CRITICAL: Removal of final modifier detected! Immutable object might become mutable (thread-safety risk)."
 
   - id: runtime.concurrency.atomic_to_non_atomic_write
@@ -245,6 +257,8 @@ rules:
     file: "**"
     impact: runtime
     severity: critical
+    # #90: critical findings must be blocking (regression rules default to False)
+    is_blocking: true
     rationale: "CRITICAL: Atomic write operation removed/replaced. This is a semantic downgrade."
 
   - id: runtime.concurrency.threadpool_param_change

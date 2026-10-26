@@ -39,6 +39,11 @@ class PublicMethodRemovedRule(BaseRule):
     def rule_type(self) -> str:
         return "regression"
 
+    @property
+    def is_blocking(self) -> bool:
+        # #90: critical findings must be blocking
+        return True
+
     def evaluate(self, diff_data: Dict[str, Any], signals: List[Signal]) -> Optional[Dict[str, Any]]:
         raw_diff = diff_data.get('raw_diff', "")
 
