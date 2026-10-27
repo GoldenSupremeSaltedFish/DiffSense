@@ -3,6 +3,7 @@ import os
 import sys
 import time
 import hashlib
+import hmac
 import pickle
 import javalang
 from javalang.tokenizer import BasicType, Identifier
@@ -26,6 +27,18 @@ _LANG_LABELS = {
 def _lang_label(ext: str) -> str:
     ext = (ext or "").lstrip(".")
     return _LANG_LABELS.get(ext, ext.upper() if ext else "unknown")
+
+# #157: AST cache files are pickle payloads (AST trees are not JSON-serializable),
+# so every entry is integrity-protected with an HMAC-SHA256 signature prepended
+# to the blob. The key is static: it defends against tampering/corruption, not
+# against a full local attacker (who could also re-sign); combined with the
+# 0o600/0o700 cache permissions (#155) this closes the untrusted-unpickle path.
+_CACHE_HMAC_KEY = b"diffsense-ast-cache-integrity-v1"
+_CACHE_SIG_LEN = 32
+
+
+def _cache_signature(payload: bytes) -> bytes:
+    return hmac.new(_CACHE_HMAC_KEY, payload, hashlib.sha256).digest()
 from .mybatis_detector import MyBatisXMLDetector, is_mybatis_xml
 from .sql_detector import SQLDetector, is_sql_script
 
@@ -128,7 +141,21 @@ class ASTDetector:
                 return None
         try:
             with open(path, "rb") as f:
-                data = pickle.load(f)
+                blob = f.read()
+            # #157: the pickle payload is opaque to json.dumps-style validation,
+            # so it is integrity-protected with an HMAC-SHA256 signature. A
+            # tampered/truncated cache file is rejected instead of unpickled.
+            if len(blob) < _CACHE_SIG_LEN + 1:
+                return None
+            sig, payload = blob[:_CACHE_SIG_LEN], blob[_CACHE_SIG_LEN:]
+            expected = _cache_signature(payload)
+            if not hmac.compare_digest(sig, expected):
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+                return None
+            data = pickle.loads(payload)
             if isinstance(data, dict) and "ok" in data:
                 return data
         except Exception:
@@ -137,11 +164,40 @@ class ASTDetector:
 
     def _save_cached_tree(self, cache_key: str, tree: Any, ok: bool) -> None:
         os.makedirs(self.cache_dir, exist_ok=True)
+        # #155: restrict the cache directory to the current user (POSIX; the
+        # mode flag is advisory on Windows). Prevents other local users from
+        # reading or planting cache entries.
+        try:
+            os.chmod(self.cache_dir, 0o700)
+        except OSError:
+            pass
+        # #103: sweep stale .tmp orphans left by crashed writers (>1h old) so
+        # concurrent writers are never interrupted mid-write.
+        try:
+            now = time.time()
+            for name in os.listdir(self.cache_dir):
+                if not name.endswith(".tmp"):
+                    continue
+                tmp_full = os.path.join(self.cache_dir, name)
+                try:
+                    if now - os.path.getmtime(tmp_full) > 3600:
+                        os.remove(tmp_full)
+                except OSError:
+                    pass
+        except OSError:
+            pass
         path = self._cache_path(cache_key)
         tmp_path = f"{path}.{os.getpid()}.tmp"
         try:
+            payload = pickle.dumps({"ok": ok, "tree": tree})
+            blob = _cache_signature(payload) + payload
             with open(tmp_path, "wb") as f:
-                pickle.dump({"ok": ok, "tree": tree}, f)
+                f.write(blob)
+            try:
+                # #155: keep cache files owner-only.
+                os.chmod(tmp_path, 0o600)
+            except OSError:
+                pass
             # Atomic rename (replace existing if any)
             os.replace(tmp_path, path)
         except Exception:

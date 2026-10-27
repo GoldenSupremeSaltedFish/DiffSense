@@ -6,18 +6,33 @@
       "tool": {
         "driver": {
           "name": "DiffSense",
+          "version": "2.3.1",
           "informationUri": "https://github.com/GoldenSupremeSaltedFish/DiffSense",
           "rules": [
             {
               "id": "diffsense/review_level",
               "shortDescription": {
                 "text": "Overall review level: critical"
+              },
+              "fullDescription": {
+                "text": "Overall review level: critical"
+              },
+              "helpUri": "https://github.com/GoldenSupremeSaltedFish/DiffSense/blob/main/README.md",
+              "defaultConfiguration": {
+                "level": "error"
               }
             },
             {
               "id": "diffsense/runtime.concurrency.lock_removed",
               "shortDescription": {
                 "text": "CRITICAL: Removal of Lock/Synchronized detected! This is a P0 stability risk (TOP1 accident cause)."
+              },
+              "fullDescription": {
+                "text": "CRITICAL: Removal of Lock/Synchronized detected! This is a P0 stability risk (TOP1 accident cause)."
+              },
+              "helpUri": "https://github.com/GoldenSupremeSaltedFish/DiffSense/blob/main/README.md",
+              "defaultConfiguration": {
+                "level": "error"
               }
             }
           ]
@@ -35,6 +50,9 @@
               "physicalLocation": {
                 "artifactLocation": {
                   "uri": "diffsense/core/RaftNode.java"
+                },
+                "region": {
+                  "startLine": 46
                 }
               }
             }

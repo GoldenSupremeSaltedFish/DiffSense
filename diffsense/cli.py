@@ -69,10 +69,10 @@ def audit(
     report_json: str = typer.Option("diffsense-report.json", "--report-json", help="Report JSON output path"),
     report_html: str = typer.Option("diffsense-report.html", "--report-html", help="Report HTML output path"),
     comments_json: str = typer.Option("diffsense-comments.json", "--comments-json", help="Inline comments JSON output path"),
-    quality_auto_tune: bool = typer.Option(False, "--quality-auto-tune", help="[DEPRECATED] Enable quality auto tune (now only affects reporting)"),
-    quality_disable_threshold: float = typer.Option(0.3, "--quality-disable-threshold", help="Disable threshold for reporting"),
-    quality_downgrade_threshold: float = typer.Option(0.5, "--quality-downgrade-threshold", help="Downgrade threshold for reporting"),
-    quality_min_samples: int = typer.Option(30, "--quality-min-samples", help="Minimum samples before quality warnings"),
+    quality_auto_tune: bool = typer.Option(False, "--quality-auto-tune", help="[DEPRECATED since 2.3.0, removal planned for 2.4.0 (#109)] No functional replacement: quality tuning no longer gates rule execution and only affects reporting. Migration: remove the flag; see CHANGELOG.md 'Deprecated' section."),
+    quality_disable_threshold: float = typer.Option(None, "--quality-disable-threshold", help="Disable threshold (default: 0.3 or rule_quality.disable_threshold from .diffsense.yaml)"),
+    quality_downgrade_threshold: float = typer.Option(None, "--quality-downgrade-threshold", help="Downgrade threshold (default: 0.5 or rule_quality.degrade_threshold from .diffsense.yaml)"),
+    quality_min_samples: int = typer.Option(None, "--quality-min-samples", help="Minimum samples before quality warnings (default: 30 or rule_quality.min_samples from .diffsense.yaml)"),
     experimental: bool = typer.Option(False, "--experimental", help="Include experimental rules (report-only by default)"),
     experimental_report_only: bool = typer.Option(True, "--experimental-report-only/--experimental-affect-decision", help="Do not affect decision with experimental rules"),
     format: str = typer.Option("json", "--format", "-f", help="Output: json | markdown | sarif"),
@@ -133,9 +133,9 @@ def audit(
 
 @app.command()
 def replay(
-    diff_file: str = typer.Argument(..., help="Path to .diff file"),
+    diff_file: str = typer.Argument(..., help="Path to .diff file. Use '-' to read the diff from stdin (#136), e.g. `git diff | diffsense replay -`"),
     rules: str = typer.Option(None, "--rules", help="Path to rules: single YAML file or directory of YAML files"),
-    format: str = typer.Option("json", "--format", "-f", help="Output: json | markdown | sarif"),
+    format: str = typer.Option("json", "--format", "-f", help="Output: json | markdown | sarif | junit (#134) | codequality (#135)"),
     profile: str = typer.Option(None, "--profile", help="Profile: strict or lightweight"),
     baseline: bool = typer.Option(False, "--baseline", help="Generate baseline file for existing issues"),
     since_baseline: bool = typer.Option(False, "--since-baseline", help="Only report findings not in baseline"),
@@ -143,10 +143,10 @@ def replay(
     report_json: str = typer.Option("diffsense-report.json", "--report-json", help="Report JSON output path"),
     report_html: str = typer.Option("diffsense-report.html", "--report-html", help="Report HTML output path"),
     comments_json: str = typer.Option("diffsense-comments.json", "--comments-json", help="Inline comments JSON output path"),
-    quality_auto_tune: bool = typer.Option(False, "--quality-auto-tune", help="[DEPRECATED] Enable quality auto tune (now only affects reporting)"),
-    quality_disable_threshold: float = typer.Option(0.3, "--quality-disable-threshold", help="Disable threshold for reporting"),
-    quality_downgrade_threshold: float = typer.Option(0.5, "--quality-downgrade-threshold", help="Downgrade threshold for reporting"),
-    quality_min_samples: int = typer.Option(30, "--quality-min-samples", help="Minimum samples before quality warnings"),
+    quality_auto_tune: bool = typer.Option(False, "--quality-auto-tune", help="[DEPRECATED since 2.3.0, removal planned for 2.4.0 (#109)] No functional replacement: quality tuning no longer gates rule execution and only affects reporting. Migration: remove the flag; see CHANGELOG.md 'Deprecated' section."),
+    quality_disable_threshold: float = typer.Option(None, "--quality-disable-threshold", help="Disable threshold (default: 0.3 or rule_quality.disable_threshold from .diffsense.yaml)"),
+    quality_downgrade_threshold: float = typer.Option(None, "--quality-downgrade-threshold", help="Downgrade threshold (default: 0.5 or rule_quality.degrade_threshold from .diffsense.yaml)"),
+    quality_min_samples: int = typer.Option(None, "--quality-min-samples", help="Minimum samples before quality warnings (default: 30 or rule_quality.min_samples from .diffsense.yaml)"),
     experimental: bool = typer.Option(False, "--experimental", help="Include experimental rules (report-only by default)"),
     experimental_report_only: bool = typer.Option(True, "--experimental-report-only/--experimental-affect-decision", help="Do not affect decision with experimental rules"),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress report output on stdout/stderr (report still written to --report-json)"),
@@ -172,7 +172,15 @@ def replay(
     except Exception:
         pass
 
-    args = ["diffsense", diff_file, "--rules", rules_path, "--format", format, "--baseline-file", baseline_file, "--report-json", report_json, "--report-html", report_html, "--comments-json", comments_json, "--quality-disable-threshold", str(quality_disable_threshold), "--quality-downgrade-threshold", str(quality_downgrade_threshold), "--quality-min-samples", str(quality_min_samples)]
+    args = ["diffsense", diff_file, "--rules", rules_path, "--format", format, "--baseline-file", baseline_file, "--report-json", report_json, "--report-html", report_html, "--comments-json", comments_json]
+    # #96: only forward quality thresholds that were explicitly provided; leave
+    # the None sentinel so main.py can apply .diffsense.yaml rule_quality values.
+    if quality_disable_threshold is not None:
+        args.extend(["--quality-disable-threshold", str(quality_disable_threshold)])
+    if quality_downgrade_threshold is not None:
+        args.extend(["--quality-downgrade-threshold", str(quality_downgrade_threshold)])
+    if quality_min_samples is not None:
+        args.extend(["--quality-min-samples", str(quality_min_samples)])
     if profile:
         args.extend(["--profile", profile])
     if baseline:
@@ -207,11 +215,70 @@ rules_app = typer.Typer(help="Manage rules. Use 'rules report' for rule quality 
 def rules_list(
     rules_path: str = typer.Option(None, "--rules", help="Path to rules: single YAML file or directory of YAML files"),
     profile: str = typer.Option(None, "--profile", help="Profile: strict or lightweight (list only rules active in that profile)"),
+    as_json: bool = typer.Option(False, "--json", help="Emit full rule metadata as JSON (id, name, language, platform, severity, impact, status, is_blocking, rule_type)"),
 ) -> None:
-    """List loaded rule IDs (built-in + YAML)."""
+    """List loaded rule IDs (built-in + YAML). Use --json for full metadata (#143)."""
     from core.rules import RuleEngine
 
     path = rules_path
+    if path and not os.path.exists(path):
+        # #146: an explicit --rules path that does not exist used to fall back
+        # to the built-in defaults silently, hiding typos and wrong mounts.
+        typer.secho(
+            f"WARNING: --rules path does not exist: {path}; falling back to built-in defaults (issue #146)",
+            fg=typer.colors.RED,
+            err=True,
+        )
+    if not path or not os.path.exists(path):
+        path = _default_rules_path()
+    pro_path = None
+    try:
+        from core.run_config import get_pro_rules_path
+        pro_path = get_pro_rules_path(os.getcwd())
+    except Exception:
+        pass
+    engine = RuleEngine(path, profile=profile, pro_rules_path=pro_path)
+    if as_json:
+        import json
+        rows = []
+        for r in engine.rules:
+            lang = getattr(r, "language", "") or ""
+            rows.append(
+                {
+                    "id": r.id,
+                    "name": getattr(r, "title", "") or r.id,
+                    "language": lang,
+                    "platform": "" if lang in ("", "*") else lang,
+                    "severity": getattr(r, "severity", ""),
+                    "impact": getattr(r, "impact", ""),
+                    "status": getattr(r, "status", ""),
+                    "is_blocking": getattr(r, "is_blocking", False),
+                    "rule_type": getattr(r, "rule_type", ""),
+                }
+            )
+        typer.echo(json.dumps(rows, ensure_ascii=False, indent=2))
+        return
+    for r in engine.rules:
+        typer.echo(r.id)
+
+
+@rules_app.command("explain")
+def rules_explain(
+    rule_id: str = typer.Argument(..., help="Rule id to explain, e.g. runtime.concurrency.lock_removed"),
+    rules_path: str = typer.Option(None, "--rules", help="Path to rules: single YAML file or directory of YAML files"),
+    profile: str = typer.Option(None, "--profile", help="Profile: strict or lightweight"),
+) -> None:
+    """Explain a single rule: id, title, severity, impact, type, is_blocking, rationale (#120)."""
+    import json
+    from core.rules import RuleEngine
+
+    path = rules_path
+    if path and not os.path.exists(path):
+        typer.secho(
+            f"WARNING: --rules path does not exist: {path}; falling back to built-in defaults (issue #146)",
+            fg=typer.colors.RED,
+            err=True,
+        )
     if not path or not os.path.exists(path):
         path = _default_rules_path()
     pro_path = None
@@ -222,7 +289,30 @@ def rules_list(
         pass
     engine = RuleEngine(path, profile=profile, pro_rules_path=pro_path)
     for r in engine.rules:
-        typer.echo(r.id)
+        if r.id == rule_id:
+            lang = getattr(r, "language", "") or ""
+            typer.echo(
+                json.dumps(
+                    {
+                        "id": r.id,
+                        "name": getattr(r, "title", "") or r.id,
+                        "language": lang,
+                        "platform": "" if lang in ("", "*") else lang,
+                        "severity": getattr(r, "severity", ""),
+                        "impact": getattr(r, "impact", ""),
+                        "status": getattr(r, "status", ""),
+                        "is_blocking": getattr(r, "is_blocking", False),
+                        "rule_type": getattr(r, "rule_type", ""),
+                        "category": getattr(r, "category", ""),
+                        "rationale": getattr(r, "rationale", ""),
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+            return
+    typer.secho(f"ERROR: rule not found: {rule_id}", fg=typer.colors.RED, err=True)
+    raise typer.Exit(code=2)
 
 @rules_app.command("packs")
 def rules_packs() -> None:
@@ -360,7 +450,9 @@ def replay_coverage(
                 data = json.load(f)
             total += 1
             level = str(data.get("review_level", "normal")).lower()
-            if level in ["elevated", "critical"]:
+            # #105: any non-normal level means findings were produced. The old check
+            # only counted "elevated"/"critical", silently dropping "low" reviews.
+            if level != "normal":
                 triggered += 1
         except Exception:
             continue

@@ -1,9 +1,11 @@
 from typing import Dict, Any, List
 
 class DecisionComposer:
-    def compose(self, triggered_rules: List[Dict[str, Any]], diff_files: List[str] = None) -> Dict[str, Any]:
+    def compose(self, triggered_rules: List[Dict[str, Any]], diff_files: List[str] = None, suppressed_rules: List[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Synthesizes triggered rules into a final decision adhering to the Parser Contract.
+        `suppressed_rules` (optional) carries findings removed by ignore patterns so the
+        report can expose a suppression summary (#113) instead of losing them silently.
         """
         diff_files = diff_files or []
         reasons = []
@@ -41,8 +43,15 @@ class DecisionComposer:
                 "severity": severity,
                 "file": matched_file,
                 "rationale": rationale,
-                "impact": impact_dim
+                "impact": impact_dim,
+                "is_blocking": bool(is_blocking),  # #119: surface blocking semantics in the report
             }
+            # #115: richer rationale context -- actionable fix guidance and a
+            # doc link when the rule defines them (never emitted empty).
+            if rule.get("remediation"):
+                detail["remediation"] = rule["remediation"]
+            if rule.get("help_uri"):
+                detail["help_uri"] = rule["help_uri"]
             if precision is not None:
                 detail["precision"] = precision
             if quality_status is not None:
@@ -72,10 +81,12 @@ class DecisionComposer:
                 review_level = "low"  # 标记为低风险，仅报告不阻止
             
         # Construct Final JSON Contract
+        # #110/#111: HIGH severity findings (max_score >= 2) must never suggest
+        # auto_merge -- that branch was previously dead code for `elevated`.
         suggested_action = "auto_merge"
         if review_level == "critical":
             suggested_action = "block_pr"
-        elif review_level == "elevated":
+        elif max_score >= 2:
             suggested_action = "manual_review"
 
         result = {
@@ -89,5 +100,13 @@ class DecisionComposer:
                 "suggested_action": suggested_action
             }
         }
-        
+
+        # #113: findings hidden by ignore patterns are summarised instead of silently dropped.
+        suppressed_rules = suppressed_rules or []
+        if suppressed_rules:
+            result["suppression_summary"] = {
+                "count": len(suppressed_rules),
+                "suppressed": suppressed_rules,
+            }
+
         return result

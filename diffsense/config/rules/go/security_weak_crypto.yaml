@@ -1,0 +1,8 @@
+rules:
+  - id: go.security.weak_crypto
+    language: go
+    severity: high
+    impact: security
+    file: "**/*.go"
+    match: 'crypto/(?:md5|sha1|des)|crypto/des\.' 
+    rationale: "MD5/SHA1/DES are broken for security purposes (collisions / 56-bit keys); use SHA-256+ or AES-GCM from the standard library."

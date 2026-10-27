@@ -14,7 +14,7 @@ from constants import SCHEMA_VERSION, EXIT_RISK, EXIT_ERROR
 from main import _load_baseline, _save_baseline, _baseline_items, _baseline_set, _baseline_key, _build_inline_comments, _write_json
 
 
-def run_audit(adapter, rules_path, profile=None, pro_rules_path=None, baseline=False, since_baseline=False, baseline_file=".diffsense-baseline.json", report_json="diffsense-report.json", report_html="diffsense-report.html", comments_json="diffsense-comments.json", quality_auto_tune=False, quality_disable_threshold=0.3, quality_downgrade_threshold=0.5, quality_min_samples=30, experimental=False, experimental_report_only=True, format="json"):
+def run_audit(adapter, rules_path, profile=None, pro_rules_path=None, baseline=False, since_baseline=False, baseline_file=".diffsense-baseline.json", report_json="diffsense-report.json", report_html="diffsense-report.html", comments_json="diffsense-comments.json", quality_auto_tune=False, quality_disable_threshold=None, quality_downgrade_threshold=None, quality_min_samples=None, experimental=False, experimental_report_only=True, format="json"):
     print_banner()
     
     # Print platform and configuration info
@@ -135,6 +135,34 @@ def run_audit(adapter, rules_path, profile=None, pro_rules_path=None, baseline=F
     # 3. Evaluate Rules (Policy / Context)
     # Rules now consume both diff_data (structure) and ast_signals (semantics)
     print("\n🔍 Step 3: Loading rules and evaluating impacts...")
+    # Official recommended config from .diffsense.yaml.
+    # #97: apply rule_quality from the config file here too, so the CI audit path
+    # behaves the same as the Python API / replay path.
+    # #96: CLI args use None as "not explicitly provided" — never compare against
+    # default values, otherwise an explicit CLI value equal to the default would
+    # be wrongly overridden by the config file.
+    run_cfg = {}
+    try:
+        from core.run_config import get_run_config
+        run_cfg = get_run_config(os.getcwd())
+    except Exception:
+        run_cfg = {}
+    rq = run_cfg.get("rule_quality") or {}
+    if quality_downgrade_threshold is None:
+        quality_downgrade_threshold = rq.get("degrade_threshold", 0.5)
+    if quality_disable_threshold is None:
+        quality_disable_threshold = rq.get("disable_threshold", 0.3)
+    if quality_min_samples is None:
+        quality_min_samples = rq.get("min_samples", 30)
+    try:
+        quality_downgrade_threshold = float(quality_downgrade_threshold)
+        quality_disable_threshold = float(quality_disable_threshold)
+        quality_min_samples = int(quality_min_samples)
+    except (TypeError, ValueError):
+        print("WARNING: invalid rule_quality values in .diffsense.yaml; using built-in defaults (#95)")
+        quality_downgrade_threshold = 0.5 if not isinstance(quality_downgrade_threshold, (int, float)) else quality_downgrade_threshold
+        quality_disable_threshold = 0.3 if not isinstance(quality_disable_threshold, (int, float)) else quality_disable_threshold
+        quality_min_samples = 30 if not isinstance(quality_min_samples, (int, float)) else quality_min_samples
     quality_config = {
         "auto_tune": quality_auto_tune,
         "disable_threshold": quality_disable_threshold,
@@ -148,12 +176,6 @@ def run_audit(adapter, rules_path, profile=None, pro_rules_path=None, baseline=F
             pro_rules_path = get_pro_rules_path(os.getcwd())
         except Exception:
             pro_rules_path = None
-    run_cfg = {}
-    try:
-        from core.run_config import get_run_config
-        run_cfg = get_run_config(os.getcwd())
-    except Exception:
-        pass
     engine_config = {
         "rule_quality": quality_config,
         "experimental": {"enabled": experimental, "report_only": experimental_report_only},
@@ -409,9 +431,9 @@ def main():
     parser.add_argument("--report-html", default="diffsense-report.html", help="Report HTML output path")
     parser.add_argument("--comments-json", default="diffsense-comments.json", help="Inline comments JSON output path")
     parser.add_argument("--quality-auto-tune", action="store_true", help="Enable quality auto tune (skip/downgrade)")
-    parser.add_argument("--quality-disable-threshold", type=float, default=0.3, help="Disable threshold")
-    parser.add_argument("--quality-downgrade-threshold", type=float, default=0.5, help="Downgrade threshold")
-    parser.add_argument("--quality-min-samples", type=int, default=30, help="Minimum samples before actions")
+    parser.add_argument("--quality-disable-threshold", type=float, default=None, help="Disable threshold (default: 0.3 or rule_quality.disable_threshold from .diffsense.yaml)")
+    parser.add_argument("--quality-downgrade-threshold", type=float, default=None, help="Downgrade threshold (default: 0.5 or rule_quality.degrade_threshold from .diffsense.yaml)")
+    parser.add_argument("--quality-min-samples", type=int, default=None, help="Minimum samples before actions (default: 30 or rule_quality.min_samples from .diffsense.yaml)")
     parser.add_argument("--experimental", action="store_true", help="Include experimental rules (report-only by default)")
     parser.add_argument("--experimental-report-only", dest="experimental_report_only", action="store_true", default=True, help="Do not affect decision with experimental rules")
     parser.add_argument("--experimental-affect-decision", dest="experimental_report_only", action="store_false", help="Allow experimental rules to affect decision")
@@ -420,6 +442,7 @@ def main():
     args = parser.parse_args()
 
     # Official recommended config from .diffsense.yaml (CLI overrides when provided)
+    # #96: None sentinel instead of comparing against default values.
     try:
         from core.run_config import get_run_config
         run_cfg = get_run_config(os.getcwd())
@@ -428,21 +451,21 @@ def main():
         if not args.quality_auto_tune and run_cfg.get("auto_tune"):
             args.quality_auto_tune = True
         rq = run_cfg.get("rule_quality") or {}
-        if args.quality_downgrade_threshold == 0.5 and "degrade_threshold" in rq:
+        if args.quality_downgrade_threshold is None and "degrade_threshold" in rq:
             try:
                 args.quality_downgrade_threshold = float(rq["degrade_threshold"])
             except (TypeError, ValueError):
-                pass
-        if args.quality_disable_threshold == 0.3 and "disable_threshold" in rq:
+                print("WARNING: .diffsense.yaml rule_quality.degrade_threshold is not a number; using built-in default 0.5 (#95)")
+        if args.quality_disable_threshold is None and "disable_threshold" in rq:
             try:
                 args.quality_disable_threshold = float(rq["disable_threshold"])
             except (TypeError, ValueError):
-                pass
-        if args.quality_min_samples == 30 and "min_samples" in rq:
+                print("WARNING: .diffsense.yaml rule_quality.disable_threshold is not a number; using built-in default 0.3 (#95)")
+        if args.quality_min_samples is None and "min_samples" in rq:
             try:
                 args.quality_min_samples = int(rq["min_samples"])
             except (TypeError, ValueError):
-                pass
+                print("WARNING: .diffsense.yaml rule_quality.min_samples is not an integer; using built-in default 30 (#95)")
     except Exception:
         pass
 

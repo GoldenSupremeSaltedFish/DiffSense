@@ -37,9 +37,9 @@ diffsense replay path/to/change.diff --format json
 
 Key machine-readable facts (details in [CLI Contract](cli-contract.md)):
 
-- The report's first key MUST be `schema_version` — currently `"1.0"`.
+- The report's first key MUST be `schema_version` — currently `"1.1"` (#104).
   Validate it before parsing anything else; reject reports with unsupported versions.
-- Top-level `review_level` is one of `normal | low | critical | error`.
+- Top-level `review_level` is one of `normal | low | elevated | critical | error` (#84).
 - Exit codes: `0` = pass, `1` = blocked (critical and not human-approved),
   `2` = tool error. Treat any other code as an installation defect.
 - Keys prefixed with `_` (`_metrics`, `_performance`, ...) are private telemetry
@@ -69,7 +69,9 @@ diffsense audit --format sarif --report-json path/to/out.sarif
 Mapping contract (authoritative in [CLI Contract](cli-contract.md) §SARIF):
 
 - One finding → one `result`; `ruleId = "diffsense/<rule_id>"`.
-- severity → level: `high`→`error`, `medium`→`warning`, `low`→`note`.
+- severity → level (#84): `critical`→`error`, `high`→`error`, `medium`→`warning`,
+  `warning`→`warning`, `elevated`→`warning`, `low`→`note`, `info`→`note`.
+  Any other value falls back to `note`.
 - An extra rule `diffsense/review_level` is always included; its `properties`
   carry `review_level`, `confidence`, and `blocked` — the file's overall verdict.
 - GitHub code scanning accepts SARIF ≥ 2.1.0; upload via the
@@ -86,6 +88,19 @@ feedback.
 ```bash
 pip install "diffsense[mcp]"
 diffsense-mcp              # listens on stdio
+```
+
+### Troubleshooting: `diffsense-mcp` exits silently (#83)
+
+The server prints a one-line banner to stderr on startup
+(`diffsense-mcp <version> starting ...`) and a full traceback to stderr on any
+fatal error. If the process exits with **no stderr output at all**, the
+console-script launcher itself is broken (pip entry-point exe pointing at a
+missing/moved interpreter) - no Python code has run yet. Recover with:
+
+```bash
+python -m mcp_server                                   # bypass the exe entirely
+pip install -e . --force-reinstall --no-deps           # regenerate entry-point exes
 ```
 
 ### Tools (exactly 4)

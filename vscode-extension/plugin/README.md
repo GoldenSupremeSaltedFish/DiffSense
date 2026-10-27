@@ -1,6 +1,6 @@
 # DiffSense
 
-[![Version](https://img.shields.io/badge/version-0.1.12-blue.svg)](https://marketplace.visualstudio.com/items?itemName=humphreyLi.diffsense)
+[![Version](https://img.shields.io/badge/version-0.1.15-blue.svg)](https://marketplace.visualstudio.com/items?itemName=humphreyLi.diffsense)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE.txt)
 [![VSCode](https://img.shields.io/badge/VSCode-1.74.0+-orange.svg)](https://code.visualstudio.com/)
 [![Marketplace](https://img.shields.io/badge/Marketplace-DiffSense-orange.svg)](https://marketplace.visualstudio.com/items?itemName=humphreyLi.diffsense)
@@ -65,7 +65,20 @@
 
 ## 📝 更新日志
 
-### 版本 0.1.12 (最新)
+### 版本 0.1.15 (最新)
+- 🗄️ **本地数据支撑**: 内置 `database-worker.js`（better-sqlite3），分析结果本地持久化
+- 🧹 **依赖整理**: 移除未使用的 `sqlite3` 依赖，统一使用 `better-sqlite3`
+- 🔧 **打包修正**: `prepare-package` 将 database worker 复制进 `dist/`，避免运行时缺文件
+
+### 版本 0.1.14
+- 📦 **构建流程改进**: `prepare-package.js` 负责收集前端资源与 JAR 到打包目录
+- 🛠️ **打包脚本健壮性**: 复制失败时给出明确报错而非静默产出残缺包
+
+### 版本 0.1.13
+- 🌐 **前端资源打包**: 打包产物包含前端构建资源，界面开箱可用
+- 📝 **调试文档同步**: 更新 DEBUG_GUIDE_CN.md 与实际构建产物状态一致
+
+### 版本 0.1.12
 - 🎯 **插件名称优化**: 简化显示名称为"DiffSense"，提升品牌识别度
 - 📝 **Issue模板改进**: 中文化模板，智能内容截断，URL编码优化
 - 📦 **打包优化**: 解决重复文件问题，包大小从52MB优化到37MB

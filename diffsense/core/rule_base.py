@@ -32,6 +32,16 @@ class Rule(ABC):
         pass
 
     @property
+    def remediation(self) -> str:
+        """#115: actionable fix guidance shown in reports (empty = rule provides none)."""
+        return ""
+
+    @property
+    def help_uri(self) -> str:
+        """#115: link to rule documentation / docs page (empty = none)."""
+        return ""
+
+    @property
     def title(self) -> str:
         """Human-readable title for the rule (optional, defaults to rule id)"""
         return self.id

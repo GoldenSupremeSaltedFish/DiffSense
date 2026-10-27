@@ -73,7 +73,7 @@ The report is a single JSON object printed once. The first key MUST be `schema_v
 
 The stream contract MUST NOT be broken by adding human output to stdout:
 
-- `stdout` is reserved for machine-readable output only. When a report is produced (JSON or SARIF), it is the **only** content written to stdout. With `--quiet` on `diffsense replay`, stdout stays empty (the report is still written to `--report-json` when given).
+- `stdout` is reserved for machine-readable output only. When a report is produced (JSON, SARIF, JUnit XML (#134) or GitLab Code Quality JSON (#135)), it is the **only** content written to stdout. With `--quiet` on `diffsense replay`, stdout stays empty (the report is still written to `--report-json` when given).
 - `stderr` carries human-facing diagnostics: progress messages, rule-quality / performance summaries, warnings. Consumers MUST NOT parse stderr.
 - Tool-error reports (§3.1, `review_level: "error"`) are emitted on stdout and followed by exit code `2`.
 

@@ -3,7 +3,7 @@ import os
 import json
 import time
 import hashlib
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from . import CACHE_VERSION
 from . import get_cache_max_age_seconds
 
@@ -11,6 +11,25 @@ class DiffParser:
     def __init__(self, cache_dir: Optional[str] = None):
         self.cache_dir = cache_dir or self._resolve_cache_dir()
         self.metrics = {"hits": 0, "misses": 0, "saved_ms": 0}
+        self.warnings: List[str] = []
+
+    # #137: Windows clients frequently pipe diffs produced by non-UTF-8 codepages
+    # (GBK/cp936 etc). Decode leniently instead of crashing so multibyte content
+    # still reaches the rule engine; record a lossy-decode warning for operators.
+    def _read_diff_text(self, diff_content: Union[str, bytes]) -> str:
+        if not isinstance(diff_content, bytes):
+            return diff_content
+        try:
+            return diff_content.decode("utf-8")
+        except UnicodeDecodeError:
+            self.warnings.append(
+                "Diff is not valid UTF-8; decoded with GBK fallback (lossy). "
+                "Prefer `git diff` output, which is UTF-8 (#137)."
+            )
+            try:
+                return diff_content.decode("gbk")
+            except UnicodeDecodeError:
+                return diff_content.decode("utf-8", errors="replace")
 
     def _resolve_cache_dir(self) -> str:
         base_dir = os.environ.get("DIFFSENSE_CACHE_DIR")
@@ -49,6 +68,22 @@ class DiffParser:
 
     def _save_cache(self, cache_key: str, data: Dict[str, Any]) -> None:
         os.makedirs(self.cache_dir, exist_ok=True)
+        # #103: sweep stale .tmp orphans left behind by crashed writers. Only
+        # remove .tmp files older than 1h so a concurrently running writer
+        # (same cache dir) is never interrupted mid-write.
+        try:
+            now = time.time()
+            for name in os.listdir(self.cache_dir):
+                if not name.endswith(".tmp"):
+                    continue
+                tmp_full = os.path.join(self.cache_dir, name)
+                try:
+                    if now - os.path.getmtime(tmp_full) > 3600:
+                        os.remove(tmp_full)
+                except OSError:
+                    pass
+        except OSError:
+            pass
         path = self._cache_path(cache_key)
         tmp_path = f"{path}.{os.getpid()}.tmp"
         try:
@@ -88,16 +123,62 @@ class DiffParser:
                     "section: %r" % section.splitlines()[0][:80]
                 )
 
-    def parse(self, diff_content: str) -> Dict[str, Any]:
+    # #79: a single line at or above this size can stall regex-based rules
+    # (catastrophic backtracking / quadratic scans). Truncate with a warning
+    # instead of hanging; truncation runs before the cache lookup so the cache
+    # key stays consistent across runs.
+    MAX_LINE_LENGTH = 100_000
+
+    @staticmethod
+    def _warn(msg: str) -> None:
+        if os.environ.get("DIFFSENSE_QUIET"):
+            return
+        try:
+            import sys
+            sys.stderr.write(f"WARNING: {msg}\n")
+            sys.stderr.flush()
+        except Exception:
+            pass
+
+    def _guard_long_lines(self, diff_content: str) -> str:
+        """#79: truncate pathological single lines (>100k chars) with a warning."""
+        if not diff_content:
+            return diff_content
+        out = []
+        truncated = 0
+        for line in diff_content.splitlines(True):
+            if len(line) > self.MAX_LINE_LENGTH:
+                truncated += 1
+                out.append(
+                    line[: self.MAX_LINE_LENGTH]
+                    + f" ... [truncated by diffsense: line exceeded {self.MAX_LINE_LENGTH} chars]\n"
+                )
+            else:
+                out.append(line)
+        if truncated:
+            self._warn(
+                f"diff contains {truncated} line(s) longer than {self.MAX_LINE_LENGTH} chars; "
+                "long lines were truncated to keep analysis responsive (issue #79)"
+            )
+            diff_content = "".join(out)
+        return diff_content
+
+    def parse(self, diff_content: Union[str, bytes]) -> Dict[str, Any]:
         """
         Parses a unified diff string and returns a structured object.
         """
         import time
-        start_time = time.time()
+        start_time = time.perf_counter()
+
+        # #137: accept bytes input (e.g. subprocess output), decoding leniently.
+        diff_content = self._read_diff_text(diff_content)
 
         # #77: validate BEFORE the cache lookup — a malformed payload must neither
         # reuse a cached result nor have its (bad) result cached.
         self._validate_diff_structure(diff_content)
+
+        # #79: cap pathological single-line sizes before matching/caching.
+        diff_content = self._guard_long_lines(diff_content)
 
         files = []
         new_files = []
@@ -205,7 +286,7 @@ class DiffParser:
         }
         
         # Track how much time this parse took to estimate future savings
-        duration_ms = (time.time() - start_time) * 1000
+        duration_ms = (time.perf_counter() - start_time) * 1000
         self.metrics["saved_ms"] = duration_ms # Proxy for saved time on hit
         
         self._save_cache(cache_key, result)

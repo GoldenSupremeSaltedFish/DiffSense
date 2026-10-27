@@ -1,8 +1,11 @@
 import os
+import sys
 import yaml
 import fnmatch
 import time
 from typing import Dict, List, Any, Optional, Tuple
+
+_VALID_SEVERITIES = {"info", "low", "medium", "high", "critical", "warning"}
 
 def _version_segments(v: str) -> Tuple[int, ...]:
     """将版本字符串转为可比较的整数元组，便于区间判断。"""
@@ -143,6 +146,7 @@ class RuleEngine:
     def __init__(self, rules_path: Optional[str] = None, profile: Optional[str] = None, config: Optional[Dict[str, Any]] = None, pro_rules_path: Optional[str] = None):
         self.rules: List[Rule] = []
         self.metrics: Dict[str, Dict[str, Any]] = {}  # id -> {calls, hits, time_ns, errors}
+        self.ignored_findings: List[Dict[str, Any]] = []  # #113: findings suppressed by ignore patterns
         self.ignore_manager = IgnoreManager()
         self.profile = profile
         self.config = config or {}
@@ -281,6 +285,44 @@ class RuleEngine:
             out['versions'] = data['versions']
         return out
 
+    def _validate_yaml_rule(self, r: Any, path: str) -> Optional[Dict[str, Any]]:
+        """#118: validate a YAML rule dict before it becomes a YamlRule.
+        Returns a (possibly patched) dict, or None when the rule must be skipped.
+        All problems are reported on stderr instead of failing silently."""
+        if not isinstance(r, dict):
+            print(f"WARNING: {path}: rule entry is not a mapping ({type(r).__name__}); skipped.", file=sys.stderr)
+            return None
+        rid = r.get('id')
+        if not rid or not isinstance(rid, str) or not rid.strip():
+            print(f"WARNING: {path}: rule is missing a valid 'id'; skipped. Entry: {r!r}", file=sys.stderr)
+            return None
+        cleaned = dict(r)
+        cleaned['id'] = rid.strip()
+        sev = cleaned.get('severity')
+        if sev is None:
+            print(f"WARNING: {path}: rule '{cleaned['id']}' has no severity; defaulting to 'low'.", file=sys.stderr)
+            cleaned['severity'] = 'low'
+        else:
+            sev_norm = str(sev).strip().lower()
+            if sev_norm not in _VALID_SEVERITIES:
+                print(
+                    f"WARNING: {path}: rule '{cleaned['id']}' has invalid severity {sev!r} "
+                    f"(expected one of {sorted(_VALID_SEVERITIES)}); defaulting to 'low'.",
+                    file=sys.stderr,
+                )
+                cleaned['severity'] = 'low'
+            else:
+                cleaned['severity'] = sev_norm
+        match = cleaned.get('match')
+        if match is not None and not isinstance(match, str):
+            print(
+                f"WARNING: {path}: rule '{cleaned['id']}' has non-string 'match' ({type(match).__name__}); "
+                "rule skipped because it can never trigger.",
+                file=sys.stderr,
+            )
+            return None
+        return cleaned
+
     def _load_yaml_file(self, path: str):
         """Loads a single YAML file: either top-level 'rules: [...]' or single-rule schema (id, language, severity, ...) for cve/java etc.
         也支持「单 key 即 rule id」格式（如 pro-rules/cve/Go/*.yaml：prorule.go_2021_0265_go: { description, language, ... }）."""
@@ -297,8 +339,20 @@ class RuleEngine:
 
             raw_rules = data.get('rules', [])
             if isinstance(raw_rules, list) and raw_rules:
+                known_ids = {r.id for r in self.rules}
                 for r in raw_rules:
-                    self.rules.append(YamlRule(r))
+                    cleaned = self._validate_yaml_rule(r, path)
+                    if cleaned is None:
+                        continue
+                    if cleaned.get('id') in known_ids:
+                        # #122: a later rule silently shadowing an earlier one must warn.
+                        print(
+                            f"WARNING: rule id '{cleaned.get('id')}' is already registered "
+                            f"(conflict while loading {path}); the newly loaded rule will coexist/override the earlier match.",
+                            file=sys.stderr,
+                        )
+                    known_ids.add(cleaned.get('id'))
+                    self.rules.append(YamlRule(cleaned))
                 return
             # 单 key 即 rule id 的格式（如 cve/Go/*.yaml）
             if isinstance(data, dict) and len(data) == 1:
@@ -313,8 +367,9 @@ class RuleEngine:
                 self.rules.append(YamlRule(one))
         except FileNotFoundError:
             pass
-        except yaml.YAMLError:
-            pass
+        except yaml.YAMLError as exc:
+            # #146: a malformed rules file must not disappear silently.
+            print(f"ERROR: failed to parse rules file {path}: {exc}", file=sys.stderr)
 
     def _load_entry_point_rules(self):
         """
@@ -508,6 +563,7 @@ class RuleEngine:
         Evaluates all registered rules against the diff.
         """
         triggered_rules = []
+        self.ignored_findings = []  # #113: reset per evaluation run
         ast_signals = ast_signals or []
         
         # Incremental Scheduling: Extract unique file extensions and paths from diff_data
@@ -635,7 +691,14 @@ class RuleEngine:
                     if self.ignore_manager.is_ignored(rule_id, matched_file):
                         self.metrics[rule_id]["hits"] += 1
                         self.metrics[rule_id]["ignores"] += 1
-                        self.quality_manager.record_false_positive(rule_id)
+                        # #114: an intentionally ignored finding is NOT a false
+                        # positive -- recording one would pollute precision stats.
+                        # #113: keep the entry so the report can show a suppression summary.
+                        self.ignored_findings.append({
+                            "rule_id": rule_id,
+                            "file": matched_file,
+                            "reason": "matched ignore pattern",
+                        })
                         match_details = None
             except Exception:
                 self.metrics[rule_id]["errors"] += 1
@@ -655,6 +718,10 @@ class RuleEngine:
                     "severity": severity,
                     "impact": rule.impact,
                     "rationale": rule.rationale,
+                    # #115: pass through actionable fix guidance / doc link when
+                    # the rule provides them, so reports can guide triage.
+                    "remediation": getattr(rule, 'remediation', ''),
+                    "help_uri": getattr(rule, 'help_uri', ''),
                     "matched_file": match_details.get('file', 'unknown'),
                     "precision": quality_entry.get("precision", precision),
                     "quality_status": quality_status,

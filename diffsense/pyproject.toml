@@ -10,17 +10,19 @@ readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
 dependencies = [
-  "PyYAML",
-  "PyGithub",
-  "python-gitlab",
-  "requests",
-  "javalang",
-  "typer>=0.9.0",
+  # #156: compatible-range constraints (upper-bounded) instead of unbounded >=,
+  # so installs stay predictable and supply-chain attacks can't pull arbitrary new majors.
+  "PyYAML~=6.0",
+  "PyGithub~=2.10",
+  "python-gitlab~=8.6",
+  "requests~=2.34",
+  "javalang~=0.13",
+  "typer~=0.27",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "jsonschema>=4.0", "mcp>=2.0"]
-mcp = ["mcp>=2.0"]
+dev = ["pytest", "jsonschema~=4.26", "mcp~=2.3"]
+mcp = ["mcp~=2.3"]
 
 [project.scripts]
 diffsense = "cli:app"

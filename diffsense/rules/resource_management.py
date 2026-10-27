@@ -90,9 +90,14 @@ class DatabaseConnectionLeakRule(BaseRule):
     def rule_type(self) -> str:
         return "absolute"
 
+    @property
+    def is_blocking(self) -> bool:
+        # #90: critical findings must be blocking
+        return True
+
     def evaluate(self, diff_data: Dict[str, Any], signals: List[Signal]) -> Optional[Dict[str, Any]]:
         raw_diff = diff_data.get('raw_diff', "")
-        
+
         if self._added_conn.search(raw_diff):
             if not self._conn_close.search(raw_diff):
                 files = diff_data.get('files', [])

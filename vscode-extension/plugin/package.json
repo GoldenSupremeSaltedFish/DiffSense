@@ -108,14 +108,14 @@
     }
   },
   "scripts": {
-    "compile": "tsc",
+    "compile": "tsc && node scripts/copy-worker.js",
     "watch": "tsc -w",
     "prepare-package": "node scripts/prepare-package.js",
     "clean-package": "node scripts/clean-package.js",
     "package": "npm run prepare-package && node scripts/package-vsix.js",
     "publish": "npm run prepare-package && vsce publish",
     "dev": "npm run watch",
-    "build": "npm run clean && tsc && npm run prepare-package",
+    "build": "npm run clean && tsc && node scripts/copy-worker.js && npm run prepare-package",
     "build-ui": "cd ../ui/diffsense-frontend && npm run build",
     "dev-ui": "cd ../ui/diffsense-frontend && npm run dev",
     "clean": "rimraf dist out *.vsix",
@@ -125,8 +125,7 @@
   "dependencies": {
     "commander": "^14.0.0",
     "glob": "^10.3.0",
-    "better-sqlite3": "^11.5.0",
-    "sqlite3": "^5.1.7"
+    "better-sqlite3": "^11.5.0"
   },
   "devDependencies": {
     "@types/glob": "^8.1.0",

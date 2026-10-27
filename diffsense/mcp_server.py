@@ -24,17 +24,162 @@ import os
 from typing import Any, Dict, List, Optional
 
 from mcp.server.mcpserver import MCPServer
+from mcp.server.stdio import stdio_server
+from mcp_types import ToolAnnotations
 
 from cli import _default_rules_path
+from sarif import _tool_version
 
-mcp = MCPServer("diffsense")
+
+def _build_annotations() -> ToolAnnotations:
+    """#123: every tool is a read-only, repeatable query against a fixed corpus."""
+    return ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=False)
+
+
+class _DiffSenseMCPServer(MCPServer):
+    """MCPServer that stops advertising empty ``resources``/``prompts`` capabilities (#129).
+
+    The SDK registers resources/prompts handlers unconditionally, so the
+    initialize response always advertises both capabilities even though this
+    server defines none - clients waste a round-trip discovering empty lists.
+    The stdio entry overrides the advertised capabilities accordingly. If
+    resources or prompts are ever added to this server, remove this override.
+    """
+
+    async def run_stdio_async(self) -> None:  # noqa: D102 - see class docstring
+        async with stdio_server() as (read_stream, write_stream):
+            options = self._lowlevel_server.create_initialization_options()
+            try:  # defensive against SDK layout changes: never fail the handshake here
+                capabilities = options.capabilities
+                if capabilities is not None:
+                    capabilities.prompts = None
+                    capabilities.resources = None
+            except Exception:
+                pass
+            # #128: the SDK's stdio reader funnels unparseable stdin lines into the
+            # read stream as raw Exception objects, which the low-level server drops
+            # silently - a malformed JSON-RPC line got zero feedback. Intercept
+            # those and answer the JSON-RPC 2.0 parse error (-32700, id=null) on
+            # the wire instead. Defensive import: fall back to the stock wiring if
+            # the SDK layout ever changes.
+            try:
+                from anyio import ClosedResourceError, create_task_group
+                from mcp.shared._context_streams import create_context_streams
+                from mcp.shared.message import SessionMessage
+                import mcp_types
+            except Exception:
+                await self._lowlevel_server.run(read_stream, write_stream, options)
+                return
+
+            bridged_writer, bridged_reader = create_context_streams[SessionMessage | Exception](0)
+
+            async def _parse_error_responder() -> None:
+                try:
+                    async with bridged_writer:
+                        async for item in read_stream:
+                            if isinstance(item, Exception):
+                                error = mcp_types.jsonrpc_message_adapter.validate_python(
+                                    {
+                                        "jsonrpc": "2.0",
+                                        "id": None,
+                                        "error": {
+                                            "code": -32700,
+                                            "message": (
+                                                "Parse error: line is not valid JSON-RPC 2.0 "
+                                                "(#128); re-send as a single-line JSON object."
+                                            ),
+                                        },
+                                    },
+                                    by_name=False,
+                                )
+                                await write_stream.send(SessionMessage(error))
+                            else:
+                                await bridged_writer.send(item)
+                except ClosedResourceError:  # pragma: no cover
+                    pass
+
+            async with create_task_group() as tg:
+                tg.start_soon(_parse_error_responder)
+                await self._lowlevel_server.run(bridged_reader, write_stream, options)
+
+
+# #126: advertise the package version so MCP clients can identify the server build.
+mcp = _DiffSenseMCPServer("diffsense", version=_tool_version())
+
+
+# #153/#154: audit_replay only accepts diff files with these extensions.
+_DIFF_FILE_EXTENSIONS = {".diff", ".patch"}
+
+
+def _allowed_roots() -> List[str]:
+    """#153/#154: absolute roots a user-supplied path may resolve inside.
+
+    Defaults to the MCP server working directory (the audited project). Operators
+    can widen it with DIFFSENSE_MCP_ALLOWED_ROOTS (os.pathsep-separated list).
+    """
+    roots = [os.path.realpath(os.getcwd())]
+    extra = os.environ.get("DIFFSENSE_MCP_ALLOWED_ROOTS", "")
+    for part in extra.split(os.pathsep):
+        if part.strip():
+            roots.append(os.path.realpath(os.path.expanduser(part.strip())))
+    return roots
+
+
+def _assert_within_allowed_roots(real: str, what: str) -> None:
+    """#153/#154: reject paths resolving outside every allowed root (traversal guard)."""
+    import contextlib
+
+    for root in _allowed_roots():
+        with contextlib.suppress(ValueError):
+            if os.path.commonpath([real, root]) == root:
+                return
+    raise ValueError(
+        f"{what} resolves outside the allowed roots "
+        f"({'; '.join(_allowed_roots())}): {real!r}. "
+        "Set DIFFSENSE_MCP_ALLOWED_ROOTS to add trusted directories (#153/#154)."
+    )
 
 
 def _resolve_rules_path(rules: Optional[str]) -> str:
-    """Resolve --rules-ish argument the same way the CLI does."""
-    if rules and os.path.exists(rules):
-        return rules
+    """Resolve --rules-ish argument the same way the CLI does.
+
+    #127: an explicitly provided rules path that does not exist is a hard error
+    (surfaced as a tool error, see #124) instead of a silent fallback to the
+    built-in defaults, which used to hide typos and wrong mounts.
+    #154: an explicitly provided rules path must also stay inside the allowed
+    roots — a remote MCP client must not be able to load rule definitions from
+    arbitrary filesystem locations.
+    """
+    if rules:
+        if os.path.exists(rules):
+            real = os.path.realpath(os.path.expanduser(rules))
+            _assert_within_allowed_roots(real, "rules path")
+            return real
+        raise ValueError(f"rules path does not exist: {rules!r}")
     return _default_rules_path()
+
+
+def _validate_diff_file_path(diff_path: str) -> str:
+    """#153/#154: audit_replay input hardening.
+
+    Rejects empty paths, non-files, anything not carrying a diff/patch
+    extension, and paths that resolve outside the allowed roots, so a bare
+    directory, an unrelated file, or ``..\..\..\Windows\win.ini`` is never
+    silently parsed as a diff.
+    """
+    if not diff_path or not diff_path.strip():
+        raise ValueError("diff_path must be a non-empty path to a .diff/.patch file")
+    real = os.path.realpath(os.path.expanduser(diff_path))
+    _assert_within_allowed_roots(real, "diff_path")
+    if not os.path.exists(real):
+        raise ValueError(f"diff_path does not exist: {diff_path!r}")
+    if not os.path.isfile(real):
+        raise ValueError(f"diff_path is not a file: {diff_path!r}")
+    if os.path.splitext(real)[1].lower() not in _DIFF_FILE_EXTENSIONS:
+        raise ValueError(
+            f"diff_path must point to a .diff or .patch file, got: {os.path.splitext(real)[1]!r}"
+        )
+    return real
 
 
 def _list_rules_core(rules: Optional[str], profile: Optional[str]) -> List[Dict[str, Any]]:
@@ -50,9 +195,16 @@ def _list_rules_core(rules: Optional[str], profile: Optional[str]) -> List[Dict[
     engine = RuleEngine(path, profile=profile, pro_rules_path=pro_path)
     rows = []
     for r in engine.rules:
+        lang = _attr(r, "language")
+        # #91: expose name/language/platform. DiffSense has no separate
+        # "platform" dimension; the target language IS the platform (e.g. go,
+        # java, typescript). "*" means language-agnostic.
         rows.append(
             {
                 "id": _attr(r, "id"),
+                "name": _attr(r, "title"),
+                "language": lang,
+                "platform": "" if lang in ("", "*") else lang,
                 "severity": _attr(r, "severity"),
                 "impact": _attr(r, "impact"),
                 "status": _attr(r, "status"),
@@ -70,61 +222,71 @@ def _attr(rule: Any, name: str, default: Any = "") -> Any:
         return default
 
 
-@mcp.tool()
+@mcp.tool(annotations=_build_annotations())
 def audit_diff(diff: str, rules: str = "", profile: str = "") -> str:
     """Run a DiffSense audit on the given diff text and return the JSON report.
 
     Args:
-        diff: Unified git diff content (e.g. the body of a MR/PR diff).
+        diff: Unified git diff content (e.g. the body of a MR/PR diff). Must be non-empty.
         rules: Optional path to rules (single YAML file or directory). Empty = built-in defaults.
         profile: Optional profile filter (strict | lightweight). Empty = default profile.
 
     Returns:
         JSON report: schema_version, review_level, details, _metrics, _performance.
+
+    Raises:
+        ValueError: #125 when ``diff`` is empty/whitespace; #127 when ``rules`` points
+            to a non-existent path. The MCP SDK converts these into tool errors
+            (``isError=true``) so agents can distinguish failures from clean reports (#124).
     """
     from main import analyze_diff
 
-    try:
-        result = analyze_diff(
-            diff,
-            _resolve_rules_path(rules),
-            profile=profile or None,
-            write_files=False,
-        )
-        return json.dumps(result, ensure_ascii=False, indent=2)
-    except Exception as e:  # thin shell: surface errors as JSON, never crash the server
-        return json.dumps({"schema_version": "1.0", "error": str(e), "review_level": "error", "details": []})
+    if not diff or not diff.strip():
+        raise ValueError("diff is empty: provide the unified diff text to audit")
+    result = analyze_diff(
+        diff,
+        _resolve_rules_path(rules),
+        profile=profile or None,
+        write_files=False,
+    )
+    return json.dumps(result, ensure_ascii=False, indent=2)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_build_annotations())
 def audit_replay(diff_path: str, rules: str = "", profile: str = "") -> str:
     """Run a DiffSense audit on a local .diff file and return the JSON report (offline replay).
 
     Args:
-        diff_path: Path to a unified diff file (read-only access).
+        diff_path: Path to a unified diff file (``.diff``/``.patch``, read-only access).
         rules: Optional path to rules (single YAML file or directory). Empty = built-in defaults.
         profile: Optional profile filter (strict | lightweight). Empty = default profile.
 
     Returns:
         JSON report: schema_version, review_level, details, _metrics, _performance.
+
+    Raises:
+        ValueError: #153/#154 when ``diff_path`` is missing, not a file, or lacks a
+            .diff/.patch extension; #127 when ``rules`` points to a non-existent path.
+            The MCP SDK surfaces these as tool errors (``isError=true``) (#124).
     """
     from main import analyze_diff
 
-    try:
-        with open(diff_path, "r", encoding="utf-8") as f:
-            diff = f.read()
-        result = analyze_diff(
-            diff,
-            _resolve_rules_path(rules),
-            profile=profile or None,
-            write_files=False,
-        )
-        return json.dumps(result, ensure_ascii=False, indent=2)
-    except Exception as e:
-        return json.dumps({"schema_version": "1.0", "error": str(e), "review_level": "error", "details": []})
+    real = _validate_diff_file_path(diff_path)
+    with open(real, "r", encoding="utf-8") as f:
+        diff = f.read()
+    if not diff.strip():
+        # #125: an empty file is an input error, not a clean "no findings" report.
+        raise ValueError(f"diff file is empty: {diff_path!r}")
+    result = analyze_diff(
+        diff,
+        _resolve_rules_path(rules),
+        profile=profile or None,
+        write_files=False,
+    )
+    return json.dumps(result, ensure_ascii=False, indent=2)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_build_annotations())
 def list_rules(rules: str = "", profile: str = "") -> str:
     """List loaded DiffSense rules (built-in + YAML) with their metadata.
 
@@ -133,15 +295,16 @@ def list_rules(rules: str = "", profile: str = "") -> str:
         profile: Optional profile filter (strict | lightweight). Empty = default profile.
 
     Returns:
-        JSON array of rules: id, severity, impact, status, is_blocking, rule_type.
+        JSON array of rules: id, name, language, platform, severity, impact,
+        status, is_blocking, rule_type (#91).
+
+    Raises:
+        ValueError: #127 when ``rules`` points to a non-existent path (tool error, #124).
     """
-    try:
-        return json.dumps(_list_rules_core(rules or None, profile or None), ensure_ascii=False, indent=2)
-    except Exception as e:
-        return json.dumps({"error": str(e)})
+    return json.dumps(_list_rules_core(rules or None, profile or None), ensure_ascii=False, indent=2)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_build_annotations())
 def explain_rule(rule_id: str, rules: str = "", profile: str = "") -> str:
     """Explain a single DiffSense rule by id.
 
@@ -151,39 +314,61 @@ def explain_rule(rule_id: str, rules: str = "", profile: str = "") -> str:
         profile: Optional profile filter (strict | lightweight). Empty = default profile.
 
     Returns:
-        JSON object with the rule's metadata and rationale (or an error object).
-    """
-    try:
-        from core.rules import RuleEngine
+        JSON object with the rule's metadata and rationale.
 
-        path = _resolve_rules_path(rules)
-        pro_path = None
-        try:
-            from core.run_config import get_pro_rules_path
-            pro_path = get_pro_rules_path(os.getcwd())
-        except Exception:
-            pass
-        engine = RuleEngine(path, profile=profile or None, pro_rules_path=pro_path)
-        for r in engine.rules:
-            if _attr(r, "id") == rule_id:
-                detail = {
-                    "id": _attr(r, "id"),
-                    "severity": _attr(r, "severity"),
-                    "impact": _attr(r, "impact"),
-                    "status": _attr(r, "status"),
-                    "is_blocking": _attr(r, "is_blocking"),
-                    "rule_type": _attr(r, "rule_type"),
-                    "rationale": _attr(r, "rationale"),
-                }
-                return json.dumps(detail, ensure_ascii=False, indent=2)
-        return json.dumps({"error": f"rule not found: {rule_id}"})
-    except Exception as e:
-        return json.dumps({"error": str(e)})
+    Raises:
+        LookupError: #124 when ``rule_id`` matches no loaded rule (tool error instead
+            of a JSON ``{"error": ...}`` payload).
+        ValueError: #127 when ``rules`` points to a non-existent path.
+    """
+    from core.rules import RuleEngine
+
+    path = _resolve_rules_path(rules)
+    pro_path = None
+    try:
+        from core.run_config import get_pro_rules_path
+        pro_path = get_pro_rules_path(os.getcwd())
+    except Exception:
+        pass
+    engine = RuleEngine(path, profile=profile or None, pro_rules_path=pro_path)
+    for r in engine.rules:
+        if _attr(r, "id") == rule_id:
+            detail = {
+                "id": _attr(r, "id"),
+                "severity": _attr(r, "severity"),
+                "impact": _attr(r, "impact"),
+                "status": _attr(r, "status"),
+                "is_blocking": _attr(r, "is_blocking"),
+                "rule_type": _attr(r, "rule_type"),
+                "rationale": _attr(r, "rationale"),
+            }
+            return json.dumps(detail, ensure_ascii=False, indent=2)
+    raise LookupError(f"rule not found: {rule_id}")
 
 
 def main() -> None:
-    """Entry point for the ``diffsense-mcp`` console script (stdio transport)."""
-    mcp.run(transport="stdio")
+    """Entry point for the ``diffsense-mcp`` console script (stdio transport).
+
+    #83: emit a one-line startup banner and full tracebacks to stderr so a
+    console script that dies (broken pip launcher, missing interpreter, import
+    error) is diagnosable instead of exiting silently with no output.
+    """
+    import sys as _sys
+    import traceback as _traceback
+
+    print(
+        f"diffsense-mcp {_tool_version()} starting (pid={os.getpid()}, stdio transport) (#83)",
+        file=_sys.stderr,
+        flush=True,
+    )
+    try:
+        mcp.run(transport="stdio")
+    except Exception:
+        _traceback.print_exc(file=_sys.stderr)
+        _sys.stderr.flush()
+        raise
+    finally:
+        print("diffsense-mcp stopped (#83)", file=_sys.stderr, flush=True)
 
 
 if __name__ == "__main__":

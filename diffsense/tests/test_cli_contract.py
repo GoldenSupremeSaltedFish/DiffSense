@@ -53,7 +53,7 @@ def test_report_has_schema_version_first_and_validates(tmp_path) -> None:
     assert proc.returncode == 0
     data = read_report(report)
     assert list(data.keys())[0] == "schema_version"
-    assert data["schema_version"] == "1.0"
+    assert data["schema_version"] == "1.1"
     jsonschema.validate(data, load_schema())
 
 
